@@ -12,7 +12,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { question, tankContext, mode = "careful" } = req.body || {};
+    const {
+      question,
+      tankContext,
+      mode = "careful",
+      attachments = []
+    } = req.body || {};
 
     if (!question || typeof question !== "string") {
       return res.status(400).json({ error: "Missing question" });
@@ -24,42 +29,40 @@ export default async function handler(req, res) {
       });
     }
 
-    const modelByMode = {
-      fast: "gpt-4.1-mini",
-      careful: "gpt-5.1",
-      expert: "gpt-5.1"
-    };
-
-    const reasoningByMode = {
-      fast: "low",
-      careful: "medium",
-      expert: "high"
-    };
-
     const selectedMode = ["fast", "careful", "expert"].includes(mode)
       ? mode
       : "careful";
 
+    const modelByMode = {
+      fast: "gpt-4.1-mini",
+      careful: "gpt-4.1-mini",
+      expert: "gpt-4.1-mini"
+    };
+
     const selectedModel = modelByMode[selectedMode];
-    const selectedReasoning = reasoningByMode[selectedMode];
 
     const reefContext = JSON.stringify(tankContext || {}, null, 2);
 
-    const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${String(process.env.OPENAI_API_KEY || "").trim()}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        reasoning: {
-          effort: selectedReasoning
-        },
-        input: [
-          {
-            role: "system",
-            content: `
+    const cleanedAttachments = Array.isArray(attachments)
+      ? attachments
+          .filter(file =>
+            file &&
+            typeof file.name === "string" &&
+            typeof file.dataUrl === "string" &&
+            file.dataUrl.startsWith("data:")
+          )
+          .slice(0, 5)
+      : [];
+
+    const attachmentContent = cleanedAttachments.map(file => {
+      return {
+        type: "input_file",
+        filename: file.name,
+        file_data: file.dataUrl
+      };
+    });
+
+    const systemInstructions = `
 You are Reef Keeper's AI assistant for Jorge's 120 gallon mixed reef tank.
 
 Current response mode: ${selectedMode}
@@ -67,10 +70,10 @@ Current response mode: ${selectedMode}
 Mode behavior:
 - Fast: brief, practical answer. Use for ordinary questions.
 - Careful: more measured answer with reasoning and next steps. Use for parameter interpretation and maintenance decisions.
-- Expert: most cautious and detailed. Use for coral decline, livestock stress, chemistry problems, or conflicting data.
+- Expert: most cautious and detailed. Use for coral decline, livestock stress, chemistry problems, uploaded ICP tests, photos, or conflicting data.
 
 Your role:
-Give practical, cautious, reef-aquarium husbandry advice using the supplied tank context and the user's current test results.
+Give practical, cautious, reef-aquarium husbandry advice using the supplied tank context, user question, and uploaded files/images.
 
 Tank philosophy:
 - Prioritize stability over fast correction.
@@ -106,6 +109,12 @@ Important reef rules:
 - If pH is high, suggest verifying probe calibration before taking action.
 - If coral is declining suddenly, first ask/check salinity, alkalinity, phosphate, temperature, ATO/RODI, and recent changes.
 
+Uploaded file rules:
+- Use uploaded files/images when relevant.
+- If an uploaded image is unclear, say what can and cannot be determined.
+- If a PDF or file appears to contain test results, summarize the important values first, then give action steps.
+- Do not invent values that are not visible or provided.
+
 Answer style:
 - Be concise but specific.
 - Use short sections when useful: "What this means", "What to do now", "What to test next".
@@ -115,17 +124,41 @@ Answer style:
 - Do not overstate certainty.
 - Do not give generic reef advice that ignores this tank's recovery plan.
 - Avoid vague phrases like "adjust calcium consumption."
-`
-          },
-          {
-            role: "user",
-            content: `
+`;
+
+    const userContent = [
+      {
+        type: "input_text",
+        text: `
 Tank context:
 ${reefContext}
 
 User question:
 ${question}
+
+Attached files:
+${cleanedAttachments.length ? cleanedAttachments.map(f => `- ${f.name} (${f.type || "unknown type"}, ${f.size || "unknown size"} bytes)`).join("\n") : "None"}
 `
+      },
+      ...attachmentContent
+    ];
+
+    const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${String(process.env.OPENAI_API_KEY || "").trim()}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        input: [
+          {
+            role: "system",
+            content: systemInstructions
+          },
+          {
+            role: "user",
+            content: userContent
           }
         ]
       })
@@ -166,7 +199,8 @@ ${question}
     return res.status(200).json({
       answer,
       mode: selectedMode,
-      model: selectedModel
+      model: selectedModel,
+      filesReceived: cleanedAttachments.map(file => file.name)
     });
   } catch (error) {
     return res.status(500).json({
