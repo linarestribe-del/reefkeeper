@@ -29,12 +29,15 @@ export default async function handler(req, res) {
     const openaiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${String(process.env.OPENAI_API_KEY || "").trim()}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-5.1",
-        instructions: `
+        model: "gpt-4.1-mini",
+        input: [
+          {
+            role: "system",
+            content: `
 You are Reef Keeper's AI assistant for Jorge's 120 gallon mixed reef tank.
 
 Give practical reef-aquarium advice based on the provided tank context.
@@ -45,14 +48,19 @@ Do not recommend restarting kalk unless the test data supports it.
 When uncertain, ask for the missing test result.
 Avoid pretending to know current measurements unless the user provides them.
 Keep answers concise, specific, and action-oriented.
-`,
-        input: `
+`
+          },
+          {
+            role: "user",
+            content: `
 Tank context:
 ${reefContext}
 
 User question:
 ${question}
 `
+          }
+        ]
       })
     });
 
@@ -67,9 +75,28 @@ ${question}
 
     const data = await openaiResponse.json();
 
-    return res.status(200).json({
-      answer: data.output_text || "I received a response, but could not read the answer text."
-    });
+    let answer = data.output_text;
+
+    if (!answer && Array.isArray(data.output)) {
+      answer = data.output
+        .flatMap(item => item.content || [])
+        .map(content => content.text || "")
+        .join("\n")
+        .trim();
+    }
+
+    if (!answer && data.choices?.[0]?.message?.content) {
+      answer = data.choices[0].message.content;
+    }
+
+    if (!answer) {
+      return res.status(500).json({
+        error: "Could not read answer text",
+        details: JSON.stringify(data, null, 2).slice(0, 4000)
+      });
+    }
+
+    return res.status(200).json({ answer });
   } catch (error) {
     return res.status(500).json({
       error: "Server error",
