@@ -1,0 +1,20 @@
+Reef Keeper bug fix: resolved issue memory for Australian Stripy rehoming
+
+Problem:
+- The user could tell Ask AI that the Australian Stripy fish had a new home, but Days-Off Plan generation still included Australian Stripy tasks.
+- Cause: chat messages were not being promoted into structured app state. The fixed tank profile and template/default tasks still listed the Australian Stripy issue as active.
+
+Fixes added:
+- Detects chat statements indicating the Australian Stripy fish were rehomed / have a new home.
+- Stores a resolved issue override in localStorage: reef_resolved_issues.australianStripyRehomed.
+- Adds a Maintenance/Action History entry automatically.
+- Hides/removes the matching built-in reminders:
+  - Feed Australians in Sump
+  - Post Australians for Rehoming
+- Filters Australian Stripy rehoming/feeding/sump-coverage tasks out of template and AI-generated Days-Off Plans.
+- Sends resolved issue overrides to the AI and to the AI Days-Off Plan generator.
+- Includes resolved issue memory in export/import backup and diagnostics repair.
+
+Expected behavior:
+- After saying “I found a new home for the Australian stripy,” Ask AI notes the update.
+- Regenerating the AI Days-Off Work Plan should no longer include Australian Stripy rehoming or feeding coverage tasks.
