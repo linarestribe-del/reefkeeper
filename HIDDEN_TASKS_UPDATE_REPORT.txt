@@ -1,0 +1,15 @@
+Reef Keeper Hidden Tasks Management Update
+
+Changes made:
+- Renamed the confusing summary from "hidden by AI commands" to "hidden/removed tasks".
+- Added a Manage Hidden Tasks button in the Reef Tasks card.
+- Added a Restore All Hidden Tasks button.
+- Added a review panel that lists hidden Reef Tasks and hidden Days-Off Plan tasks.
+- Added per-item Restore buttons for hidden tasks.
+- Restoring hidden tasks refreshes Reef Tasks, Days-Off Work Plan, and checkboxes.
+- Fixed a duplicate variable declaration in the Australian Stripy resolved-issue helper.
+- JavaScript syntax check passed with node --check.
+
+Notes:
+- Hidden tasks are not deleted from the app forever; they are suppressed by localStorage keys.
+- The panel lets the user restore tasks removed manually or by Ask AI management commands.
