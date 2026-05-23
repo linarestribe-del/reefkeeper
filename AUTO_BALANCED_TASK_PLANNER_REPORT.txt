@@ -1,0 +1,12 @@
+Auto-Balanced Task Planner update
+
+Changes made:
+- Active Reef Tasks are automatically placed into the Days-Off Work Plan by default.
+- Auto-Balance Week estimates workload and spreads tasks across Day 1-7.
+- Water changes, aiptasia treatment, and media/equipment tasks are separated where practical.
+- Reef Tasks now acts more like an inbox and only shows unscheduled tasks plus waiting/completed items.
+- Hidden task controls remain as side-by-side button-style controls.
+- Chaeto/cheato reactor planning was cancelled per user direction and is filtered from reminders, templates, AI plans, generated memory, and static task lists.
+
+Install notes:
+Replace current Vercel/GitHub files with this folder and redeploy. Existing localStorage data is preserved; old chaeto-related schedule entries are removed on first launch.

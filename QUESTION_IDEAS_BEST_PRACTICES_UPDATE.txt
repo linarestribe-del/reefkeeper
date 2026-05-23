@@ -1,0 +1,1 @@
+Updated Ask AI auto-refresh question idea prompt to keep the user tank in context while also framing suggestions against stable successful mixed reef best practices. It does not add UI buttons and continues filtering chaeto/cheato reactor suggestions.

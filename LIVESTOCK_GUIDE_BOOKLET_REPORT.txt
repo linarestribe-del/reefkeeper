@@ -1,0 +1,1 @@
+Added livestock-guide.html, reef-keeper-livestock-booklet.pdf, and local livestock images under public/livestock. Added guide/booklet buttons inside Long-Term Reef Tools > Livestock & Coral Inventory.

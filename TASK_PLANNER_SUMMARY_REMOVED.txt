@@ -1,0 +1,1 @@
+Removed the explanatory summary banner under the Reef Task Planner heading on the Reminders tab.

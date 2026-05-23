@@ -1,0 +1,20 @@
+Reef Keeper task planner simplification update
+
+Changes made:
+- Replaced separate-feeling Reef Tasks and Days-Off Work Plan cards with one combined Reef Task Planner card.
+- Days-Off Work Plan now appears first as the schedule view.
+- Reef Tasks now appears below as the task inbox / source list.
+- Added a clearer explanation that Reef Tasks are what needs doing and Days-Off Plan is when to do it.
+- Changed Manage Hidden Tasks / Restore All into more obvious side-by-side colored buttons.
+- Added Auto-Place Tasks button to put active unscheduled Reef Tasks into suggested days.
+- Replaced the tiny Schedule dropdown in Reef Tasks with larger Day 1–Day 7 buttons.
+- Added per-task Auto placement button.
+- Added per-task Remove button when a task is already scheduled.
+- Kept checking off a scheduled task synced with the original Reef Task.
+- Kept Ask AI management commands and hidden task restore behavior.
+
+Intended behavior:
+- Reef Tasks is the master task list.
+- Days-Off Work Plan is the scheduled view.
+- A task can appear in the plan without becoming a separate duplicate task.
+- Checking it off in either place updates the same task.

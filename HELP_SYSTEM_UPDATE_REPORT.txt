@@ -1,0 +1,8 @@
+Reef Keeper help system update
+
+Changes:
+- Removed the Template Mode explanatory box from the Reminders/Reef Task Planner tab.
+- Added a question-mark help button to each main tab: Home, Ask AI, Log, and Reminders.
+- Added a hidden modal help panel with plain-language explanations of the main controls and workflows.
+- Help content is contextual to the current tab.
+- The help overlay can be closed with the × button, by tapping outside the panel, or with Escape.
