@@ -1,1 +1,0 @@
-Added randomized Ask AI question ideas with a Surprise Me button. The button asks the AI for four fresh prompts based on tank context and falls back to local smart suggestions if the request fails. Chaeto/cheato reactor prompts are filtered out because that plan is cancelled.
