@@ -1,7 +1,0 @@
-Auto-refresh question ideas update
-
-- Ask AI question ideas now refresh automatically when the Ask AI tab is opened.
-- The app immediately shows local question ideas, then replaces them with AI-generated ideas when available.
-- A 5-minute cooldown prevents repeated API calls if the user taps in and out of the tab frequently.
-- The Surprise me button remains available for manual refresh.
-- AI-generated suggestions continue to filter cancelled chaeto/cheato reactor topics and resolved Australian Stripy topics.
