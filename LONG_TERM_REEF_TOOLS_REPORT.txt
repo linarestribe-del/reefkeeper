@@ -1,1 +1,0 @@
-Added compact long-term reef features: tank mode, livestock/coral inventory, strategy guardrails, maintenance intervals, recent changes, long-term summary, and monthly AI review. These are folded into existing Home/Log screens to avoid adding tabs or clutter.
