@@ -2806,11 +2806,8 @@ html, body {
       <div class="card long-term-card">
         <div class="card-title">🧠 Long-Term Reef Tools</div>
         <div class="long-term-intro">Tools are tucked into focused pages so the Log tab stays clean.</div>
-        <details class="long-term-details tank-memory-details">
-          <summary>Tank Memory</summary>
-          <div class="long-term-panel tank-memory-panel" id="tank-memory-v8" data-inline-memory="true"></div>
-        </details>
         <div class="long-term-launch-grid">
+          <button class="long-term-launch-btn" onclick="openLongTermTool('memory')" type="button">Tank Memory<span>Review and edit authoritative reef facts used across the app.</span></button>
           <button class="long-term-launch-btn" onclick="openLongTermTool('inventory')" type="button">Livestock & Coral Inventory<span>Add photos, care facts, notes, and catalog entries.</span></button>
           <button class="long-term-launch-btn" onclick="openLongTermTool('strategy')" type="button">Strategy, Guardrails & Maintenance Rules<span>Review tank rules, intervals, and safety guardrails.</span></button>
           <button class="long-term-launch-btn" onclick="openLongTermTool('summary')" type="button">Long-Term Summary & Monthly Review<span>Generate monthly reviews and refresh the long-term tank summary.</span></button>
@@ -2917,6 +2914,21 @@ html, body {
 
 
 <!-- Long-term tool overlays -->
+<div class="tool-overlay" id="tool-memory-overlay" onclick="handleToolOverlayClick(event, 'memory')">
+  <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-memory-title">
+    <div class="tool-panel-head">
+      <button class="tool-panel-title" id="tool-memory-title" type="button" onclick="scrollToolToTop('memory')">Tank Memory</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="tool-top-btn" onclick="scrollToolToTop('memory')" aria-label="Scroll tank memory to top">⌃</button>
+        <button class="tool-close-btn" onclick="closeLongTermTool('memory')" aria-label="Close tank memory">×</button>
+      </div>
+    </div>
+    <div class="tool-panel-body" id="tool-memory-body">
+      <div class="long-term-panel tank-memory-panel" id="tank-memory-v8" data-inline-memory="true"></div>
+    </div>
+  </div>
+</div>
+
 <div class="tool-overlay" id="tool-inventory-overlay" onclick="handleToolOverlayClick(event, 'inventory')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-inventory-title">
     <div class="tool-panel-head">
@@ -3188,11 +3200,11 @@ html, body {
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260619-refactor-v12"></script>
-<script src="state.js?v=20260619-refactor-v12"></script>
-<script src="reef-ai-context.js?v=20260619-refactor-v12"></script>
-<script src="days-off-plan.js?v=20260619-refactor-v12"></script>
-<script src="diagnostics.js?v=20260619-refactor-v12"></script>
-<script src="app.js?v=20260619-refactor-v12"></script>
+<script src="storage.js?v=20260619-refactor-v12b"></script>
+<script src="state.js?v=20260619-refactor-v12b"></script>
+<script src="reef-ai-context.js?v=20260619-refactor-v12b"></script>
+<script src="days-off-plan.js?v=20260619-refactor-v12b"></script>
+<script src="diagnostics.js?v=20260619-refactor-v12b"></script>
+<script src="app.js?v=20260619-refactor-v12b"></script>
 </body>
 </html>
