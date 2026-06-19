@@ -1120,7 +1120,7 @@ function appendSuggestedReminders(reminders) {
 }
 
 
-// ── Tank update proposal cards ─────────────────────────────────────────────
+// ── Tank update proposal cards v10c ─────────────────────────────────────────────
 const pendingTankUpdateProposals = {};
 
 function appendTankUpdateProposalCard(proposal) {
@@ -1406,6 +1406,7 @@ async function sendChat(event) {
     scrollChatToBottom();
   }
 
+  // Show the approval card immediately, before the AI response is requested.
   if (tankUpdateProposal) {
     appendTankUpdateProposalCard(tankUpdateProposal);
   }
@@ -1434,6 +1435,11 @@ ${attachedImageContexts.length} reef photo${attachedImageContexts.length === 1 ?
     const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode(), attachmentForAI);
     removeTyping();
     appendMsg('ai', result.answer || 'I received your question, but the answer came back empty.');
+    // If the approval card was pushed off-screen by the AI reply or failed to render before typing,
+    // re-append it once after the AI reply. This keeps the user approval workflow visible.
+    if (tankUpdateProposal && !document.querySelector(`[data-proposal-id="${CSS.escape(tankUpdateProposal.id)}"]`)) {
+      appendTankUpdateProposalCard(tankUpdateProposal);
+    }
     appendSuggestedReminders(result.reminders);
     chatHistory.push({ role: 'assistant', content: result.answer || '' });
     if (chatHistory.length > 80) chatHistory = chatHistory.slice(-80);

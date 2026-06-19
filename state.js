@@ -1,4 +1,4 @@
-// Reef Keeper v10 state module
+// Reef Keeper v10c state module
 // Purpose: central authoritative tank state, task-status semantics, and visible Tank Memory editor.
 (function(){
   'use strict';
@@ -137,10 +137,26 @@
       return proposalFromMatch('livestock_added_generic','Add active livestock: test coral','Save test coral as active livestock so Ask AI and Days-Off Plan may consider it.',raw,{ affected:['test coral'], status:'active', activeInTank:true, allowPlanningTasks:true, scopes:['Tank Memory','Livestock','AI Context','Days-Off Plan'] });
     }
 
-    const addCommon = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?([a-zA-Z0-9 '\-]+?)(?:\.|,|$)/i);
-    if (addCommon) {
-      const name = addCommon[1].trim();
-      if (name.length >= 3 && name.length <= 60 && !/water|salt|food|test kit|kit|reminder|task|plan/i.test(name)) {
+    // More reliable added-livestock detection. Handles:
+    // "I added a new coral: blue test acropora", "I added coral blue test acropora",
+    // and simple "I added a blue test acropora" wording.
+    let addedName = '';
+    const colonAdded = raw.match(/(?:added|bought|got|picked up|introduced)[^:]{0,80}:\s*([^.!?]+)/i);
+    if (colonAdded) addedName = colonAdded[1].trim();
+    if (!addedName) {
+      const typedAdded = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?(?:coral|fish|invert|invertebrate|anemone|livestock)\s+(?:called\s+|named\s+)?([^.!?,]+)/i);
+      if (typedAdded) addedName = typedAdded[1].trim();
+    }
+    if (!addedName) {
+      const addCommon = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?([a-zA-Z0-9 '\-]+?)(?:\.|,|$)/i);
+      if (addCommon) addedName = addCommon[1].trim();
+    }
+    if (addedName) {
+      let name = addedName
+        .replace(/^(?:new\s+)?(?:coral|fish|invert|invertebrate|anemone|livestock)[:\s-]*/i, '')
+        .replace(/^(?:called|named)\s+/i, '')
+        .trim();
+      if (name.length >= 3 && name.length <= 80 && !/^(coral|fish|invert|invertebrate|anemone|livestock)$/i.test(name) && !/water|salt|food|test kit|kit|reminder|task|plan/i.test(name)) {
         return proposalFromMatch('livestock_added_generic',`Add active livestock: ${name}`,`Save ${name} as active livestock so Ask AI and Days-Off Plan may consider it.`,raw,{ affected:[name], status:'active', activeInTank:true, allowPlanningTasks:true, scopes:['Tank Memory','Livestock','AI Context','Days-Off Plan'] });
       }
     }
