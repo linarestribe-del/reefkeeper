@@ -2062,6 +2062,10 @@ html, body {
 .long-term-details summary:after{content:'⌄'; color:var(--text-mid); font-size:16px; transition:transform .15s;}
 .long-term-details[open] summary:after{transform:rotate(180deg);}
 .long-term-panel{padding:0 14px 14px;}
+.recent-logs-card .long-term-details, .long-term-card .tank-memory-details{margin:0;background:rgba(255,255,255,0.62);}
+.tank-memory-panel{padding-top:2px;}
+.tank-memory-panel .reminder-center-intro{margin-top:0;}
+.tank-memory-panel .hidden-tasks-actions{margin-bottom:0;}
 
 .long-term-launch-grid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;}
 .long-term-launch-btn{width:100%;border:0;border-radius:16px;padding:14px 16px;text-align:left;font-family:'Nunito',sans-serif;font-weight:900;color:var(--text-dark);background:rgba(255,255,255,.78);box-shadow:var(--shadow);display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;}
@@ -2747,28 +2751,30 @@ html, body {
         <div id="analysis-result" class="analysis-result"></div>
       </div>
 
-      <div class="card">
-        <div class="card-title">📅 Recent Logs</div>
-        <div id="log-history">
-          <div class="log-history-item">
-            <div>
-              <div class="log-date">May 5, 2026</div>
-              <div class="log-vals">PO₄: 0.65 · Alk: 10.0 · NO₃: 22</div>
+      <div class="card recent-logs-card">
+        <details class="long-term-details recent-logs-details">
+          <summary>📅 Recent Logs</summary>
+          <div class="long-term-panel" id="log-history">
+            <div class="log-history-item">
+              <div>
+                <div class="log-date">May 5, 2026</div>
+                <div class="log-vals">PO₄: 0.65 · Alk: 10.0 · NO₃: 22</div>
+              </div>
+            </div>
+            <div class="log-history-item">
+              <div>
+                <div class="log-date">Apr 22, 2026</div>
+                <div class="log-vals">PO₄: 0.90 · Alk: 11.4 · NO₃: 22.1</div>
+              </div>
+            </div>
+            <div class="log-history-item">
+              <div>
+                <div class="log-date">Apr 2, 2026</div>
+                <div class="log-vals">PO₄: 0.90 · Alk: 8.8 · NO₃: 20.9</div>
+              </div>
             </div>
           </div>
-          <div class="log-history-item">
-            <div>
-              <div class="log-date">Apr 22, 2026</div>
-              <div class="log-vals">PO₄: 0.90 · Alk: 11.4 · NO₃: 22.1</div>
-            </div>
-          </div>
-          <div class="log-history-item">
-            <div>
-              <div class="log-date">Apr 2, 2026</div>
-              <div class="log-vals">PO₄: 0.90 · Alk: 8.8 · NO₃: 20.9</div>
-            </div>
-          </div>
-        </div>
+        </details>
       </div>
 
 
@@ -2800,6 +2806,10 @@ html, body {
       <div class="card long-term-card">
         <div class="card-title">🧠 Long-Term Reef Tools</div>
         <div class="long-term-intro">Tools are tucked into focused pages so the Log tab stays clean.</div>
+        <details class="long-term-details tank-memory-details">
+          <summary>Tank Memory</summary>
+          <div class="long-term-panel tank-memory-panel" id="tank-memory-v8" data-inline-memory="true"></div>
+        </details>
         <div class="long-term-launch-grid">
           <button class="long-term-launch-btn" onclick="openLongTermTool('inventory')" type="button">Livestock & Coral Inventory<span>Add photos, care facts, notes, and catalog entries.</span></button>
           <button class="long-term-launch-btn" onclick="openLongTermTool('strategy')" type="button">Strategy, Guardrails & Maintenance Rules<span>Review tank rules, intervals, and safety guardrails.</span></button>
@@ -3178,11 +3188,11 @@ html, body {
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260619-refactor-v11b"></script>
-<script src="state.js?v=20260619-refactor-v11b"></script>
-<script src="reef-ai-context.js?v=20260619-refactor-v11b"></script>
-<script src="days-off-plan.js?v=20260619-refactor-v11b"></script>
-<script src="diagnostics.js?v=20260619-refactor-v11b"></script>
-<script src="app.js?v=20260619-refactor-v11b"></script>
+<script src="storage.js?v=20260619-refactor-v12"></script>
+<script src="state.js?v=20260619-refactor-v12"></script>
+<script src="reef-ai-context.js?v=20260619-refactor-v12"></script>
+<script src="days-off-plan.js?v=20260619-refactor-v12"></script>
+<script src="diagnostics.js?v=20260619-refactor-v12"></script>
+<script src="app.js?v=20260619-refactor-v12"></script>
 </body>
 </html>
