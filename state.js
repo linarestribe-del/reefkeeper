@@ -1,4 +1,4 @@
-// Reef Keeper v10c state module
+// Reef Keeper v11 state module
 // Purpose: central authoritative tank state, task-status semantics, and visible Tank Memory editor.
 (function(){
   'use strict';
@@ -7,7 +7,7 @@
   function now(){ return storage?.now ? storage.now() : new Date().toISOString(); }
   function baseState(){
     return {
-      schemaVersion: 10, updatedAt: now(),
+      schemaVersion: 11, updatedAt: now(),
       hardPreferences: { chaetoReactorCancelled: true, kalkHoldUntilCalciumBelow450AndAlkStable: true },
       completedProtocols: { kfcRecovery: { status:'completed', completedAt:'2026-06-19T12:00:00.000Z', note:'KFC/cipro/amoxicillin recovery protocol is complete. Do not schedule recovery-dose or antibiotic-protocol tasks.' } },
       activeProtocols: {},
@@ -39,7 +39,7 @@
     // v7 compatibility: livestockStatus map becomes livestock objects.
     if (saved.livestockStatus) Object.entries(saved.livestockStatus).forEach(([name, status]) => { out.livestock[name] = { ...(out.livestock[name]||{}), status:String(status), activeInTank:false, allowPlanningTasks:false }; });
     ['activeCoralAndAnemones','planningRules','facts'].forEach(k => out[k] = [...new Set([...(base[k]||[]), ...(saved[k]||[])].map(x => String(x||'').trim()).filter(Boolean))]);
-    out.schemaVersion = 10; out.updatedAt = saved.updatedAt || base.updatedAt;
+    out.schemaVersion = 11; out.updatedAt = saved.updatedAt || base.updatedAt;
     return out;
   }
   function get(){
@@ -72,7 +72,7 @@
   function normalizeTaskStatus(status){ return Object.values(TASK_STATUS).includes(status) ? status : TASK_STATUS.ACTIVE; }
   function setTaskStatus(id, status, meta={}){ return update(state => { state.taskStatuses[id] = { status:normalizeTaskStatus(status), updatedAt:now(), ...meta }; return state; }); }
   function getMemoryLines(){
-    const state = get(); const lines = ['AUTHORITATIVE TANK MEMORY (v10): these facts override older chat, templates, inventory defaults, and hidden task lists.'];
+    const state = get(); const lines = ['AUTHORITATIVE TANK MEMORY (v11): these facts override older chat, templates, inventory defaults, and hidden task lists.'];
     Object.entries(state.hardPreferences||{}).forEach(([k,v]) => { if (v) lines.push(`Hard preference: ${k}.`); });
     Object.entries(state.completedProtocols||{}).forEach(([k,v]) => lines.push(`Completed protocol: ${k} — ${v.note || v.status || 'completed'}.`));
     Object.entries(state.resolvedIssues||{}).forEach(([k,v]) => lines.push(`Resolved issue: ${k} — ${v.note || v.status || 'resolved'}.`));
@@ -245,19 +245,23 @@
     if (changed) { try { storage?.syncDbToLegacy(); } catch(e){} renderMemoryPanel(); }
     return changed;
   }
+  function memoryFactsFromState(state){
+    const facts = [];
+    Object.entries(state.hardPreferences||{}).filter(([,v])=>v).forEach(([k])=>facts.push({ id:`hardPreferences:${encodeURIComponent(k)}`, bucket:'hardPreferences', key:k, type:'Preference', label:k, note:'Active hard preference' }));
+    Object.entries(state.completedProtocols||{}).forEach(([k,v])=>facts.push({ id:`completedProtocols:${encodeURIComponent(k)}`, bucket:'completedProtocols', key:k, type:'Protocol complete', label:k, note:v?.note || v?.status || 'completed' }));
+    Object.entries(state.resolvedIssues||{}).forEach(([k,v])=>facts.push({ id:`resolvedIssues:${encodeURIComponent(k)}`, bucket:'resolvedIssues', key:k, type:'Resolved issue', label:k, note:v?.note || v?.status || 'resolved' }));
+    Object.entries(state.livestock||{}).filter(([,v])=>v && (v.activeInTank===false || v.allowPlanningTasks===false || v.status === 'historical')).forEach(([k,v])=>facts.push({ id:`livestock:${encodeURIComponent(k)}`, bucket:'livestock', key:k, type:'Historical livestock', label:k, note:v?.note || v?.status || 'not active' }));
+    (state.facts || []).forEach((text, idx) => facts.push({ id:`facts:${idx}`, bucket:'facts', key:String(idx), type:'Fact', label:String(text || '').slice(0, 90), note:String(text || '') }));
+    return facts;
+  }
   function renderMemoryPanel(){
     const host = document.getElementById('tank-memory-v8'); if (!host) return;
     const state = get();
-    const facts = [
-      ...Object.entries(state.hardPreferences||{}).filter(([,v])=>v).map(([k])=>({type:'Preference', label:k})),
-      ...Object.entries(state.completedProtocols||{}).map(([k,v])=>({type:'Protocol complete', label:k, note:v.note})),
-      ...Object.entries(state.resolvedIssues||{}).map(([k,v])=>({type:'Resolved issue', label:k, note:v.note})),
-      ...Object.entries(state.livestock||{}).filter(([,v])=>v.activeInTank===false || v.allowPlanningTasks===false).map(([k,v])=>({type:'Historical livestock', label:k, note:v.note || v.status}))
-    ];
+    const facts = memoryFactsFromState(state);
     host.innerHTML = `<div class="card-title">🧠 Tank Memory</div>
-      <div class="reminder-center-intro">These are authoritative facts used by Ask AI, Reminders, Days-Off Plan, and Diagnostics. Historical/resolved items are not just hidden; they are removed from active planning.</div>
-      <div>${facts.map((f,i)=>`<div class="hidden-task-row"><div><div class="hidden-task-title">${escapeHtml(f.label)}</div><div class="hidden-task-meta">${escapeHtml(f.type)}${f.note ? ' · ' + escapeHtml(f.note) : ''}</div></div><button class="hidden-task-restore" onclick="ReefKeeperState.removeMemoryItem(${i})">Edit</button></div>`).join('') || '<div class="hidden-tasks-empty">No memory facts recorded yet.</div>'}</div>
-      <div class="hidden-tasks-actions"><button class="hidden-tasks-btn" onclick="ReefKeeperState.syncNow()">Sync memory</button><button class="hidden-tasks-btn" onclick="ReefKeeperState.addManualMemory()">Add memory</button></div>`;
+      <div class="reminder-center-intro">These are authoritative facts used by Ask AI, Reminders, Days-Off Plan, and Diagnostics. Use Add/Edit/Delete here when you need to correct what the app believes.</div>
+      <div>${facts.map(f=>`<div class="hidden-task-row"><div><div class="hidden-task-title">${escapeHtml(f.label)}</div><div class="hidden-task-meta">${escapeHtml(f.type)}${f.note && f.note !== f.label ? ' · ' + escapeHtml(f.note) : ''}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><button class="hidden-task-restore" onclick="ReefKeeperState.editMemoryItem('${escapeHtml(f.id)}')">Edit</button><button class="hidden-task-btn" style="border:none;border-radius:999px;background:rgba(214,40,40,0.10);color:#d62828;padding:7px 10px;font-family:'Nunito',sans-serif;font-size:11px;font-weight:900;" onclick="ReefKeeperState.deleteMemoryItem('${escapeHtml(f.id)}')">Delete</button></div></div>`).join('') || '<div class="hidden-tasks-empty">No memory facts recorded yet.</div>'}</div>
+      <div class="hidden-tasks-actions"><button class="hidden-tasks-btn" onclick="ReefKeeperState.addManualMemory()">Add memory</button><button class="hidden-tasks-btn" onclick="ReefKeeperState.addLivestockMemory()">Add livestock</button><button class="hidden-tasks-btn" onclick="ReefKeeperState.syncNow()">Sync memory</button></div>`;
   }
   function ensureMemoryPanel(){
     if (document.getElementById('tank-memory-v8')) return renderMemoryPanel();
@@ -272,13 +276,93 @@
   function addManualMemory(){
     const text = prompt('Add a tank memory fact. Examples: "All torches are lost" or "Do not plan chaeto reactor."');
     if (!text) return;
-    if (!captureFromText(text)) update(state => { state.facts = [...new Set([...(state.facts||[]), text])]; return state; });
+    const proposal = proposeFromText(text);
+    if (proposal) {
+      if (confirm(`Save this structured tank update?\n\n${proposal.summary}`)) applyProposal(proposal);
+      else update(state => { state.facts = [...new Set([...(state.facts||[]), text])]; return state; });
+    } else {
+      update(state => { state.facts = [...new Set([...(state.facts||[]), text])]; return state; });
+    }
     renderMemoryPanel(); try { showToast('✅ Tank memory updated'); } catch(e){}
   }
-  function removeMemoryItem(index){ alert('For safety, v10 treats memory edits as explicit updates. Use Add memory to re-activate or change a fact. A full edit/delete screen can be added next.'); }
+  function addLivestockMemory(){
+    const name = prompt('Livestock/coral name to add or update:');
+    if (!name) return;
+    const status = (prompt('Status? Type active, historical, lost, resolved, or rehomed:', 'active') || 'active').toLowerCase().trim();
+    const note = prompt('Optional note:', '') || '';
+    const inactive = ['historical','lost','resolved','rehomed','removed','gone'].includes(status);
+    update(state => {
+      state.livestock[name.trim()] = { status: inactive ? 'historical' : 'active', activeInTank: !inactive, allowPlanningTasks: !inactive, note: note || (inactive ? 'Marked not active from Tank Memory editor.' : 'Marked active from Tank Memory editor.') };
+      state.facts = [...new Set([...(state.facts||[]), `${name.trim()} marked ${inactive ? 'historical/not active' : 'active in tank'}.`])];
+      return state;
+    });
+    try { storage?.syncDbToLegacy(); } catch(e){}
+    renderMemoryPanel(); try { showToast('✅ Livestock memory updated'); } catch(e){}
+  }
+  function parseMemoryId(id){
+    const [bucket, ...rest] = String(id || '').split(':');
+    return { bucket, key: decodeURIComponent(rest.join(':') || '') };
+  }
+  function editMemoryItem(id){
+    const { bucket, key } = parseMemoryId(id);
+    const state = get();
+    if (bucket === 'facts') {
+      const idx = Number(key);
+      const current = state.facts?.[idx] || '';
+      const nextText = prompt('Edit memory fact:', current);
+      if (!nextText) return;
+      update(s => { if (Array.isArray(s.facts) && s.facts[idx] !== undefined) s.facts[idx] = nextText; return s; });
+    } else if (bucket === 'livestock') {
+      const current = state.livestock?.[key] || {};
+      const status = (prompt('Status? Type active, historical, lost, resolved, or rehomed:', current.activeInTank === false ? 'historical' : (current.status || 'active')) || '').toLowerCase().trim();
+      if (!status) return;
+      const note = prompt('Note:', current.note || '') || '';
+      const inactive = ['historical','lost','resolved','rehomed','removed','gone'].includes(status);
+      update(s => { s.livestock[key] = { ...(s.livestock[key]||{}), status: inactive ? 'historical' : 'active', activeInTank: !inactive, allowPlanningTasks: !inactive, note }; return s; });
+    } else if (bucket === 'completedProtocols') {
+      const current = state.completedProtocols?.[key] || {};
+      const note = prompt('Edit protocol note:', current.note || 'Completed protocol.');
+      if (note === null) return;
+      update(s => { s.completedProtocols[key] = { ...(s.completedProtocols[key]||{}), status:'completed', note, completedAt:s.completedProtocols[key]?.completedAt || now() }; return s; });
+    } else if (bucket === 'resolvedIssues') {
+      const current = state.resolvedIssues?.[key] || {};
+      const note = prompt('Edit resolved issue note:', current.note || 'Resolved issue.');
+      if (note === null) return;
+      update(s => { s.resolvedIssues[key] = { ...(s.resolvedIssues[key]||{}), status:'resolved', note, resolvedAt:s.resolvedIssues[key]?.resolvedAt || now() }; return s; });
+    } else if (bucket === 'hardPreferences') {
+      const label = prompt('Edit preference name/key. Leave unchanged unless you know what you are doing:', key);
+      if (!label || label === key) return;
+      update(s => { delete s.hardPreferences[key]; s.hardPreferences[label.trim()] = true; return s; });
+    }
+    try { storage?.syncDbToLegacy(); } catch(e){}
+    try { window.ReefKeeperDaysOff?.repairSavedPlans?.(); } catch(e){}
+    renderMemoryPanel(); try { showToast('✅ Tank memory edited'); } catch(e){}
+  }
+  function deleteMemoryItem(id){
+    const { bucket, key } = parseMemoryId(id);
+    if (!bucket || !confirm('Delete this Tank Memory item? This may allow related tasks/advice to appear again if no other rule blocks them.')) return;
+    update(state => {
+      if (bucket === 'facts') {
+        const idx = Number(key);
+        if (Array.isArray(state.facts)) state.facts.splice(idx, 1);
+      } else if (bucket === 'hardPreferences') {
+        state.hardPreferences[key] = false;
+      } else if (bucket === 'completedProtocols') {
+        delete state.completedProtocols[key];
+      } else if (bucket === 'resolvedIssues') {
+        delete state.resolvedIssues[key];
+      } else if (bucket === 'livestock') {
+        delete state.livestock[key];
+      }
+      return state;
+    });
+    try { storage?.syncDbToLegacy(); } catch(e){}
+    try { window.ReefKeeperDaysOff?.repairSavedPlans?.(); } catch(e){}
+    renderMemoryPanel(); try { showToast('🗑️ Tank memory deleted'); } catch(e){}
+  }
   function syncNow(){ set(get()); storage?.syncDbToLegacy(); renderMemoryPanel(); try { showToast('✅ Tank memory synced'); } catch(e){} }
 
-  const manager = { TASK_STATUS, get, set, update, isBlockedTask, getMemoryLines, proposeFromText, applyProposal, captureFromText, setTaskStatus, ensureMemoryPanel, renderMemoryPanel, addManualMemory, removeMemoryItem, syncNow };
+  const manager = { TASK_STATUS, get, set, update, isBlockedTask, getMemoryLines, proposeFromText, applyProposal, captureFromText, setTaskStatus, ensureMemoryPanel, renderMemoryPanel, addManualMemory, addLivestockMemory, editMemoryItem, deleteMemoryItem, syncNow };
   window.ReefKeeperState = manager;
   // Bridge old v7 global functions to v8 state where safe.
   const oldGetLines = window.getAuthoritativeTankStateMemoryLines;
