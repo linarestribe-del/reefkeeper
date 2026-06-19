@@ -124,8 +124,9 @@
     const page = document.getElementById('page-log') || document.querySelector('.page.active');
     if (!page) return;
     const div = document.createElement('div'); div.id='tank-memory-v8'; div.className='card tank-status-card';
-    const target = page.querySelector('.card') || page.firstElementChild;
-    if (target && target.parentNode) target.parentNode.insertBefore(div, target); else page.prepend(div);
+    // Place Tank Memory at the bottom of the Log page so it stays available
+    // without crowding parameter logging, trends, or diagnostics.
+    page.appendChild(div);
     renderMemoryPanel();
   }
   function addManualMemory(){
