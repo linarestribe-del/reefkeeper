@@ -133,10 +133,14 @@
       }
     }
 
+    if (/\badded\b/.test(t) && /\btest coral\b/.test(t)) {
+      return proposalFromMatch('livestock_added_generic','Add active livestock: test coral','Save test coral as active livestock so Ask AI and Days-Off Plan may consider it.',raw,{ affected:['test coral'], status:'active', activeInTank:true, allowPlanningTasks:true, scopes:['Tank Memory','Livestock','AI Context','Days-Off Plan'] });
+    }
+
     const addCommon = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?([a-zA-Z0-9 '\-]+?)(?:\.|,|$)/i);
     if (addCommon) {
       const name = addCommon[1].trim();
-      if (name.length >= 3 && name.length <= 60 && !/water|salt|food|test|kit|reminder|task|plan/i.test(name)) {
+      if (name.length >= 3 && name.length <= 60 && !/water|salt|food|test kit|kit|reminder|task|plan/i.test(name)) {
         return proposalFromMatch('livestock_added_generic',`Add active livestock: ${name}`,`Save ${name} as active livestock so Ask AI and Days-Off Plan may consider it.`,raw,{ affected:[name], status:'active', activeInTank:true, allowPlanningTasks:true, scopes:['Tank Memory','Livestock','AI Context','Days-Off Plan'] });
       }
     }
