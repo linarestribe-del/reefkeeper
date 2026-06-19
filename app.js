@@ -1123,6 +1123,62 @@ function appendSuggestedReminders(reminders) {
 // ── Tank update proposal cards v10c ─────────────────────────────────────────────
 const pendingTankUpdateProposals = {};
 
+
+function normalizeAiAnswerPayload(answer) {
+  let text = String(answer || '').trim();
+  if (!text) return '';
+
+  // Sometimes the backend/OpenAI returns a JSON object as the answer string.
+  // Extract the nested answer so the chat bubble does not display raw JSON.
+  const tryParse = value => {
+    try { return JSON.parse(value); } catch(e) { return null; }
+  };
+
+  let parsed = tryParse(text);
+  if (!parsed) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) parsed = tryParse(match[0]);
+  }
+  if (parsed && typeof parsed.answer === 'string') {
+    text = parsed.answer;
+  }
+
+  return text.replace(/\\n/g, '\n').replace(/\\t/g, '  ').trim();
+}
+
+function fallbackTankUpdateProposalFromText(text) {
+  const raw = String(text || '').trim();
+  const t = raw.toLowerCase().replace(/cheato|cheeto/g, 'chaeto');
+  const id = () => `fallback-proposal-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const base = (kind, label, summary, details) => ({
+    id: id(), kind, label, summary, updateText: raw,
+    scopes: details?.scopes || ['Tank Memory','Livestock','AI Context','Days-Off Plan'],
+    details: details || {}
+  });
+
+  const addedColon = raw.match(/(?:added|bought|got|picked up|introduced)[^:]{0,80}:\s*([^.!?]+)/i);
+  const addedTyped = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?(?:coral|fish|invert|invertebrate|anemone|livestock)\s+(?:called\s+|named\s+)?([^.!?,]+)/i);
+  const addedCommon = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?([a-zA-Z0-9 '\-]+?)(?:\.|,|$)/i);
+  let addedName = (addedColon?.[1] || addedTyped?.[1] || addedCommon?.[1] || '').trim()
+    .replace(/^(?:new\s+)?(?:coral|fish|invert|invertebrate|anemone|livestock)[:\s-]*/i, '')
+    .replace(/^(?:called|named)\s+/i, '')
+    .trim();
+  if (addedName && addedName.length >= 3 && addedName.length <= 80 && !/water|salt|food|test kit|kit|reminder|task|plan/i.test(addedName)) {
+    return base('livestock_added_generic', `Add active livestock: ${addedName}`, `Save ${addedName} as active livestock so Ask AI and Days-Off Plan may consider it.`, { affected:[addedName], status:'active', activeInTank:true, allowPlanningTasks:true });
+  }
+
+  if (/(hammer|hammers|torch|torches|euphyllia)/.test(t) && /(lost|gone|dead|died|removed|no more|none left|all gone|all lost)/.test(t)) {
+    return base('livestock_lost_hammer_torch','Hammer/torch corals lost','Mark all hammer and torch corals as historical/lost and block future care or observation tasks unless you add new ones later.', { affected:['hammer corals','torch corals'], status:'historical', activeInTank:false, allowPlanningTasks:false });
+  }
+  if (/(kfc|kung fu|cipro|ciprofloxacin|amoxicillin|antibiotic|recovery protocol)/.test(t) && /(done|complete|completed|finished|ended|over|final dose)/.test(t)) {
+    return base('protocol_completed_kfc','KFC recovery complete','Mark the KFC/antibiotic recovery protocol complete and block future recovery-dose tasks.', { protocol:'kfcRecovery', scopes:['Tank Memory','AI Context','Days-Off Plan','Reminders'] });
+  }
+  if (/(chaeto|refugium|macroalgae|macro algae)/.test(t) && /(cancel|cancelled|canceled|no longer|not going|remove|removed|forget|dont|do not|wont|won t)/.test(t)) {
+    return base('preference_cancel_chaeto','Chaeto/refugium cancelled','Save a hard preference that chaeto/refugium/reactor startup tasks should not be planned.', { preference:'chaetoReactorCancelled', scopes:['Tank Memory','AI Context','Days-Off Plan','Reminders'] });
+  }
+  return null;
+}
+
 function appendTankUpdateProposalCard(proposal) {
   if (!proposal || !proposal.id) return;
   pendingTankUpdateProposals[proposal.id] = proposal;
@@ -1377,7 +1433,7 @@ async function sendChat(event) {
 
   let tankUpdateProposal = null;
   try {
-    tankUpdateProposal = window.ReefKeeperState?.proposeFromText?.(text) || null;
+    tankUpdateProposal = window.ReefKeeperState?.proposeFromText?.(text) || fallbackTankUpdateProposalFromText(text) || null;
   } catch(e) {
     console.warn('Tank update proposal detection failed:', e);
   }
@@ -1434,6 +1490,7 @@ ${attachedImageContexts.length} reef photo${attachedImageContexts.length === 1 ?
   try {
     const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode(), attachmentForAI);
     removeTyping();
+    result.answer = normalizeAiAnswerPayload(result.answer);
     appendMsg('ai', result.answer || 'I received your question, but the answer came back empty.');
     // If the approval card was pushed off-screen by the AI reply or failed to render before typing,
     // re-append it once after the AI reply. This keeps the user approval workflow visible.
