@@ -1,4 +1,4 @@
-// Reef Keeper v11 state module
+// Reef Keeper v11b state module
 // Purpose: central authoritative tank state, task-status semantics, and visible Tank Memory editor.
 (function(){
   'use strict';
@@ -261,7 +261,7 @@
     host.innerHTML = `<div class="card-title">🧠 Tank Memory</div>
       <div class="reminder-center-intro">These are authoritative facts used by Ask AI, Reminders, Days-Off Plan, and Diagnostics. Use Add/Edit/Delete here when you need to correct what the app believes.</div>
       <div>${facts.map(f=>`<div class="hidden-task-row"><div><div class="hidden-task-title">${escapeHtml(f.label)}</div><div class="hidden-task-meta">${escapeHtml(f.type)}${f.note && f.note !== f.label ? ' · ' + escapeHtml(f.note) : ''}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;"><button class="hidden-task-restore" onclick="ReefKeeperState.editMemoryItem('${escapeHtml(f.id)}')">Edit</button><button class="hidden-task-btn" style="border:none;border-radius:999px;background:rgba(214,40,40,0.10);color:#d62828;padding:7px 10px;font-family:'Nunito',sans-serif;font-size:11px;font-weight:900;" onclick="ReefKeeperState.deleteMemoryItem('${escapeHtml(f.id)}')">Delete</button></div></div>`).join('') || '<div class="hidden-tasks-empty">No memory facts recorded yet.</div>'}</div>
-      <div class="hidden-tasks-actions"><button class="hidden-tasks-btn" onclick="ReefKeeperState.addManualMemory()">Add memory</button><button class="hidden-tasks-btn" onclick="ReefKeeperState.addLivestockMemory()">Add livestock</button><button class="hidden-tasks-btn" onclick="ReefKeeperState.syncNow()">Sync memory</button></div>`;
+      <div class="hidden-tasks-actions"><button class="hidden-tasks-btn hidden-tasks-primary" onclick="ReefKeeperState.addManualMemory()">Add memory</button><button class="hidden-tasks-btn hidden-tasks-primary" onclick="ReefKeeperState.addLivestockMemory()">Add livestock</button><button class="hidden-tasks-btn hidden-tasks-secondary" onclick="ReefKeeperState.syncNow()">Sync memory</button></div>`;
   }
   function ensureMemoryPanel(){
     if (document.getElementById('tank-memory-v8')) return renderMemoryPanel();
