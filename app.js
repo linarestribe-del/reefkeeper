@@ -1120,6 +1120,53 @@ function appendSuggestedReminders(reminders) {
 }
 
 
+// ── Tank update proposal cards ─────────────────────────────────────────────
+const pendingTankUpdateProposals = {};
+
+function appendTankUpdateProposalCard(proposal) {
+  if (!proposal || !proposal.id) return;
+  pendingTankUpdateProposals[proposal.id] = proposal;
+  const msgs = document.getElementById('chat-messages');
+  if (!msgs) return;
+  const div = document.createElement('div');
+  div.className = 'management-card tank-update-proposal-card';
+  const scopes = Array.isArray(proposal.scopes) ? proposal.scopes : [];
+  div.innerHTML = `
+    <div class="management-card-title">Save tank update?</div>
+    <div class="management-card-text"><strong>${escapeHtml(proposal.label || 'Tank update')}</strong><br>${escapeHtml(proposal.summary || 'Save this as authoritative tank memory?')}</div>
+    <div class="management-match-list">Applies to: ${escapeHtml(scopes.join(', ') || 'Tank Memory, AI Context, Days-Off Plan')}</div>
+    <div class="management-actions">
+      <button class="management-btn management-confirm-btn" type="button" onclick="saveTankUpdateProposal('${escapeHtml(proposal.id)}')">Save Update</button>
+      <button class="management-btn management-cancel-btn" type="button" onclick="dismissTankUpdateProposal('${escapeHtml(proposal.id)}')">Dismiss</button>
+    </div>`;
+  div.dataset.proposalId = proposal.id;
+  msgs.appendChild(div);
+  scrollChatToBottom();
+}
+
+function saveTankUpdateProposal(id) {
+  const proposal = pendingTankUpdateProposals[id];
+  if (!proposal) return;
+  let saved = false;
+  try { saved = window.ReefKeeperState?.applyProposal?.(proposal) || false; } catch(e) { console.warn('Could not save tank update proposal:', e); }
+  document.querySelectorAll(`[data-proposal-id="${CSS.escape(id)}"]`).forEach(card => card.remove());
+  delete pendingTankUpdateProposals[id];
+  if (saved) {
+    appendMsg('ai', `Saved — I updated Tank Memory for: ${proposal.label || 'tank update'}. Future AI advice, reminders, and days-off plans will use this.`);
+    try { showToast('✅ Tank update saved'); } catch(e) {}
+  } else {
+    appendMsg('ai', 'I could not save that tank update. Please try adding it from the Tank Memory card.');
+  }
+  scrollChatToBottom();
+}
+
+function dismissTankUpdateProposal(id) {
+  document.querySelectorAll(`[data-proposal-id="${CSS.escape(id)}"]`).forEach(card => card.remove());
+  delete pendingTankUpdateProposals[id];
+  try { showToast('Dismissed tank update'); } catch(e) {}
+}
+
+
 function normalizeManagementText(text) {
   return String(text || '')
     .toLowerCase()
@@ -1328,9 +1375,17 @@ async function sendChat(event) {
     return;
   }
 
+  let tankUpdateProposal = null;
+  try {
+    tankUpdateProposal = window.ReefKeeperState?.proposeFromText?.(text) || null;
+  } catch(e) {
+    console.warn('Tank update proposal detection failed:', e);
+  }
+
   let capturedUpdate = null;
   try {
-    capturedUpdate = autoCaptureTankUpdateFromChat(text);
+    // Known tank facts now prefer an approval card, so the user controls what is saved.
+    capturedUpdate = tankUpdateProposal ? null : autoCaptureTankUpdateFromChat(text);
   } catch(e) {
     console.warn('Tank update auto-capture failed:', e);
   }
@@ -1349,6 +1404,10 @@ async function sendChat(event) {
   if (capturedUpdate) {
     appendMsg('ai', `Noted — I updated your tank memory: ${capturedUpdate.label}. I also removed matching active reminders/plan items so future days-off plans should not include them.`);
     scrollChatToBottom();
+  }
+
+  if (tankUpdateProposal) {
+    appendTankUpdateProposalCard(tankUpdateProposal);
   }
 
   const attachmentForAI = [...attachedImageContexts];
