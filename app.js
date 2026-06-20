@@ -5210,11 +5210,15 @@ async function readFileAsTextSafe(file) {
   return String(text || '').replace(/\u0000/g, '').slice(0, 65000);
 }
 
-async function extractPdfText(file) {
+function setupPdfJsWorker() {
   if (!window.pdfjsLib) throw new Error('PDF reader is not loaded yet. Try again in a few seconds.');
   try {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   } catch(e) {}
+}
+
+async function extractPdfText(file) {
+  setupPdfJsWorker();
   const buffer = await file.arrayBuffer();
   const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
   const pageTexts = [];
@@ -5226,16 +5230,63 @@ async function extractPdfText(file) {
     if (pageText) pageTexts.push(`Page ${pageNum}: ${pageText}`);
   }
   const text = pageTexts.join('\n\n').slice(0, 65000);
-  if (!text.trim()) throw new Error('No readable text was found in this PDF. It may be a scanned image PDF.');
+  if (!text.trim()) throw new Error('No selectable text found in this PDF. It may be a scanned/image PDF.');
   return text;
+}
+
+async function renderPdfPagesForVision(file, maxPages = 6) {
+  setupPdfJsWorker();
+  const buffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+  const images = [];
+  const pageLimit = Math.min(pdf.numPages || 0, maxPages);
+  for (let pageNum = 1; pageNum <= pageLimit; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const maxSide = 1400;
+    const scale = Math.min(2, Math.max(0.8, maxSide / Math.max(baseViewport.width || maxSide, baseViewport.height || maxSide)));
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    images.push({
+      kind: 'image',
+      name: `${file.name || 'PDF'} page ${pageNum}`,
+      text: `Rendered PDF page ${pageNum} from ${file.name || 'attached PDF'} for AI visual reading.`,
+      type: 'image/jpeg',
+      dataUrl: canvas.toDataURL('image/jpeg', 0.78),
+      source: 'pdf-page',
+      page: pageNum
+    });
+  }
+  return images;
 }
 
 async function readDocumentForReefKeeper(file) {
   const name = String(file?.name || 'document');
   const type = String(file?.type || '');
   if (/\.pdf$/i.test(name) || type === 'application/pdf') {
-    const text = await extractPdfText(file);
-    return { name, type: type || 'application/pdf', text, extracted: true, method: 'pdf' };
+    try {
+      const text = await extractPdfText(file);
+      return { name, type: type || 'application/pdf', text, extracted: true, method: 'pdf-text' };
+    } catch(textError) {
+      const imageSlots = Math.max(1, Math.min(6, MAX_AI_IMAGES - attachedImageContexts.length));
+      const images = await renderPdfPagesForVision(file, imageSlots);
+      if (images.length) {
+        return {
+          name,
+          type: type || 'application/pdf',
+          text: `Attached PDF: ${name}\nSelectable text could not be extracted, so the app rendered ${images.length} page${images.length === 1 ? '' : 's'} as image${images.length === 1 ? '' : 's'} for AI visual reading. Ask AI can read visible schedule/table content from those page images.`,
+          extracted: false,
+          method: 'pdf-images',
+          images,
+          pdfTextError: textError?.message || String(textError || '')
+        };
+      }
+      throw textError;
+    }
   }
   if (isTextLikeFile(file)) {
     const text = await readFileAsTextSafe(file);
@@ -5349,10 +5400,20 @@ handleFileUpload = async function(event) {
       type: doc.type,
       method: doc.method
     };
+    if (Array.isArray(doc.images) && doc.images.length) {
+      const remaining = Math.max(0, MAX_AI_IMAGES - attachedImageContexts.length);
+      const pagesToAttach = doc.images.slice(0, remaining);
+      attachedImageContexts.push(...pagesToAttach);
+      if (pagesToAttach.length < doc.images.length) {
+        attachedFileContext.text += `\nOnly ${pagesToAttach.length} page image${pagesToAttach.length === 1 ? '' : 's'} could be attached because the image limit is ${MAX_AI_IMAGES}.`;
+      }
+    }
     updateAttachmentStatus();
     if (doc.extracted) {
       saveReefLibraryDoc({ title: doc.name.replace(/\.[^.]+$/, ''), fileName: doc.name, category: 'Other Documents', type: doc.type, text: doc.text });
       showToast('📄 Document attached and saved to Reef Library');
+    } else if (Array.isArray(doc.images) && doc.images.length) {
+      showToast(`📄 PDF attached as ${doc.images.length} page image${doc.images.length === 1 ? '' : 's'} for AI`);
     } else {
       showToast('📎 Document attached as reference');
     }
