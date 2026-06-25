@@ -2520,6 +2520,27 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
   line-height: 1.45;
   margin-top: 10px;
 }
+/* Keep tab help panels readable in Night Reef mode */
+html.theme-dark .help-panel,
+html.theme-dark .help-panel-title,
+html.theme-dark .help-section h4,
+html.theme-dark .help-section p,
+html.theme-dark .help-section li,
+html.theme-dark .help-muted {
+  color: #000000;
+}
+html.theme-dark .help-panel {
+  background: rgba(255,255,255,0.97);
+  border-color: rgba(255,255,255,0.9);
+}
+html.theme-dark .help-section {
+  background: rgba(202,240,248,0.62);
+  border-color: rgba(0,119,182,0.16);
+}
+html.theme-dark .help-close-btn {
+  color: #000000;
+}
+
 
 /* Reef Library and iPhone add menu */
 .add-menu-overlay {
@@ -2802,6 +2823,12 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
         <div id="analysis-result" class="analysis-result"></div>
       </div>
 
+      <div class="card">
+        <div class="card-title">📈 Parameter Trends</div>
+        <div class="trend-controls" id="trend-controls"></div>
+        <div id="trend-chart" class="trend-chart-wrap"></div>
+      </div>
+
       <div class="card recent-logs-card">
         <details class="long-term-details recent-logs-details">
           <summary>📅 Recent Logs</summary>
@@ -2830,12 +2857,6 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
 
 
       <div class="card">
-        <div class="card-title">📈 Parameter Trends</div>
-        <div class="trend-controls" id="trend-controls"></div>
-        <div id="trend-chart" class="trend-chart-wrap"></div>
-      </div>
-
-      <div class="card">
         <div class="card-title">🛠️ Maintenance / Action History</div>
         <div class="action-input-grid">
           <input class="action-input" id="action-title" placeholder="What did you do? e.g., Water change">
@@ -2857,14 +2878,6 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
       <div class="card long-term-card">
         <div class="card-title">🧠 Long-Term Reef Tools</div>
         <div class="long-term-intro">Tools are tucked into focused pages so the Log tab stays clean.</div>
-        <div class="theme-settings-row">
-          <div class="theme-settings-copy"><strong>Appearance</strong><span>Choose light, dark, or follow your device.</span></div>
-          <select class="theme-select theme-mode-select" id="theme-mode-select" onchange="setThemeMode(this.value)">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
         <div class="long-term-launch-grid">
           <button class="long-term-launch-btn" onclick="openLongTermTool('memory')" type="button">Tank Memory<span>Review and edit authoritative reef facts used across the app.</span></button>
           <button class="long-term-launch-btn" onclick="openLongTermTool('inventory')" type="button">Livestock & Coral Inventory<span>Add photos, care facts, notes, and catalog entries.</span></button>
