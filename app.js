@@ -2774,6 +2774,8 @@ function renderInventory() {
         <div class="inventory-actions">
           <label class="inventory-small-btn" for="inv-photo-${escapeHtml(i.id)}">Upload photo</label>
           <input class="inventory-photo-input" id="inv-photo-${escapeHtml(i.id)}" type="file" accept="image/*" onchange="uploadInventoryPhoto('${escapeHtml(i.id)}', event)">
+          <label class="inventory-small-btn" for="inv-analyze-${escapeHtml(i.id)}">Analyze photo</label>
+          <input class="inventory-photo-input" id="inv-analyze-${escapeHtml(i.id)}" type="file" accept="image/*" capture="environment" onchange="analyzeInventoryPhoto('${escapeHtml(i.id)}', event)">
           <button class="inventory-small-btn" onclick="loadInventoryItemForEdit('${escapeHtml(i.id)}')">Edit</button>
           ${inventoryPhotoKeyFor(i) ? `<button class="inventory-small-btn danger" onclick="removeInventoryPhoto('${escapeHtml(i.id)}')">Remove photo</button>` : ''}
         </div>
@@ -3054,7 +3056,7 @@ function renderLongTermTools() {
 
 
 // ── Backup / restore ───────────────────────────────────────────────────────
-const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base'];
+const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_theme_mode', 'reef_photo_analyses_v1'];
 
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
@@ -5090,6 +5092,48 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+
+// ── Appearance / dark mode ────────────────────────────────────────────────
+const REEF_THEME_MODE_KEY = 'reef_theme_mode';
+
+function getThemeMode() {
+  try { return localStorage.getItem(REEF_THEME_MODE_KEY) || 'system'; } catch(e) { return 'system'; }
+}
+
+function prefersDarkMode() {
+  return Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+function applyThemeMode(mode = getThemeMode()) {
+  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
+  const useDark = selected === 'dark' || (selected === 'system' && prefersDarkMode());
+  document.documentElement.classList.toggle('theme-dark', useDark);
+  document.documentElement.dataset.themeMode = selected;
+  const selector = document.getElementById('theme-mode-select');
+  if (selector) selector.value = selected;
+  const meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (meta) meta.setAttribute('content', useDark ? 'black-translucent' : 'default');
+}
+
+function setThemeMode(mode) {
+  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
+  try { localStorage.setItem(REEF_THEME_MODE_KEY, selected); } catch(e) {}
+  applyThemeMode(selected);
+  showToast(selected === 'dark' ? '🌙 Dark mode on' : selected === 'light' ? '☀️ Light mode on' : '⚙️ Following system appearance');
+}
+
+function initThemeMode() {
+  applyThemeMode(getThemeMode());
+  try {
+    if (window.matchMedia) {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => { if (getThemeMode() === 'system') applyThemeMode('system'); };
+      if (media.addEventListener) media.addEventListener('change', listener);
+      else if (media.addListener) media.addListener(listener);
+    }
+  } catch(e) {}
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 renderQuickQuestions();
 migrateReefTankStateV7();
@@ -5108,6 +5152,7 @@ migrateInventoryPhotosToIndexedDb();
 updateHomeChips();
 renderActionHistory();
 renderCompletedHistory();
+initThemeMode();
 initModelMode();
 initTankContextToggle();
 renderSavedReminders();
