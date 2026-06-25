@@ -556,6 +556,42 @@ function initModelMode() {
 }
 
 
+// ── Appearance / Night Reef theme ─────────────────────────────────────────
+function getThemeMode() {
+  try { return localStorage.getItem('reef_theme_mode') || 'system'; } catch(e) { return 'system'; }
+}
+
+function systemPrefersDark() {
+  try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch(e) { return false; }
+}
+
+function applyThemeMode(mode) {
+  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
+  const dark = selected === 'dark' || (selected === 'system' && systemPrefersDark());
+  document.documentElement.classList.toggle('theme-dark', dark);
+  document.documentElement.dataset.themeMode = selected;
+  const meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (meta) meta.setAttribute('content', dark ? 'black-translucent' : 'default');
+  document.querySelectorAll('#theme-mode-select, .theme-mode-select').forEach(el => { el.value = selected; });
+}
+
+function setThemeMode(mode) {
+  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
+  try { localStorage.setItem('reef_theme_mode', selected); } catch(e) {}
+  applyThemeMode(selected);
+  try { showToast(selected === 'dark' ? '🌙 Night Reef mode on' : selected === 'light' ? '☀️ Light mode on' : '📱 Following system appearance'); } catch(e) {}
+}
+
+function initThemeMode() {
+  applyThemeMode(getThemeMode());
+  try {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => { if (getThemeMode() === 'system') applyThemeMode('system'); };
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else if (mq.addListener) mq.addListener(onChange);
+  } catch(e) {}
+}
+
 function scrollActivePageToTop(event) {
   if (event) {
     event.preventDefault?.();
@@ -2525,6 +2561,145 @@ async function handleInventoryPhotoSelect(event) {
   }
 }
 
+let pendingInventoryAnalysis = null;
+
+function getInventoryAnalysisHistory(itemId) {
+  if (!itemId) return [];
+  const item = getInventoryItems().find(i => String(i.id) === String(itemId));
+  return Array.isArray(item?.photoAnalyses) ? item.photoAnalyses.slice(0, 8) : [];
+}
+
+function currentInventoryFormItem() {
+  return {
+    id: document.getElementById('inventory-edit-id')?.value || '',
+    name: document.getElementById('inventory-name')?.value.trim() || '',
+    type: document.getElementById('inventory-type')?.value || currentInventoryTab || 'other',
+    status: document.getElementById('inventory-status')?.value || 'stable',
+    scientificName: document.getElementById('inventory-scientific')?.value.trim() || '',
+    location: document.getElementById('inventory-location')?.value.trim() || '',
+    notes: document.getElementById('inventory-notes')?.value.trim() || ''
+  };
+}
+
+function renderInventoryAnalysisResult(result, itemId = '') {
+  const panel = document.getElementById('inventory-photo-analysis-result');
+  if (!panel) return;
+  const list = value => Array.isArray(value) && value.length ? `<ul>${value.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : '<div class="photo-analysis-muted">None visible from this photo.</div>';
+  panel.innerHTML = `
+    <div class="photo-analysis-title">🔎 AI Photo Analysis</div>
+    <div class="photo-analysis-meta">Suggested ID: <strong>${escapeHtml(result.suggestedId || 'uncertain')}</strong> · Confidence: ${escapeHtml(result.confidence || 'low')} · Category: ${escapeHtml(result.category || 'other')} · Health: ${escapeHtml(result.healthStatus || 'uncertain')}</div>
+    <div class="photo-analysis-section"><strong>Visible signs</strong>${list(result.visibleSigns)}</div>
+    <div class="photo-analysis-section"><strong>Concerns</strong>${list(result.healthConcerns)}</div>
+    ${result.growthAssessment ? `<div class="photo-analysis-section"><strong>Growth / coral condition</strong><br>${escapeHtml(result.growthAssessment)}</div>` : ''}
+    <div class="photo-analysis-section"><strong>Recommended actions</strong>${list(result.recommendedActions)}</div>
+    ${result.trackingNotes ? `<div class="photo-analysis-section"><strong>Timeline note</strong><br>${escapeHtml(result.trackingNotes)}</div>` : ''}
+    <div class="photo-analysis-section"><strong>Save suggestion:</strong> ${escapeHtml(result.saveSuggestion || 'growth progress photo')}</div>
+    <div class="photo-analysis-actions">
+      <button class="photo-analysis-save" type="button" onclick="saveInventoryAnalysisToTimeline()">Save to Timeline</button>
+      <button class="photo-analysis-fill" type="button" onclick="fillInventoryFormFromAnalysis()">Fill Form</button>
+      ${itemId ? `<button class="photo-analysis-fill" type="button" onclick="loadInventoryItemForEdit('${escapeHtml(itemId)}')">Edit Item</button>` : ''}
+    </div>`;
+  panel.classList.add('visible');
+  try { panel.scrollIntoView({ block:'nearest', behavior:'smooth' }); } catch(e) {}
+}
+
+async function analyzeInventoryPhoto(id = '', event = null) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  const panel = document.getElementById('inventory-photo-analysis-result');
+  if (panel) { panel.classList.add('visible'); panel.innerHTML = '<span class="spinner"></span> Analyzing livestock photo...'; }
+  try {
+    const dataUrl = await resizeInventoryImage(file);
+    const items = getInventoryItems();
+    const existing = id ? items.find(i => String(i.id) === String(id)) : null;
+    const item = existing || currentInventoryFormItem();
+    const response = await fetch('/api/photo-analysis', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        item,
+        image: { name:file.name || 'livestock photo', type:file.type || 'image/jpeg', dataUrl },
+        previousAnalyses: getInventoryAnalysisHistory(existing?.id || item.id),
+        tankSummary: typeof getLocalTankMemorySummary === 'function' ? getLocalTankMemorySummary('livestock photo analysis') : ''
+      })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result.error) throw new Error(result.error || 'Photo analysis failed');
+    pendingInventoryAnalysis = { itemId: existing?.id || item.id || '', item, imageDataUrl:dataUrl, result, analyzedAt:new Date().toISOString() };
+    renderInventoryAnalysisResult(result, pendingInventoryAnalysis.itemId);
+    showToast('🔎 Photo analyzed');
+  } catch(e) {
+    console.error(e);
+    if (panel) panel.innerHTML = `⚠️ Could not analyze photo. ${escapeHtml(e.message || 'Try a clearer or smaller image.')}`;
+    showToast('⚠️ Photo analysis failed');
+  } finally {
+    if (event?.target) event.target.value = '';
+  }
+}
+
+function fillInventoryFormFromAnalysis() {
+  if (!pendingInventoryAnalysis?.result) { showToast('⚠️ Analyze a photo first'); return; }
+  const r = pendingInventoryAnalysis.result;
+  const set = (id, value) => { const el = document.getElementById(id); if (el && value) el.value = value; };
+  if (r.suggestedId && r.suggestedId !== 'uncertain') set('inventory-name', r.suggestedId);
+  if (r.category) set('inventory-type', r.category);
+  if (r.healthStatus && r.healthStatus !== 'uncertain') set('inventory-status', r.healthStatus);
+  const notes = [
+    r.trackingNotes ? `Photo analysis: ${r.trackingNotes}` : '',
+    r.growthAssessment ? `Growth/condition: ${r.growthAssessment}` : '',
+    Array.isArray(r.visibleSigns) && r.visibleSigns.length ? `Visible signs: ${r.visibleSigns.join('; ')}` : '',
+    Array.isArray(r.healthConcerns) && r.healthConcerns.length ? `Concerns: ${r.healthConcerns.join('; ')}` : ''
+  ].filter(Boolean).join('\n');
+  const notesEl = document.getElementById('inventory-notes');
+  if (notesEl && notes) notesEl.value = notesEl.value ? `${notesEl.value}\n${notes}` : notes;
+  pendingInventoryPhotoData = pendingInventoryAnalysis.imageDataUrl || pendingInventoryPhotoData;
+  const preview = document.getElementById('inventory-photo-preview');
+  if (preview && pendingInventoryPhotoData) {
+    preview.innerHTML = `<img src="${pendingInventoryPhotoData}" alt="Analyzed livestock photo"><div><strong>Analyzed photo ready.</strong><br><span style="font-size:12px;color:var(--text-mid);font-weight:700;">Review fields, then tap Save to Catalog.</span></div>`;
+    preview.classList.add('visible');
+  }
+  showToast('✨ Form filled from analysis — review before saving');
+}
+
+async function saveInventoryAnalysisToTimeline() {
+  if (!pendingInventoryAnalysis?.result) { showToast('⚠️ Analyze a photo first'); return; }
+  let items = getInventoryItems();
+  let itemId = pendingInventoryAnalysis.itemId;
+  let idx = itemId ? items.findIndex(i => String(i.id) === String(itemId)) : -1;
+  if (idx < 0) {
+    fillInventoryFormFromAnalysis();
+    showToast('Review the new entry, then tap Save to Catalog');
+    return;
+  }
+  try {
+    const imageKey = `inventory-analysis-${itemId}-${Date.now().toString(36)}`;
+    await saveInventoryPhotoData(imageKey, pendingInventoryAnalysis.imageDataUrl);
+    const entry = {
+      id: imageKey,
+      imageKey,
+      analyzedAt: pendingInventoryAnalysis.analyzedAt,
+      suggestedId: pendingInventoryAnalysis.result.suggestedId || '',
+      confidence: pendingInventoryAnalysis.result.confidence || 'low',
+      category: pendingInventoryAnalysis.result.category || items[idx].type || 'other',
+      healthStatus: pendingInventoryAnalysis.result.healthStatus || 'uncertain',
+      visibleSigns: pendingInventoryAnalysis.result.visibleSigns || [],
+      healthConcerns: pendingInventoryAnalysis.result.healthConcerns || [],
+      growthAssessment: pendingInventoryAnalysis.result.growthAssessment || '',
+      recommendedActions: pendingInventoryAnalysis.result.recommendedActions || [],
+      trackingNotes: pendingInventoryAnalysis.result.trackingNotes || '',
+      saveSuggestion: pendingInventoryAnalysis.result.saveSuggestion || 'growth progress photo'
+    };
+    const current = Array.isArray(items[idx].photoAnalyses) ? items[idx].photoAnalyses : [];
+    items[idx] = { ...items[idx], photoAnalyses:[entry, ...current].slice(0, 30), status: entry.healthStatus !== 'uncertain' ? entry.healthStatus : items[idx].status, updatedAt:new Date().toISOString() };
+    if (!setInventoryItems(items)) throw new Error('Could not save inventory timeline.');
+    renderInventory(); renderLivestockGuide(); renderLivestockCatalogModal();
+    showToast('📈 Photo saved to livestock timeline');
+  } catch(e) {
+    console.error(e);
+    showToast('⚠️ Could not save timeline entry');
+  }
+}
+
 async function uploadInventoryPhoto(id, event) {
   const file = event?.target?.files?.[0];
   if (!file) return;
@@ -2771,10 +2946,11 @@ function renderInventory() {
         ${i.scientificName ? `<div class="inventory-species">${escapeHtml(i.scientificName)}</div>` : ''}
         <div class="inventory-meta">${escapeHtml(i.type || 'other')} · ${escapeHtml(i.status || 'stable')}${i.location ? ` · ${escapeHtml(i.location)}` : ''}${factsCount ? ` · ${factsCount} facts` : ''}</div>
         ${i.notes ? `<div class="inventory-notes-text">${escapeHtml(i.notes)}</div>` : ''}
+        ${Array.isArray(i.photoAnalyses) && i.photoAnalyses.length ? `<div class="inventory-notes-text"><strong>Latest photo:</strong> ${escapeHtml(i.photoAnalyses[0].trackingNotes || i.photoAnalyses[0].growthAssessment || i.photoAnalyses[0].healthStatus || 'Analysis saved')}</div>` : ''}
         <div class="inventory-actions">
           <label class="inventory-small-btn" for="inv-photo-${escapeHtml(i.id)}">Upload photo</label>
           <input class="inventory-photo-input" id="inv-photo-${escapeHtml(i.id)}" type="file" accept="image/*" onchange="uploadInventoryPhoto('${escapeHtml(i.id)}', event)">
-          <label class="inventory-small-btn" for="inv-analyze-${escapeHtml(i.id)}">Analyze photo</label>
+          <label class="inventory-small-btn" for="inv-analyze-${escapeHtml(i.id)}">Analyze</label>
           <input class="inventory-photo-input" id="inv-analyze-${escapeHtml(i.id)}" type="file" accept="image/*" capture="environment" onchange="analyzeInventoryPhoto('${escapeHtml(i.id)}', event)">
           <button class="inventory-small-btn" onclick="loadInventoryItemForEdit('${escapeHtml(i.id)}')">Edit</button>
           ${inventoryPhotoKeyFor(i) ? `<button class="inventory-small-btn danger" onclick="removeInventoryPhoto('${escapeHtml(i.id)}')">Remove photo</button>` : ''}
@@ -3056,7 +3232,7 @@ function renderLongTermTools() {
 
 
 // ── Backup / restore ───────────────────────────────────────────────────────
-const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_theme_mode', 'reef_photo_analyses_v1'];
+const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base'];
 
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
@@ -5092,49 +5268,8 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-
-// ── Appearance / dark mode ────────────────────────────────────────────────
-const REEF_THEME_MODE_KEY = 'reef_theme_mode';
-
-function getThemeMode() {
-  try { return localStorage.getItem(REEF_THEME_MODE_KEY) || 'system'; } catch(e) { return 'system'; }
-}
-
-function prefersDarkMode() {
-  return Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-}
-
-function applyThemeMode(mode = getThemeMode()) {
-  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
-  const useDark = selected === 'dark' || (selected === 'system' && prefersDarkMode());
-  document.documentElement.classList.toggle('theme-dark', useDark);
-  document.documentElement.dataset.themeMode = selected;
-  const selector = document.getElementById('theme-mode-select');
-  if (selector) selector.value = selected;
-  const meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if (meta) meta.setAttribute('content', useDark ? 'black-translucent' : 'default');
-}
-
-function setThemeMode(mode) {
-  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
-  try { localStorage.setItem(REEF_THEME_MODE_KEY, selected); } catch(e) {}
-  applyThemeMode(selected);
-  showToast(selected === 'dark' ? '🌙 Dark mode on' : selected === 'light' ? '☀️ Light mode on' : '⚙️ Following system appearance');
-}
-
-function initThemeMode() {
-  applyThemeMode(getThemeMode());
-  try {
-    if (window.matchMedia) {
-      const media = window.matchMedia('(prefers-color-scheme: dark)');
-      const listener = () => { if (getThemeMode() === 'system') applyThemeMode('system'); };
-      if (media.addEventListener) media.addEventListener('change', listener);
-      else if (media.addListener) media.addListener(listener);
-    }
-  } catch(e) {}
-}
-
 // ── Init ─────────────────────────────────────────────────────────────────────
+initThemeMode();
 renderQuickQuestions();
 migrateReefTankStateV7();
 autoApplyKnownCompletedTreatments();
@@ -5152,7 +5287,6 @@ migrateInventoryPhotosToIndexedDb();
 updateHomeChips();
 renderActionHistory();
 renderCompletedHistory();
-initThemeMode();
 initModelMode();
 initTankContextToggle();
 renderSavedReminders();

@@ -63,6 +63,15 @@ html.theme-dark input::placeholder, html.theme-dark textarea::placeholder { colo
 .theme-select{max-width:150px;border:2px solid rgba(0,180,216,.22);border-radius:999px;background:rgba(255,255,255,.9);color:var(--text-dark);font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;padding:8px 10px;outline:none;}
 html.theme-dark .theme-settings-row, html.theme-dark .theme-select{background:rgba(8,27,42,.92);border-color:rgba(155,216,240,.20);color:var(--text-dark);}
 
+.settings-section-title{font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.09em;color:var(--text-light);margin:2px 0 8px;}
+.settings-card{background:rgba(255,255,255,.82);border:1px solid rgba(0,180,216,.18);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow);}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,119,182,.08);}
+.settings-row:last-child{border-bottom:none;padding-bottom:0;}
+.settings-copy strong{display:block;font-size:14px;font-weight:900;color:var(--text-dark);}
+.settings-copy span{display:block;font-size:12px;font-weight:700;line-height:1.35;color:var(--text-light);margin-top:2px;}
+.settings-select{max-width:170px;border:2px solid rgba(0,180,216,.22);border-radius:999px;background:rgba(255,255,255,.9);color:var(--text-dark);font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;padding:8px 10px;outline:none;}
+html.theme-dark .settings-card,html.theme-dark .settings-select{background:rgba(8,27,42,.92);border-color:rgba(155,216,240,.20);color:var(--text-dark);}
+
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 html, body {
@@ -2850,7 +2859,7 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
         <div class="long-term-intro">Tools are tucked into focused pages so the Log tab stays clean.</div>
         <div class="theme-settings-row">
           <div class="theme-settings-copy"><strong>Appearance</strong><span>Choose light, dark, or follow your device.</span></div>
-          <select class="theme-select" id="theme-mode-select" onchange="setThemeMode(this.value)">
+          <select class="theme-select theme-mode-select" id="theme-mode-select" onchange="setThemeMode(this.value)">
             <option value="system">System</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
@@ -2934,6 +2943,63 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
       </div>
     </div>
 
+    <div class="page" id="page-settings">
+      <div class="page-help-row"><button class="help-btn" onclick="openHelp('settings')" aria-label="Help for Settings tab">?</button></div>
+      <div class="greeting">Settings</div>
+
+      <div class="settings-card">
+        <div class="settings-section-title">Appearance</div>
+        <div class="settings-row">
+          <div class="settings-copy"><strong>Theme</strong><span>Use Light, Night Reef, or follow your device setting.</span></div>
+          <select class="settings-select theme-mode-select" onchange="setThemeMode(this.value)">
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Night Reef</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-section-title">AI</div>
+        <div class="settings-row">
+          <div class="settings-copy"><strong>Default answer style</strong><span>Choose quick, balanced, deep, or simple responses.</span></div>
+          <select class="settings-select model-selector" onchange="setModelMode(this.value)">
+            <option value="quick">Quick</option>
+            <option value="balanced">Balanced</option>
+            <option value="deep">Deep</option>
+            <option value="simple">Simple</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <div class="settings-copy"><strong>Use tank context</strong><span>Include your tank memory, logs, livestock, and tasks in AI answers.</span></div>
+          <label class="context-switch">
+            <input class="tank-context-toggle" type="checkbox" onchange="setUseTankContext(this.checked)">
+            <span class="context-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-section-title">Photo Analysis</div>
+        <div class="settings-row">
+          <div class="settings-copy"><strong>Livestock photo analysis</strong><span>Open Log → Long-Term Reef Tools → Livestock & Coral Inventory. Use Analyze Livestock Photo or the Analyze button on a saved item.</span></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-copy"><strong>Growth tracking</strong><span>Save an analysis to the item timeline after AI reviews a coral photo.</span></div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-section-title">App</div>
+        <div class="settings-row">
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v12 Night Reef + Livestock Vision</span></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- end app-content -->
 
   <button class="scroll-top-btn" id="global-scroll-top-btn" type="button" onclick="scrollActivePageToTop(event)" aria-label="Scroll to top" title="Scroll to top">⌃</button>
@@ -2955,6 +3021,10 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
     <button class="nav-btn" onclick="showPage('reminders', this)">
       <span class="nav-icon">⏰</span>
       <span class="nav-label">REMINDERS</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('settings', this)">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">SETTINGS</span>
     </button>
   </div>
 </div>
@@ -3253,11 +3323,11 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260625-dark-photo-v1"></script>
-<script src="state.js?v=20260625-dark-photo-v1"></script>
-<script src="reef-ai-context.js?v=20260625-dark-photo-v1"></script>
-<script src="days-off-plan.js?v=20260625-dark-photo-v1"></script>
-<script src="diagnostics.js?v=20260625-dark-photo-v1"></script>
-<script src="app.js?v=20260625-dark-photo-v1"></script>
+<script src="storage.js?v=20260625-v12-settings-vision"></script>
+<script src="state.js?v=20260625-v12-settings-vision"></script>
+<script src="reef-ai-context.js?v=20260625-v12-settings-vision"></script>
+<script src="days-off-plan.js?v=20260625-v12-settings-vision"></script>
+<script src="diagnostics.js?v=20260625-v12-settings-vision"></script>
+<script src="app.js?v=20260625-v12-settings-vision"></script>
 </body>
 </html>
