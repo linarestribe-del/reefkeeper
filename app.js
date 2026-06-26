@@ -1,5 +1,5 @@
-// Reef Keeper build marker: 20260619-refactor-v9
-window.REEF_KEEPER_BUILD = '20260619-refactor-v9';
+// Reef Keeper build marker: 20260626-real-phase1
+window.REEF_KEEPER_BUILD = '20260626-real-phase1';
 // Early Safari/PWA-safe completed-history aliases. These are intentionally defined before the rest of the app.
 (function(){
   window.getCompletedHistory = window.getCompletedHistory || function(){
