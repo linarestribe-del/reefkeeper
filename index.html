@@ -2816,6 +2816,12 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
 #page-tank .workspace-list-card { margin-top: 0; }
 #page-tank { padding-bottom: 78px; }
 .my-tank-action-list { margin-bottom: 14px; }
+.my-tank-bottom-tabs .workspace-pill {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .my-tank-bottom-tabs {
   position: sticky;
   bottom: 0;
@@ -2965,7 +2971,7 @@ html.theme-dark .my-tank-bottom-tabs {
       <div class="workspace-pill-row tank-section-tabs tank-tabs-compact my-tank-bottom-tabs" aria-label="My Tank sections">
         <button class="workspace-pill active" type="button" onclick="openLivestockCatalog()">🐠 Fish</button>
         <button class="workspace-pill" type="button" onclick="openInventorySection('coral')">🪸 Coral</button>
-        <button class="workspace-pill" type="button" onclick="openLongTermTool('equipment')">⚙️ Equipment</button>
+        <button class="workspace-pill" type="button" onclick="openLongTermTool('equipment')">⚙️ Equip.</button>
         <button class="workspace-pill" type="button" onclick="showWorkspace('log')">📊 Params</button>
       </div>
     </div>
