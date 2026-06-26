@@ -699,6 +699,7 @@ function showPage(name, btn) {
   if (name === 'chat') autoRefreshQuickQuestionsOnChatOpen();
   if (name === 'home') { renderTankStatus(); renderTankDashboard(); renderRecentChangesHome(); }
   if (name === 'log') renderLongTermTools();
+  if (name === 'settings') renderReefTargetSettings();
 }
 
 
@@ -1576,6 +1577,7 @@ function saveLog() {
   renderTrendChart(currentTrendParam);
   updateHomeChips(entry);
   renderTankStatus();
+  renderSmartTankDashboard();
 
   ['log-po4','log-alk','log-ca','log-no3','log-ph','log-sal','log-mg'].forEach(id => {
     document.getElementById(id).value = '';
@@ -3358,7 +3360,7 @@ function renderLongTermTools() {
 
 
 // ── Backup / restore ───────────────────────────────────────────────────────
-const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base'];
+const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_personalized_targets_v15'];
 
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
@@ -4911,6 +4913,219 @@ function renderTankStatus() {
   `;
 }
 
+
+// ── Personalized dashboard scoring and editable reef targets ───────────────
+const REEF_TARGETS_KEY = 'reef_personalized_targets_v15';
+const REEF_TARGET_DEFS = [
+  { key:'alk', label:'Alk', full:'Alkalinity', unit:'dKH', decimals:1, idealMin:8.2, idealMax:9.5, alertMin:7.5, alertMax:11.0, stability:0.4 },
+  { key:'po4', label:'PO₄', full:'Phosphate', unit:'ppm', decimals:2, idealMin:0.03, idealMax:0.10, alertMin:0.00, alertMax:0.40, stability:0.05 },
+  { key:'no3', label:'NO₃', full:'Nitrate', unit:'ppm', decimals:1, idealMin:5, idealMax:15, alertMin:0, alertMax:30, stability:5 },
+  { key:'ca', label:'Ca', full:'Calcium', unit:'mg/L', decimals:0, idealMin:400, idealMax:450, alertMin:360, alertMax:480, stability:25 },
+  { key:'mg', label:'Mg', full:'Magnesium', unit:'mg/L', decimals:0, idealMin:1280, idealMax:1400, alertMin:1200, alertMax:1500, stability:60 },
+  { key:'ph', label:'pH', full:'pH', unit:'', decimals:2, idealMin:8.1, idealMax:8.5, alertMin:7.8, alertMax:8.7, stability:0.20 },
+  { key:'sal', label:'SG', full:'Salinity', unit:'SG', decimals:3, idealMin:1.025, idealMax:1.026, alertMin:1.023, alertMax:1.028, stability:0.0015 }
+];
+
+function getDefaultReefTargets() {
+  const out = {};
+  REEF_TARGET_DEFS.forEach(d => { out[d.key] = { idealMin:d.idealMin, idealMax:d.idealMax, alertMin:d.alertMin, alertMax:d.alertMax }; });
+  return out;
+}
+
+function getReefTargets() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(REEF_TARGETS_KEY) || '{}');
+    const merged = getDefaultReefTargets();
+    Object.keys(merged).forEach(key => {
+      if (saved[key]) merged[key] = { ...merged[key], ...saved[key] };
+      ['idealMin','idealMax','alertMin','alertMax'].forEach(k => {
+        const v = parseFloat(merged[key][k]);
+        if (Number.isFinite(v)) merged[key][k] = v;
+      });
+    });
+    return merged;
+  } catch(e) { return getDefaultReefTargets(); }
+}
+
+function setReefTargets(targets) {
+  try { localStorage.setItem(REEF_TARGETS_KEY, JSON.stringify(targets || getDefaultReefTargets())); } catch(e) {}
+}
+
+function formatTargetValue(v, def) {
+  const n = parseFloat(v);
+  if (!Number.isFinite(n)) return '';
+  return n.toFixed(def.decimals).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+}
+
+function scoreParameterValue(key, raw) {
+  const def = REEF_TARGET_DEFS.find(d => d.key === key);
+  const targets = getReefTargets()[key];
+  const v = parseFloat(raw);
+  if (!def || !targets || !Number.isFinite(v)) return null;
+  const { idealMin, idealMax, alertMin, alertMax } = targets;
+  if (v >= idealMin && v <= idealMax) return { score:100, level:'good', text:`${def.label} ${formatTargetValue(v, def)} is inside your target ${formatTargetValue(idealMin, def)}–${formatTargetValue(idealMax, def)}${def.unit ? ' ' + def.unit : ''}.` };
+  if (v < alertMin || v > alertMax) return { score:0, level:'critical', text:`${def.label} ${formatTargetValue(v, def)} is outside your alert range ${formatTargetValue(alertMin, def)}–${formatTargetValue(alertMax, def)}${def.unit ? ' ' + def.unit : ''}.` };
+  let score = 0;
+  if (v < idealMin) score = ((v - alertMin) / Math.max(idealMin - alertMin, 0.000001)) * 70;
+  else score = ((alertMax - v) / Math.max(alertMax - idealMax, 0.000001)) * 70;
+  score = Math.max(0, Math.min(70, score));
+  return { score, level:'warn', text:`${def.label} ${formatTargetValue(v, def)} is outside your ideal range ${formatTargetValue(idealMin, def)}–${formatTargetValue(idealMax, def)}${def.unit ? ' ' + def.unit : ''}.` };
+}
+
+// Override status classification so Tank Status and chips respect personalized targets.
+classifyStatusValue = function(key, raw) {
+  const scored = scoreParameterValue(key, raw);
+  return scored ? scored.level : null;
+};
+
+function latestPointsForParam(key) {
+  return getAllLogsForCharts().map(log => ({ log, value:parseFloat(log[key]) })).filter(p => Number.isFinite(p.value));
+}
+
+function average(nums) {
+  const good = nums.filter(n => Number.isFinite(n));
+  return good.length ? good.reduce((a,b)=>a+b,0) / good.length : null;
+}
+
+function computeDashboardScore() {
+  const latest = getLatestLogForStatus();
+  const deductions = [];
+  const positives = [];
+  if (!latest) {
+    return { overall:0, categories:{ chemistry:0, stability:0, maintenance:0, livestock:0, equipment:0, alerts:0 }, deductions:['No parameter logs yet.'], positives:[] };
+  }
+
+  const paramScores = [];
+  REEF_TARGET_DEFS.forEach(def => {
+    if (latest[def.key] === undefined || latest[def.key] === '') return;
+    const scored = scoreParameterValue(def.key, latest[def.key]);
+    if (!scored) return;
+    paramScores.push(scored.score);
+    if (scored.level !== 'good') deductions.push(scored.text);
+    else positives.push(scored.text);
+  });
+  const chemistryPct = average(paramScores);
+  const chemistry = chemistryPct === null ? 12 : Math.round((chemistryPct / 100) * 30);
+
+  const stabilityScores = [];
+  REEF_TARGET_DEFS.forEach(def => {
+    const pts = latestPointsForParam(def.key);
+    if (pts.length < 2) return;
+    const delta = Math.abs(pts[pts.length - 1].value - pts[pts.length - 2].value);
+    const ratio = delta / Math.max(def.stability, 0.000001);
+    const s = ratio <= 1 ? 100 : Math.max(0, 100 - ((ratio - 1) * 35));
+    stabilityScores.push(s);
+    if (s < 70) deductions.push(`${def.label} changed by ${formatTargetValue(delta, def)}${def.unit ? ' ' + def.unit : ''} since the last logged reading.`);
+  });
+  const stabilityPct = average(stabilityScores);
+  const stability = stabilityPct === null ? 10 : Math.round((stabilityPct / 100) * 20);
+
+  const now = Date.now();
+  const daysAgo = iso => { const t = new Date(iso || 0).getTime(); return Number.isFinite(t) ? (now - t) / 86400000 : 9999; };
+  const actions = typeof getActionEntries === 'function' ? getActionEntries() : [];
+  const completed = typeof getCompletedHistoryEntries === 'function' ? getCompletedHistoryEntries() : [];
+  const recentActions = actions.filter(a => daysAgo(a.isoDate) <= 14);
+  const recentCompleted = completed.filter(h => daysAgo(h.completedAt) <= 14);
+  let maintenancePct = Math.min(100, recentActions.length * 18 + recentCompleted.length * 8);
+  if (latest && daysAgo(latest.isoDate) <= 10) maintenancePct += 20;
+  maintenancePct = Math.min(100, maintenancePct);
+  if (maintenancePct < 70) deductions.push('Maintenance/history logging is light for the last two weeks. Log water changes, media changes, testing, and inspections.');
+  const maintenance = Math.round((maintenancePct / 100) * 15);
+
+  let inventory = [];
+  try { inventory = JSON.parse(localStorage.getItem('reef_inventory_custom_v2') || localStorage.getItem('reef_inventory') || '[]'); } catch(e) { inventory = []; }
+  const activeInventory = Array.isArray(inventory) ? inventory.filter(i => !/lost|resolved|historical|rehomed/i.test(String(i.status || ''))) : [];
+  const hasPhotoNotes = actions.some(a => /photo|analysis|coral|fish|livestock|growth|health/i.test(`${a.title || ''} ${a.notes || ''}`) && daysAgo(a.isoDate) <= 45);
+  let livestockPct = activeInventory.length ? 72 : 55;
+  if (hasPhotoNotes) livestockPct += 18;
+  if (activeInventory.length >= 6) livestockPct += 10;
+  livestockPct = Math.min(100, livestockPct);
+  if (!hasPhotoNotes) deductions.push('No recent livestock/photo health notes found. Add a coral or fish photo analysis to improve livestock confidence.');
+  const livestock = Math.round((livestockPct / 100) * 20);
+
+  const equipmentTerms = /skimmer|pump|heater|uv|ato|roller|apex|return|gfo|carbon|light/i;
+  const recentEquipment = actions.some(a => equipmentTerms.test(`${a.title || ''} ${a.notes || ''}`) && daysAgo(a.isoDate) <= 30);
+  const equipmentPct = recentEquipment ? 95 : 78;
+  if (!recentEquipment) deductions.push('No recent equipment check/cleaning log in the last 30 days.');
+  const equipment = Math.round((equipmentPct / 100) * 10);
+
+  const criticalParams = REEF_TARGET_DEFS.map(def => scoreParameterValue(def.key, latest[def.key])).filter(s => s && s.level === 'critical').length;
+  const alerts = Math.max(0, 5 - criticalParams * 2);
+  if (criticalParams) deductions.push(`${criticalParams} parameter${criticalParams === 1 ? '' : 's'} are outside alert range.`);
+
+  const categories = { chemistry, stability, maintenance, livestock, equipment, alerts };
+  const overall = Math.max(0, Math.min(100, Object.values(categories).reduce((a,b)=>a+b,0)));
+  return { overall, categories, deductions:deductions.slice(0,6), positives:positives.slice(0,4) };
+}
+
+function renderSmartTankDashboard() {
+  const box = document.getElementById('tank-dashboard-content');
+  if (!box) return;
+  const score = computeDashboardScore();
+  const catRows = [
+    ['Chemistry', score.categories.chemistry, 30],
+    ['Stability', score.categories.stability, 20],
+    ['Maintenance', score.categories.maintenance, 15],
+    ['Livestock', score.categories.livestock, 20],
+    ['Equipment', score.categories.equipment, 10],
+    ['Alerts', score.categories.alerts, 5]
+  ];
+  const label = score.overall >= 90 ? 'Excellent' : score.overall >= 75 ? 'Stable' : score.overall >= 55 ? 'Watch' : 'Needs work';
+  box.innerHTML = `
+    <div class="tank-dashboard-grid">
+      <div class="tank-score-ring" style="--score:${score.overall}"><div class="tank-score-num">${score.overall}</div><div class="tank-score-label">${escapeHtml(label)}</div></div>
+      <div class="tank-dashboard-list">
+        <div class="tank-dashboard-row"><strong>Scored against your personal targets.</strong> Edit ranges in Settings → Personalized Tank Targets.</div>
+        <div class="tank-dashboard-row"><strong>Top focus:</strong> ${escapeHtml(score.deductions[0] || 'Keep logging and avoid stacking major changes.')}</div>
+      </div>
+    </div>
+    <div class="score-breakdown-grid">
+      ${catRows.map(([name,val,max]) => `<div class="score-breakdown-row"><div class="score-breakdown-name">${escapeHtml(name)}</div><div class="score-bar"><div class="score-bar-fill" style="--pct:${Math.round((val/max)*100)}%"></div></div><div class="score-breakdown-value">${val}/${max}</div></div>`).join('')}
+    </div>
+    <div class="score-explain"><strong>Why not 100?</strong>${score.deductions.length ? `<ul>${score.deductions.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : '<div style="margin-top:5px;">No major deductions from the current data.</div>'}</div>
+  `;
+}
+
+function renderReefTargetSettings() {
+  const box = document.getElementById('reef-target-settings');
+  if (!box) return;
+  const targets = getReefTargets();
+  box.innerHTML = REEF_TARGET_DEFS.map(def => {
+    const t = targets[def.key];
+    const field = (name, label) => `<div class="target-field"><label>${label}</label><input class="target-input reef-target-input" data-param="${def.key}" data-field="${name}" inputmode="decimal" value="${escapeHtml(formatTargetValue(t[name], def))}"></div>`;
+    return `<div class="target-row"><div class="target-name">${escapeHtml(def.full)}<br><span style="font-size:10px;color:var(--text-light);">${escapeHtml(def.unit || 'value')}</span></div>${field('idealMin','Ideal min')}${field('idealMax','Ideal max')}${field('alertMin','Alert min')}${field('alertMax','Alert max')}</div>`;
+  }).join('');
+}
+
+function saveReefTargetSettings() {
+  const current = getReefTargets();
+  document.querySelectorAll('.reef-target-input').forEach(input => {
+    const param = input.dataset.param; const field = input.dataset.field; const val = parseFloat(input.value);
+    if (param && field && Number.isFinite(val)) current[param][field] = val;
+  });
+  Object.keys(current).forEach(key => {
+    const t = current[key];
+    if (t.alertMin > t.idealMin) t.alertMin = t.idealMin;
+    if (t.idealMin > t.idealMax) [t.idealMin, t.idealMax] = [t.idealMax, t.idealMin];
+    if (t.alertMax < t.idealMax) t.alertMax = t.idealMax;
+  });
+  setReefTargets(current);
+  renderReefTargetSettings();
+  renderTankStatus();
+  renderSmartTankDashboard();
+  updateHomeChips();
+  showToast('✅ Personalized targets saved');
+}
+
+function resetReefTargetSettings() {
+  setReefTargets(getDefaultReefTargets());
+  renderReefTargetSettings();
+  renderTankStatus();
+  renderSmartTankDashboard();
+  updateHomeChips();
+  showToast('Targets reset');
+}
+
 // ── Days-off work plan ──────────────────────────────────────────────────────
 const DAYS_OFF_PLAN_TEMPLATE = [
   { day: 1, title: 'Test and inspect', tasks: ['Test phosphate, alkalinity, nitrate, calcium, magnesium, pH, and salinity.', 'Inspect Duncan, mushrooms, BTAs, gorgonia, GSP/zoas, and visible aiptasia before making changes.'] },
@@ -5416,6 +5631,7 @@ renderActionHistory();
 renderCompletedHistory();
 initModelMode();
 initTankContextToggle();
+renderReefTargetSettings();
 renderSavedReminders();
 renderReminderCenter();
 renderHiddenTasksPanel();
