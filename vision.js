@@ -152,6 +152,25 @@ async function handleVisionFile(event) {
   }
 }
 
+
+function clearVisionAnalysis(savedLabel = '') {
+  rkPendingVision = null;
+  const preview = document.getElementById('vision-preview');
+  const panel = document.getElementById('vision-result-card');
+  const input = document.getElementById('vision-file-input');
+  if (preview) {
+    preview.innerHTML = savedLabel
+      ? `<div><strong>✅ ${escapeHtml(savedLabel)}</strong><br><span style="font-size:12px;color:var(--text-mid);font-weight:800;">Ready for the next photo.</span></div>`
+      : '';
+    preview.classList.toggle('visible', Boolean(savedLabel));
+  }
+  if (panel) {
+    panel.innerHTML = '';
+    panel.classList.remove('visible');
+  }
+  if (input) input.value = '';
+}
+
 function visionSummaryText(v = rkPendingVision) {
   if (!v) return '';
   const r = v.result || {};
@@ -183,6 +202,7 @@ function saveVisionToHistory() {
     if (typeof setActionEntries === 'function') setActionEntries(actions.slice(0, 100));
     try { renderActionHistory(); renderRecentChangesHome(); renderSmartTankDashboard(); } catch(e) {}
     showToast('✅ Vision analysis saved to Action History');
+    clearVisionAnalysis('Analysis saved');
   } catch(e) { showToast('⚠️ Could not save analysis'); }
 }
 
@@ -214,6 +234,7 @@ async function saveVisionToLivestockTimeline() {
     if (!setInventoryItems(items)) throw new Error('Could not save inventory timeline.');
     try { renderInventory(); renderLivestockGuide(); renderSmartTankDashboard(); } catch(e) {}
     showToast('📈 Saved to livestock timeline');
+    clearVisionAnalysis('Saved to livestock timeline');
   } catch(e) { console.error(e); showToast('⚠️ Could not save timeline'); }
 }
 
@@ -227,6 +248,7 @@ async function saveVisionToTankHistory() {
     localStorage.setItem('reef_tank_history', JSON.stringify(items.slice(0, 60)));
     try { renderTankHistory(); } catch(e) {}
     showToast('🖼️ Saved to visual tank history');
+    clearVisionAnalysis('Saved to full-tank history');
   } catch(e) { console.error(e); showToast('⚠️ Could not save tank history'); }
 }
 
