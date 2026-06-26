@@ -683,8 +683,10 @@ function inventoryTabGroup(item) {
   return 'invert';
 }
 
-function toggleLivestockCatalogCard(id) {
-  const card = document.getElementById(id);
+function toggleLivestockCatalogCard(target) {
+  const card = (target && target.nodeType === 1)
+    ? target.closest('.livestock-guide-card')
+    : document.getElementById(String(target || ''));
   if (!card) return;
   card.classList.toggle('expanded');
 }
@@ -3039,7 +3041,7 @@ function getLivestockGuideHtml(filterGroup = 'all') {
     const facts = Array.isArray(i.facts) ? i.facts : [];
     const cardId = `catalog-card-${idx}-${String(i.id || i.name || 'item').replace(/[^a-z0-9_-]/gi, '-')}`;
     return `<article class="livestock-guide-card collapsed-card" id="${escapeHtml(cardId)}">
-      <button class="livestock-guide-card-head" type="button" onclick="toggleLivestockCatalogCard('${escapeHtml(cardId)}')" aria-label="Expand ${escapeHtml(i.name)} details">
+      <button class="livestock-guide-card-head" type="button" onclick="toggleLivestockCatalogCard(this)" aria-label="Expand ${escapeHtml(i.name)} details">
         ${livestockPhotoHtml(i)}
         <div class="livestock-guide-card-title-wrap">
           <div class="livestock-guide-name">${escapeHtml(i.name)}</div>
