@@ -2918,14 +2918,14 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
         <div class="workspace-subtitle">Inventory, equipment, parameters, targets, and the living history of your reef.</div>
       </div>
       <div class="workspace-pill-row" aria-label="My Tank sections">
-        <button class="workspace-pill active" type="button" onclick="openLivestockCatalog()">🐠 Fish</button>
-        <button class="workspace-pill" type="button" onclick="openLongTermTool('inventory')">🪸 Coral</button>
+        <button class="workspace-pill active" type="button" onclick="openInventorySection('fish')">🐠 Fish</button>
+        <button class="workspace-pill" type="button" onclick="openInventorySection('coral')">🪸 Coral</button>
         <button class="workspace-pill" type="button" onclick="openLongTermTool('equipment')">⚙️ Equipment</button>
         <button class="workspace-pill" type="button" onclick="showWorkspace('log')">📊 Params</button>
       </div>
       <div class="workspace-grid">
-        <button class="workspace-tile" type="button" onclick="openLivestockCatalog()"><span class="tile-icon">🐠</span><span class="tile-title">Livestock</span><span class="tile-detail">Fish, inverts, corals, photos, health, and growth notes.</span></button>
-        <button class="workspace-tile" type="button" onclick="openLongTermTool('inventory')"><span class="tile-icon">🪸</span><span class="tile-title">Coral Timeline</span><span class="tile-detail">Growth history, AI analysis, and frag-family notes.</span></button>
+        <button class="workspace-tile" type="button" onclick="openInventorySection('fish')"><span class="tile-icon">🐠</span><span class="tile-title">Fish & Livestock</span><span class="tile-detail">Open the inventory on the fish tab, with photos, health, and notes.</span></button>
+        <button class="workspace-tile" type="button" onclick="openInventorySection('coral')"><span class="tile-icon">🪸</span><span class="tile-title">Coral Timeline</span><span class="tile-detail">Open the inventory on the coral tab for growth, AI analysis, and frag-family notes.</span></button>
         <button class="workspace-tile" type="button" onclick="openLongTermTool('equipment')"><span class="tile-icon">🔧</span><span class="tile-title">Equipment</span><span class="tile-detail">Gear, maintenance intervals, and operating guardrails.</span></button>
         <button class="workspace-tile" type="button" onclick="showWorkspace('settings')"><span class="tile-icon">🎯</span><span class="tile-title">Targets</span><span class="tile-detail">Personalized parameter ranges used by dashboard scoring.</span></button>
       </div>

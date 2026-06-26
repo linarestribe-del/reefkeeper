@@ -1,5 +1,5 @@
 // Reef Keeper build marker: 20260619-refactor-v9
-window.REEF_KEEPER_BUILD = '20260626-equipment-manager-v1';
+window.REEF_KEEPER_BUILD = '20260626-equipment-manager-v2';
 // Early Safari/PWA-safe completed-history aliases. These are intentionally defined before the rest of the app.
 (function(){
   window.getCompletedHistory = window.getCompletedHistory || function(){
@@ -667,6 +667,13 @@ function setInventoryTab(tab) {
   if (type) type.value = currentInventoryTab === 'coral' ? 'coral' : currentInventoryTab;
   renderInventory();
   scrollToolToTop('inventory');
+}
+
+function openInventorySection(tab) {
+  openLongTermTool('inventory');
+  setTimeout(() => {
+    try { setInventoryTab(tab || 'fish'); } catch(e) {}
+  }, 30);
 }
 
 function inventoryTabGroup(item) {
@@ -5579,7 +5586,11 @@ function getEquipmentItems() {
     const raw = localStorage.getItem(REEF_EQUIPMENT_KEY);
     if (!raw) return defaultEquipmentItems();
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : defaultEquipmentItems();
+    if (!Array.isArray(parsed)) return defaultEquipmentItems();
+    // Older storage sync could create an empty equipment array before the default list was seeded.
+    // Treat an empty equipment store as not-yet-seeded so Jorge's known gear appears automatically.
+    if (parsed.length === 0) return defaultEquipmentItems();
+    return parsed;
   } catch(e) { return defaultEquipmentItems(); }
 }
 
