@@ -5910,6 +5910,113 @@ function rkGetLibraryDocsForReports() {
   try { return getReefLibraryDocs ? getReefLibraryDocs() : []; } catch(e) { return []; }
 }
 
+
+const RK_AI_MONTHLY_REPORT_KEY = 'reef_ai_monthly_report_v14';
+
+function rkGetTankHistoryForReports() {
+  try { return getTankHistory ? getTankHistory() : memoryArray('reef_tank_visual_history_v13'); } catch(e) { return []; }
+}
+
+function rkGetAiMonthlyReport() {
+  try {
+    const value = JSON.parse(localStorage.getItem(RK_AI_MONTHLY_REPORT_KEY) || 'null');
+    return value && typeof value === 'object' ? value : null;
+  } catch(e) { return null; }
+}
+
+function rkSetAiMonthlyReport(report) {
+  try { localStorage.setItem(RK_AI_MONTHLY_REPORT_KEY, JSON.stringify(report)); } catch(e) {}
+}
+
+function rkSummarizePhotoTimelinesForAI(inventory) {
+  const lines = [];
+  (inventory || []).forEach(item => {
+    const analyses = Array.isArray(item.photoAnalyses) ? item.photoAnalyses.slice(0, 5) : [];
+    if (!analyses.length) return;
+    const latest = analyses[0] || {};
+    const detail = [
+      latest.healthStatus ? `health ${latest.healthStatus}` : '',
+      latest.growthAssessment ? `growth/condition: ${latest.growthAssessment}` : '',
+      latest.estimatedGrowthPercent && latest.estimatedGrowthPercent !== 'unknown' ? `estimated change ${latest.estimatedGrowthPercent}` : '',
+      latest.timelineComparison && latest.timelineComparison !== 'insufficient history' ? `comparison: ${latest.timelineComparison}` : '',
+      Array.isArray(latest.healthConcerns) && latest.healthConcerns.length ? `concerns: ${latest.healthConcerns.join('; ')}` : '',
+      latest.trackingNotes ? `note: ${latest.trackingNotes}` : ''
+    ].filter(Boolean).join(' | ');
+    lines.push(`${item.name || 'Unnamed livestock'} (${item.type || 'unknown'}): ${analyses.length} saved photo check${analyses.length === 1 ? '' : 's'}; latest ${detail || 'analysis saved'}.`);
+  });
+  return lines;
+}
+
+function rkBuildAiMonthlyReportData() {
+  const logs = rkGetLogsNewest();
+  const actions = rkGetActionsNewest();
+  const completed = rkGetCompletedNewest();
+  const inventory = rkGetInventoryForReports();
+  const knowledge = rkGetKnowledgeForReports();
+  const tankHistory = rkGetTankHistoryForReports();
+  const photoLines = rkSummarizePhotoTimelinesForAI(inventory);
+  const latestLogs = logs.slice(0, 12).map(rkFormatLogLine);
+  const actionLines = actions.slice(0, 20).map(a => `${rkDateLabel(a.date || a.createdAt)}: ${a.title || 'Action'}${a.category ? ` (${a.category})` : ''}${a.notes ? ` — ${a.notes}` : ''}`);
+  const completedLines = completed.slice(0, 20).map(c => `${rkDateLabel(c.date || c.completedAt || c.createdAt)}: completed ${c.title || c.text || 'task'}${c.notes ? ` — ${c.notes}` : ''}`);
+  const livestockLines = inventory.slice(0, 40).map(i => `${i.name || 'Unnamed'} — ${i.type || 'unknown'} · ${i.status || 'unknown'}${i.location ? ` · ${i.location}` : ''}${i.notes ? ` · notes: ${i.notes}` : ''}`);
+  const knowledgeLines = knowledge.slice(0, 25).map(k => `${k.category || 'Knowledge'}: ${k.title || ''} — ${k.note || ''}`);
+  const tankHistoryLines = tankHistory.slice(0, 12).map(h => `${rkDateLabel(h.createdAt)}: ${h.title || 'Full-tank photo'}${h.notes ? ` — ${h.notes}` : ''}`);
+  return {
+    generatedAt: new Date().toISOString(),
+    tankMode: (typeof getTankMode === 'function' ? getTankMode() : 'unknown'),
+    parameterTrendSummary: rkTrendSummaryForReports(logs),
+    latestParameterReadings: latestLogs,
+    maintenanceActions: actionLines,
+    completedMaintenance: completedLines,
+    livestockHealthNotes: livestockLines,
+    photoTimelineSummary: photoLines,
+    visualTankHistory: tankHistoryLines,
+    knowledgeBase: knowledgeLines,
+    reportRequirements: [
+      'parameter trends',
+      'photo timeline summary',
+      'livestock health notes',
+      'maintenance completed',
+      'top 3 concerns',
+      'next month priorities'
+    ]
+  };
+}
+
+async function generateAiMonthlyReport() {
+  const type = document.getElementById('report-type')?.value || 'monthly';
+  if (type !== 'monthly') {
+    const select = document.getElementById('report-type');
+    if (select) select.value = 'monthly';
+  }
+  const box = document.getElementById('report-preview');
+  if (box) box.textContent = 'Generating AI Monthly Reef Report…';
+  const data = rkBuildAiMonthlyReportData();
+  const prompt = `Create a polished AI-generated Monthly Reef Report for Reef Keeper using the JSON data below.\n\nRequired sections, in this exact order:\n1. Monthly Snapshot\n2. Parameter Trends\n3. Photo Timeline Summary\n4. Livestock Health Notes\n5. Maintenance Completed\n6. Top 3 Concerns\n7. Next Month's Priorities\n\nRules:\n- Be practical and specific to this tank.\n- Do not recommend chaeto/cheato/refugium tasks because that plan is cancelled.\n- Do not include hammer/torch care unless the data says new hammer/torch corals were added.\n- Treat AI photo analysis as visual observation, not a definitive disease diagnosis.\n- If data is missing for a section, say what should be logged next rather than inventing details.\n- Keep the report readable and suitable for PDF export.\n- End with a short action checklist.\n\nMonthly report data JSON:\n${JSON.stringify(data, null, 2).slice(0, 22000)}`;
+  try {
+    const result = await askOpenAI(prompt, [], getModelMode ? getModelMode() : 'balanced');
+    const text = normalizeAiAnswerPayload ? normalizeAiAnswerPayload(result.answer || '') : (result.answer || 'No report returned.');
+    const report = {
+      id: Date.now().toString(36),
+      title: 'AI Monthly Reef Report',
+      text: text || 'No report returned.',
+      generatedAt: new Date().toISOString(),
+      dataSnapshot: data
+    };
+    rkSetAiMonthlyReport(report);
+    if (box) box.textContent = report.text;
+    try {
+      const reviews = getMonthlyReviews ? getMonthlyReviews() : [];
+      reviews.unshift({ id: report.id, date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}), isoDate: report.generatedAt, text: report.text });
+      if (setMonthlyReviews) setMonthlyReviews(reviews.slice(0, 12));
+    } catch(e) {}
+    showToast('✅ AI Monthly Reef Report generated');
+  } catch(e) {
+    if (box) box.textContent = `Could not generate the AI monthly report. ${e && e.message ? e.message : 'Check the backend connection.'}`;
+    try { showToast('⚠️ AI report failed'); } catch(_) {}
+  }
+}
+
 function rkFormatLogLine(log) {
   const parts = [];
   if (log.po4 !== undefined && log.po4 !== '') parts.push(`PO₄ ${log.po4} ppm`);
@@ -6028,13 +6135,25 @@ function rkBuildReport(type, customPrompt = '') {
 function getSelectedReport() {
   const type = document.getElementById('report-type')?.value || 'monthly';
   const custom = document.getElementById('report-custom-prompt')?.value || '';
+  if (type === 'monthly') {
+    const ai = rkGetAiMonthlyReport();
+    if (ai && ai.text) {
+      const generated = ai.generatedAt ? `Generated: ${new Date(ai.generatedAt).toLocaleString()}\nAI-generated from Reef Keeper data.\n\n` : '';
+      return { title: ai.title || 'AI Monthly Reef Report', text: generated + ai.text };
+    }
+  }
   return rkBuildReport(type, custom);
 }
 
 function previewSelectedReport() {
   const box = document.getElementById('report-preview');
   if (!box) return;
+  const type = document.getElementById('report-type')?.value || 'monthly';
   const report = getSelectedReport();
+  if (type === 'monthly' && !rkGetAiMonthlyReport()) {
+    box.textContent = `${report.text}\n\nNote: tap Generate AI Monthly Report to create the full AI-written monthly report with photo timeline summary, livestock health notes, top 3 concerns, and next month priorities.`;
+    return;
+  }
   box.textContent = report.text;
 }
 
