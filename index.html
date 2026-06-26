@@ -2195,6 +2195,13 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
 .strategy-text{flex:1; font-size:13px; font-weight:750; color:var(--text-dark); line-height:1.45;}
 .strategy-add-row{display:flex; gap:8px; margin-top:10px;}
 .strategy-add-row input{flex:1;}
+.equipment-list{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.equipment-row{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,0.72);border:1px solid rgba(0,119,182,0.08);}
+.equipment-row strong{font-size:13px;font-weight:900;color:var(--text-dark);}
+.equipment-row span{font-size:13px;font-weight:700;color:var(--text-mid);line-height:1.35;text-align:right;}
+html.theme-dark .equipment-row{background:rgba(8,27,42,0.74);border-color:rgba(155,216,240,0.18);}
+@media(max-width:380px){.equipment-row{flex-direction:column}.equipment-row span{text-align:left}}
+
 .long-term-btn{border:0; border-radius:13px; padding:10px 12px; font-family:'Nunito',sans-serif; font-size:13px; font-weight:900; color:white; background:linear-gradient(135deg,var(--ocean-deep),var(--ocean-mid)); box-shadow:0 4px 12px rgba(0,119,182,.24); cursor:pointer;}
 .long-term-btn.secondary{background:linear-gradient(135deg,var(--seaweed),#40916c);}
 .long-term-btn.danger{background:linear-gradient(135deg,#d62828,var(--coral-orange));}
@@ -2873,13 +2880,13 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
       <div class="workspace-pill-row" aria-label="My Tank sections">
         <button class="workspace-pill active" type="button" onclick="openLivestockCatalog()">🐠 Fish</button>
         <button class="workspace-pill" type="button" onclick="openLongTermTool('inventory')">🪸 Coral</button>
-        <button class="workspace-pill" type="button" onclick="openLongTermTool('strategy')">⚙️ Equipment</button>
+        <button class="workspace-pill" type="button" onclick="openLongTermTool('equipment')">⚙️ Equipment</button>
         <button class="workspace-pill" type="button" onclick="showWorkspace('log')">📊 Params</button>
       </div>
       <div class="workspace-grid">
         <button class="workspace-tile" type="button" onclick="openLivestockCatalog()"><span class="tile-icon">🐠</span><span class="tile-title">Livestock</span><span class="tile-detail">Fish, inverts, corals, photos, health, and growth notes.</span></button>
         <button class="workspace-tile" type="button" onclick="openLongTermTool('inventory')"><span class="tile-icon">🪸</span><span class="tile-title">Coral Timeline</span><span class="tile-detail">Growth history, AI analysis, and frag-family notes.</span></button>
-        <button class="workspace-tile" type="button" onclick="openLongTermTool('strategy')"><span class="tile-icon">🔧</span><span class="tile-title">Equipment</span><span class="tile-detail">Gear, maintenance intervals, and operating guardrails.</span></button>
+        <button class="workspace-tile" type="button" onclick="openLongTermTool('equipment')"><span class="tile-icon">🔧</span><span class="tile-title">Equipment</span><span class="tile-detail">Gear, maintenance intervals, and operating guardrails.</span></button>
         <button class="workspace-tile" type="button" onclick="showWorkspace('settings')"><span class="tile-icon">🎯</span><span class="tile-title">Targets</span><span class="tile-detail">Personalized parameter ranges used by dashboard scoring.</span></button>
       </div>
       <div class="card tank-dashboard-card">
@@ -3382,6 +3389,40 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
       <div class="long-term-panel">
         <div class="long-term-intro">Corals with a parent colony or frag/acquired date will appear here. Add those fields in Livestock & Coral Inventory.</div>
         <div id="coral-family-tree-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="tool-overlay" id="tool-equipment-overlay" onclick="handleToolOverlayClick(event, 'equipment')">
+  <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-equipment-title">
+    <div class="tool-panel-head">
+      <button class="tool-panel-title" id="tool-equipment-title" type="button" onclick="scrollToolToTop('equipment')">Equipment</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="tool-top-btn" onclick="scrollToolToTop('equipment')" aria-label="Scroll equipment to top">⌃</button>
+        <button class="tool-close-btn" onclick="closeLongTermTool('equipment')" aria-label="Close equipment">×</button>
+      </div>
+    </div>
+    <div class="tool-panel-body" id="tool-equipment-body">
+      <div class="long-term-panel">
+        <div class="long-term-intro">Core tank equipment. Use this page for quick equipment reference. Maintenance rules stay in Strategy & Maintenance Rules.</div>
+        <div class="equipment-list">
+          <div class="equipment-row"><strong>Return pumps</strong><span>2 Jebao MDP Smart DC</span></div>
+          <div class="equipment-row"><strong>Heaters</strong><span>2 Hygger 802 titanium heaters</span></div>
+          <div class="equipment-row"><strong>Filtration</strong><span>Bubble Magus filter roller</span></div>
+          <div class="equipment-row"><strong>Skimmer</strong><span>Simplicity 240 DC with outdoor air intake</span></div>
+          <div class="equipment-row"><strong>UV</strong><span>27W IceCap UV sterilizer</span></div>
+          <div class="equipment-row"><strong>Reactors</strong><span>IceCap GFO reactor / DIY GFO + ROX 0.8 carbon path</span></div>
+          <div class="equipment-row"><strong>Lighting</strong><span>4 A8se 11 Max lights</span></div>
+          <div class="equipment-row"><strong>Flow</strong><span>2 MP40 powerheads + 1 Jebao DMP20</span></div>
+          <div class="equipment-row"><strong>ATO</strong><span>Useek smart ATO with 10 gal reservoir</span></div>
+          <div class="equipment-row"><strong>Controller</strong><span>Neptune Apex</span></div>
+          <div class="equipment-row"><strong>RODI / Mixing</strong><span>5-stage RODI with booster pump; 55 gal Brute mixing can</span></div>
+        </div>
+        <div class="inventory-tools-row">
+          <button class="long-term-btn secondary" type="button" onclick="closeLongTermTool('equipment'); openLongTermTool('strategy')">Open Maintenance Rules</button>
+          <button class="inventory-guide-btn secondary" type="button" onclick="showWorkspace('log'); closeLongTermTool('equipment')">Log Equipment Work</button>
+        </div>
       </div>
     </div>
   </div>
