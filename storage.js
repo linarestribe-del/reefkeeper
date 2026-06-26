@@ -8,9 +8,9 @@
     'reef_days_off_plan_states','reef_hidden_static_reminders','reef_hidden_plan_tasks','reef_ai_days_off_plans',
     'reef_task_schedule','reef_resolved_issues','reef_model_mode','reef_use_tank_context','reef_tank_mode',
     'reef_inventory','reef_inventory_custom','reef_guardrails','reef_monthly_reviews','reef_inventory_custom_v2',
-    'reef_chat_conversations','reef_tank_knowledge_base','reef_tank_state_v7'
+    'reef_chat_conversations','reef_tank_knowledge_base','reef_equipment_inventory_v1','reef_tank_state_v7'
   ];
-  const ARRAY_KEYS = new Set(['reef_logs','reef_actions','reef_completed_history','reef_ai_reminders','reef_hidden_static_reminders','reef_hidden_plan_tasks','reef_inventory','reef_inventory_custom','reef_guardrails','reef_monthly_reviews','reef_inventory_custom_v2','reef_chat_conversations','reef_tank_knowledge_base']);
+  const ARRAY_KEYS = new Set(['reef_logs','reef_actions','reef_completed_history','reef_ai_reminders','reef_hidden_static_reminders','reef_hidden_plan_tasks','reef_inventory','reef_inventory_custom','reef_guardrails','reef_monthly_reviews','reef_inventory_custom_v2','reef_chat_conversations','reef_tank_knowledge_base','reef_equipment_inventory_v1']);
   const OBJECT_KEYS = new Set(['reef_static_reminder_states','reef_days_off_plan_states','reef_ai_days_off_plans','reef_task_schedule','reef_resolved_issues','reef_tank_state_v7']);
 
   function now(){ return new Date().toISOString(); }
@@ -28,7 +28,7 @@
       data: {
         logs: [], actions: [], completedHistory: [], reminders: [], inventory: [], chatConversations: [],
         daysOffPlans: {}, daysOffPlanStates: {}, taskSchedule: {}, resolvedIssues: {}, hiddenStaticReminders: [], hiddenPlanTasks: [],
-        settings: {}, guardrails: [], monthlyReviews: [], tankKnowledgeBase: []
+        settings: {}, guardrails: [], monthlyReviews: [], tankKnowledgeBase: [], equipment: []
       },
       legacy: {}
     };
@@ -76,6 +76,7 @@
       if (Array.isArray(snap.reef_guardrails)) d.guardrails = snap.reef_guardrails;
       if (Array.isArray(snap.reef_monthly_reviews)) d.monthlyReviews = snap.reef_monthly_reviews;
       if (Array.isArray(snap.reef_tank_knowledge_base)) d.tankKnowledgeBase = snap.reef_tank_knowledge_base;
+      if (Array.isArray(snap.reef_equipment_inventory_v1)) d.equipment = snap.reef_equipment_inventory_v1;
       d.settings = {
         modelMode: localStorage.getItem('reef_model_mode') || d.settings.modelMode || 'balanced',
         useTankContext: localStorage.getItem('reef_use_tank_context') || d.settings.useTankContext || 'true',
@@ -93,7 +94,7 @@
       ['reef_ai_days_off_plans', d.daysOffPlans || {}], ['reef_days_off_plan_states', d.daysOffPlanStates || {}],
       ['reef_task_schedule', d.taskSchedule || {}], ['reef_resolved_issues', d.resolvedIssues || {}],
       ['reef_hidden_static_reminders', d.hiddenStaticReminders || []], ['reef_hidden_plan_tasks', d.hiddenPlanTasks || []],
-      ['reef_guardrails', d.guardrails || []], ['reef_monthly_reviews', d.monthlyReviews || []], ['reef_tank_knowledge_base', d.tankKnowledgeBase || []]
+      ['reef_guardrails', d.guardrails || []], ['reef_monthly_reviews', d.monthlyReviews || []], ['reef_tank_knowledge_base', d.tankKnowledgeBase || []], ['reef_equipment_inventory_v1', d.equipment || []]
     ];
     pairs.forEach(([k,v]) => write(k,v));
     if (db.tankState) write('reef_tank_state_v7', db.tankState);

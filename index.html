@@ -2202,6 +2202,46 @@ html.theme-dark .photo-analysis-title{color:#d8a8ff;}
 html.theme-dark .equipment-row{background:rgba(8,27,42,0.74);border-color:rgba(155,216,240,0.18);}
 @media(max-width:380px){.equipment-row{flex-direction:column}.equipment-row span{text-align:left}}
 
+/* Equipment manager */
+.equipment-manager-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.equipment-manager-head .long-term-intro{margin:0;flex:1;}
+.equipment-form{background:rgba(255,255,255,.70);border:1px solid rgba(0,180,216,.18);border-radius:18px;padding:12px;margin:12px 0;}
+.equipment-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.equipment-form-grid .full{grid-column:1/-1;}
+.equipment-form label{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-light);margin-bottom:4px;}
+.equipment-input,.equipment-select,.equipment-notes{width:100%;border:2px solid rgba(0,180,216,.20);border-radius:12px;background:rgba(255,255,255,.88);color:var(--text-dark);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:9px 10px;outline:none;}
+.equipment-notes{min-height:68px;resize:vertical;line-height:1.4;}
+.equipment-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.equipment-primary-btn,.equipment-secondary-btn,.equipment-danger-btn{border:none;border-radius:999px;padding:9px 12px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;cursor:pointer;box-shadow:var(--shadow);}
+.equipment-primary-btn{background:linear-gradient(135deg,var(--seaweed),#40916c);color:white;}
+.equipment-secondary-btn{background:rgba(255,255,255,.86);border:2px solid rgba(0,180,216,.20);color:var(--text-mid);}
+.equipment-danger-btn{background:rgba(214,40,40,.10);border:1px solid rgba(214,40,40,.18);color:#d62828;box-shadow:none;}
+.equipment-filter-row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;}
+.equipment-filter-row::-webkit-scrollbar{display:none;}
+.equipment-filter-btn{border:2px solid rgba(0,180,216,.22);background:rgba(255,255,255,.84);color:var(--text-mid);border-radius:999px;padding:7px 11px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;white-space:nowrap;cursor:pointer;}
+.equipment-filter-btn.active{background:linear-gradient(135deg,var(--ocean-deep),var(--ocean-mid));color:white;border-color:transparent;}
+.equipment-card{background:rgba(255,255,255,.76);border:1px solid rgba(0,119,182,.10);border-radius:16px;padding:12px;margin-bottom:10px;box-shadow:inset 0 1px 8px rgba(0,119,182,.04);}
+.equipment-card-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;}
+.equipment-card-title{font-size:15px;font-weight:900;color:var(--text-dark);line-height:1.2;}
+.equipment-card-meta{font-size:12px;font-weight:800;color:var(--text-light);margin-top:3px;line-height:1.35;}
+.equipment-status{border-radius:999px;padding:5px 8px;font-size:10px;font-weight:900;text-transform:uppercase;white-space:nowrap;}
+.equipment-status.good{background:rgba(82,183,136,.14);color:#2d6a4f;}
+.equipment-status.watch{background:rgba(255,183,3,.16);color:#9a6700;}
+.equipment-status.due{background:rgba(255,107,53,.15);color:#e85d04;}
+.equipment-card-body{display:none;margin-top:10px;border-top:1px solid rgba(0,119,182,.08);padding-top:10px;}
+.equipment-card.expanded .equipment-card-body{display:block;}
+.equipment-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.equipment-detail{background:rgba(0,180,216,.06);border-radius:12px;padding:8px;}
+.equipment-detail-label{font-size:9px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--text-light);margin-bottom:2px;}
+.equipment-detail-value{font-size:12px;font-weight:800;color:var(--text-dark);line-height:1.35;word-break:break-word;}
+.equipment-photo{width:100%;max-height:180px;object-fit:cover;border-radius:14px;margin:8px 0;border:1px solid rgba(0,119,182,.10);}
+.equipment-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.equipment-empty{font-size:13px;font-weight:800;color:var(--text-light);padding:14px;text-align:center;}
+html.theme-dark .equipment-form,html.theme-dark .equipment-card,html.theme-dark .equipment-input,html.theme-dark .equipment-select,html.theme-dark .equipment-notes,html.theme-dark .equipment-filter-btn,html.theme-dark .equipment-secondary-btn{background:rgba(8,27,42,.88);border-color:rgba(155,216,240,.20);color:var(--text-dark);}
+html.theme-dark .equipment-detail{background:rgba(155,216,240,.08);}
+@media(max-width:380px){.equipment-form-grid,.equipment-detail-grid{grid-template-columns:1fr;}.equipment-card-head{flex-direction:column}.equipment-status{align-self:flex-start}}
+
+
 .long-term-btn{border:0; border-radius:13px; padding:10px 12px; font-family:'Nunito',sans-serif; font-size:13px; font-weight:900; color:white; background:linear-gradient(135deg,var(--ocean-deep),var(--ocean-mid)); box-shadow:0 4px 12px rgba(0,119,182,.24); cursor:pointer;}
 .long-term-btn.secondary{background:linear-gradient(135deg,var(--seaweed),#40916c);}
 .long-term-btn.danger{background:linear-gradient(135deg,#d62828,var(--coral-orange));}
@@ -3231,7 +3271,7 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper 2.0 Mobile Workspace</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v12 Night Reef + Livestock Vision</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3405,23 +3445,41 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
     </div>
     <div class="tool-panel-body" id="tool-equipment-body">
       <div class="long-term-panel">
-        <div class="long-term-intro">Core tank equipment. Use this page for quick equipment reference. Maintenance rules stay in Strategy & Maintenance Rules.</div>
-        <div class="equipment-list">
-          <div class="equipment-row"><strong>Return pumps</strong><span>2 Jebao MDP Smart DC</span></div>
-          <div class="equipment-row"><strong>Heaters</strong><span>2 Hygger 802 titanium heaters</span></div>
-          <div class="equipment-row"><strong>Filtration</strong><span>Bubble Magus filter roller</span></div>
-          <div class="equipment-row"><strong>Skimmer</strong><span>Simplicity 240 DC with outdoor air intake</span></div>
-          <div class="equipment-row"><strong>UV</strong><span>27W IceCap UV sterilizer</span></div>
-          <div class="equipment-row"><strong>Reactors</strong><span>IceCap GFO reactor / DIY GFO + ROX 0.8 carbon path</span></div>
-          <div class="equipment-row"><strong>Lighting</strong><span>4 A8se 11 Max lights</span></div>
-          <div class="equipment-row"><strong>Flow</strong><span>2 MP40 powerheads + 1 Jebao DMP20</span></div>
-          <div class="equipment-row"><strong>ATO</strong><span>Useek smart ATO with 10 gal reservoir</span></div>
-          <div class="equipment-row"><strong>Controller</strong><span>Neptune Apex</span></div>
-          <div class="equipment-row"><strong>RODI / Mixing</strong><span>5-stage RODI with booster pump; 55 gal Brute mixing can</span></div>
+        <div class="equipment-manager-head">
+          <div class="long-term-intro">Track equipment like a second catalog: maintenance intervals, service history, manuals, replacement parts, and notes. Equipment service can feed your action history and future planning.</div>
         </div>
-        <div class="inventory-tools-row">
-          <button class="long-term-btn secondary" type="button" onclick="closeLongTermTool('equipment'); openLongTermTool('strategy')">Open Maintenance Rules</button>
-          <button class="inventory-guide-btn secondary" type="button" onclick="showWorkspace('log'); closeLongTermTool('equipment')">Log Equipment Work</button>
+
+        <div class="equipment-form" id="equipment-form-card">
+          <div class="settings-section-title">Add / edit equipment</div>
+          <input type="hidden" id="equipment-edit-id" value="">
+          <input type="hidden" id="equipment-photo-data" value="">
+          <div class="equipment-form-grid">
+            <div><label for="equipment-name">Name</label><input class="equipment-input" id="equipment-name" placeholder="Simplicity 240 DC skimmer"></div>
+            <div><label for="equipment-category">Category</label><select class="equipment-select" id="equipment-category"><option>Return Pumps</option><option>Powerheads / Flow</option><option>Lighting</option><option>Filtration</option><option>Skimmer</option><option>Controller</option><option>Heating</option><option>Dosing</option><option>ATO</option><option>Reactors</option><option>UV</option><option>RODI / Mixing</option><option>Monitoring</option><option>Miscellaneous</option></select></div>
+            <div><label for="equipment-brand">Brand</label><input class="equipment-input" id="equipment-brand" placeholder="Simplicity"></div>
+            <div><label for="equipment-model">Model</label><input class="equipment-input" id="equipment-model" placeholder="240 DC"></div>
+            <div><label for="equipment-installed">Installed</label><input class="equipment-input" id="equipment-installed" type="date"></div>
+            <div><label for="equipment-purchase">Purchased</label><input class="equipment-input" id="equipment-purchase" type="date"></div>
+            <div><label for="equipment-maintenance-days">Maintenance every</label><input class="equipment-input" id="equipment-maintenance-days" type="number" min="0" step="1" placeholder="30 days"></div>
+            <div><label for="equipment-serial">Serial / ID</label><input class="equipment-input" id="equipment-serial" placeholder="Optional"></div>
+            <div class="full"><label for="equipment-manual">Manual / link</label><input class="equipment-input" id="equipment-manual" placeholder="Manual URL or file note"></div>
+            <div class="full"><label for="equipment-parts">Replacement parts</label><input class="equipment-input" id="equipment-parts" placeholder="Impeller, tubing, UV bulb, fleece roll..."></div>
+            <div class="full"><label for="equipment-photo-input">Photo</label><input class="equipment-input" id="equipment-photo-input" type="file" accept="image/*" onchange="handleEquipmentPhotoUpload(event)"></div>
+            <div class="full"><label for="equipment-notes">Notes</label><textarea class="equipment-notes" id="equipment-notes" placeholder="Setup notes, flow setting, maintenance procedure, reminders, failure symptoms..." rows="3"></textarea></div>
+          </div>
+          <div class="equipment-actions">
+            <button class="equipment-primary-btn" type="button" onclick="saveEquipmentItem()">Save Equipment</button>
+            <button class="equipment-secondary-btn" type="button" onclick="aiFillEquipmentItem()">AI Fill</button>
+            <button class="equipment-secondary-btn" type="button" onclick="clearEquipmentForm()">Clear</button>
+          </div>
+        </div>
+
+        <div class="equipment-filter-row" id="equipment-filter-row"></div>
+        <div id="equipment-list" class="equipment-list"></div>
+
+        <div class="equipment-actions">
+          <button class="long-term-btn secondary" type="button" onclick="openLongTermTool('strategy')">Open Maintenance Rules</button>
+          <button class="inventory-guide-btn secondary" type="button" onclick="showWorkspace('log'); closeLongTermTool('equipment')">Log General Equipment Work</button>
         </div>
       </div>
     </div>
@@ -3641,12 +3699,12 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260626-real-phase1"></script>
-<script src="state.js?v=20260626-real-phase1"></script>
-<script src="reef-ai-context.js?v=20260626-real-phase1"></script>
-<script src="days-off-plan.js?v=20260626-real-phase1"></script>
-<script src="diagnostics.js?v=20260626-real-phase1"></script>
-<script src="app.js?v=20260626-real-phase1"></script>
+<script src="storage.js?v=20260626-equipment-manager"></script>
+<script src="state.js?v=20260626-equipment-manager"></script>
+<script src="reef-ai-context.js?v=20260626-equipment-manager"></script>
+<script src="days-off-plan.js?v=20260626-equipment-manager"></script>
+<script src="diagnostics.js?v=20260626-equipment-manager"></script>
+<script src="app.js?v=20260626-equipment-manager"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;

@@ -1,5 +1,5 @@
-// Reef Keeper build marker: 20260626-real-phase1
-window.REEF_KEEPER_BUILD = '20260626-real-phase1';
+// Reef Keeper build marker: 20260619-refactor-v9
+window.REEF_KEEPER_BUILD = '20260626-equipment-manager-v1';
 // Early Safari/PWA-safe completed-history aliases. These are intentionally defined before the rest of the app.
 (function(){
   window.getCompletedHistory = window.getCompletedHistory || function(){
@@ -639,6 +639,7 @@ function openLongTermTool(tool) {
   if (tool === 'summary') { refreshLongTermSummary(); }
   if (tool === 'tankhistory') { renderTankHistory(); }
   if (tool === 'familytree') { renderCoralFamilyTree(); }
+  if (tool === 'equipment') { renderEquipmentManager(); }
   setTimeout(() => scrollToolToTop(tool), 20);
 }
 
@@ -3360,7 +3361,7 @@ function renderLongTermTools() {
 
 
 // ── Backup / restore ───────────────────────────────────────────────────────
-const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_personalized_targets_v15'];
+const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_personalized_targets_v15', 'reef_equipment_inventory_v1'];
 
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
@@ -5539,6 +5540,303 @@ function renderDaysOffWorkPlan() {
 
 
 
+
+
+// ── Equipment catalog / maintenance tracking ───────────────────────────────
+const REEF_EQUIPMENT_KEY = 'reef_equipment_inventory_v1';
+let currentEquipmentFilter = 'All';
+
+function defaultEquipmentItems() {
+  const now = new Date().toISOString();
+  const make = (category, name, brand, model, maintenanceDays, notes, parts='') => ({
+    id: `eq-${category.toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${name.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`,
+    category, name, brand, model,
+    purchaseDate: '', installedDate: '', serial: '', manual: '', parts,
+    maintenanceDays: String(maintenanceDays || ''),
+    notes,
+    photoDataUrl: '', lastServiceAt: '', createdAt: now, updatedAt: now
+  });
+  return [
+    make('Return Pumps','Jebao MDP Smart DC ×2','Jebao','MDP Smart DC',90,'Dual return pumps. Verify both are running, clean intakes, and inspect flow/noise during equipment checks.','Impellers, O-rings'),
+    make('Heating','Hygger 802 Titanium Heaters ×2','Hygger','802 Titanium',30,'Controlled by Apex. Verify both are set to AUTO after water changes and inspect for temperature-control issues.','Spare heater, temp probe'),
+    make('Filtration','Bubble Magus Filter Roller','Bubble Magus','Filter Roller',30,'Check fleece advancement, roller sensor, and waste roll fullness.','Fleece roll'),
+    make('Skimmer','Simplicity 240 DC Skimmer','Simplicity','240 DC',30,'Outdoor air intake. Clean neck/cup regularly and deep-clean pump periodically.','Impeller, air line, pump parts'),
+    make('UV','IceCap 27W UV Sterilizer','IceCap','27W UV',180,'Verify flow path and bulb age. Clean sleeve and schedule bulb replacement.','UV bulb, quartz sleeve, O-rings'),
+    make('Reactors','IceCap GFO Reactor','IceCap','120 / in-sump GFO',21,'BIG Kahuna GFO. Confirm gentle tumble and avoid aggressive phosphate stripping.','GFO, foam pads'),
+    make('Reactors','DIY GFO + ROX Carbon Path','DIY','Two-stage reactor',30,'GFO then ROX 0.8 carbon separated by foam. Verify flow and change media carefully.','ROX 0.8 carbon, foam pads'),
+    make('Lighting','A8se 11 Max Lights ×4','A8se','11 Max',90,'XR30-style lights. Keep lenses/fans clean and avoid sudden schedule/intensity changes.','Mounting parts, fan/lens cleaning supplies'),
+    make('Powerheads / Flow','MP40 Powerheads ×2','Ecotech','MP40',90,'Back wall flow. Clean wetsides and inspect for vibration/noise.','Wetside, propeller, driver backup'),
+    make('Powerheads / Flow','Jebao DMP20','Jebao','DMP20',90,'Left wall flow pump. Clean impeller and intake.','Impeller, cage'),
+    make('ATO','Useek Smart ATO','Useek','Smart ATO',30,'10 gallon reservoir. Inspect optical sensor, pump, tubing, and salinity stability.','ATO pump, tubing, sensor'),
+    make('Controller','Neptune Apex','Neptune','Apex',30,'Controls heaters and monitoring. Verify outlets are in intended AUTO/ON/OFF states after maintenance.','Probes, calibration fluids'),
+    make('RODI / Mixing','5-stage RODI + Booster Pump','Mixed','5-stage RODI',30,'Check TDS, cartridges, DI resin, booster pump, and leaks.','Sediment, carbon, membrane, DI resin'),
+    make('RODI / Mixing','55 gal Brute Saltwater Mixing Can','Brute','55 gallon',60,'Mixing container for saltwater. Clean residue and verify salinity after mixing.','Mixing pump, heater, lid')
+  ];
+}
+
+function getEquipmentItems() {
+  try {
+    const raw = localStorage.getItem(REEF_EQUIPMENT_KEY);
+    if (!raw) return defaultEquipmentItems();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : defaultEquipmentItems();
+  } catch(e) { return defaultEquipmentItems(); }
+}
+
+function setEquipmentItems(items) {
+  try { localStorage.setItem(REEF_EQUIPMENT_KEY, JSON.stringify(Array.isArray(items) ? items : [])); } catch(e) {}
+  try { window.ReefKeeperStorage?.mirrorKeyToDb?.(REEF_EQUIPMENT_KEY, 'data.equipment'); } catch(e) {}
+}
+
+function equipmentCategories(items = getEquipmentItems()) {
+  return ['All', ...new Set(items.map(i => i.category || 'Miscellaneous').filter(Boolean))];
+}
+
+function equipmentDaysAgo(raw) {
+  if (!raw) return null;
+  const t = new Date(raw).getTime();
+  if (!Number.isFinite(t)) return null;
+  return Math.floor((Date.now() - t) / 86400000);
+}
+
+function equipmentStatus(item) {
+  const interval = Number(item.maintenanceDays || 0);
+  if (!interval) return { label:'No interval', cls:'watch', detail:'No maintenance interval set' };
+  const reference = item.lastServiceAt || item.installedDate || item.purchaseDate || item.createdAt;
+  const age = equipmentDaysAgo(reference);
+  if (age === null) return { label:'Set date', cls:'watch', detail:'Add service or installed date' };
+  const remaining = interval - age;
+  if (remaining < 0) return { label:'Due', cls:'due', detail:`${Math.abs(remaining)} day${Math.abs(remaining)===1?'':'s'} overdue` };
+  if (remaining <= Math.max(3, Math.round(interval * 0.18))) return { label:'Soon', cls:'watch', detail:`Due in ${remaining} day${remaining===1?'':'s'}` };
+  return { label:'OK', cls:'good', detail:`Due in ${remaining} day${remaining===1?'':'s'}` };
+}
+
+function equipmentDateLabel(raw) {
+  if (!raw) return 'Not set';
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return String(raw);
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function clearEquipmentForm() {
+  ['equipment-edit-id','equipment-photo-data','equipment-name','equipment-brand','equipment-model','equipment-installed','equipment-purchase','equipment-maintenance-days','equipment-serial','equipment-manual','equipment-parts','equipment-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const cat = document.getElementById('equipment-category');
+  if (cat) cat.value = 'Return Pumps';
+  const photo = document.getElementById('equipment-photo-input');
+  if (photo) photo.value = '';
+}
+
+function equipmentFormValue(id) { return String(document.getElementById(id)?.value || '').trim(); }
+
+function saveEquipmentItem() {
+  const name = equipmentFormValue('equipment-name');
+  if (!name) { showToast('⚠️ Enter equipment name'); return; }
+  const items = getEquipmentItems();
+  const id = equipmentFormValue('equipment-edit-id') || `eq-${Date.now().toString(36)}-${Math.random().toString(16).slice(2,8)}`;
+  const old = items.find(i => i.id === id) || {};
+  const item = {
+    ...old,
+    id,
+    name,
+    category: equipmentFormValue('equipment-category') || 'Miscellaneous',
+    brand: equipmentFormValue('equipment-brand'),
+    model: equipmentFormValue('equipment-model'),
+    installedDate: equipmentFormValue('equipment-installed'),
+    purchaseDate: equipmentFormValue('equipment-purchase'),
+    maintenanceDays: equipmentFormValue('equipment-maintenance-days'),
+    serial: equipmentFormValue('equipment-serial'),
+    manual: equipmentFormValue('equipment-manual'),
+    parts: equipmentFormValue('equipment-parts'),
+    notes: equipmentFormValue('equipment-notes'),
+    photoDataUrl: equipmentFormValue('equipment-photo-data') || old.photoDataUrl || '',
+    createdAt: old.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  const next = [item, ...items.filter(i => i.id !== id)];
+  setEquipmentItems(next);
+  clearEquipmentForm();
+  renderEquipmentManager();
+  renderSmartTankDashboard?.();
+  showToast('✅ Equipment saved');
+}
+
+function editEquipmentItem(id) {
+  const item = getEquipmentItems().find(i => i.id === id);
+  if (!item) return;
+  const set = (field, value) => { const el = document.getElementById(field); if (el) el.value = value || ''; };
+  set('equipment-edit-id', item.id);
+  set('equipment-name', item.name);
+  set('equipment-category', item.category || 'Miscellaneous');
+  set('equipment-brand', item.brand);
+  set('equipment-model', item.model);
+  set('equipment-installed', item.installedDate);
+  set('equipment-purchase', item.purchaseDate);
+  set('equipment-maintenance-days', item.maintenanceDays);
+  set('equipment-serial', item.serial);
+  set('equipment-manual', item.manual);
+  set('equipment-parts', item.parts);
+  set('equipment-notes', item.notes);
+  set('equipment-photo-data', item.photoDataUrl);
+  scrollToolToTop('equipment');
+  showToast('Editing equipment');
+}
+
+function deleteEquipmentItem(id) {
+  if (!confirm('Delete this equipment item?')) return;
+  setEquipmentItems(getEquipmentItems().filter(i => i.id !== id));
+  renderEquipmentManager();
+  renderSmartTankDashboard?.();
+  showToast('🗑️ Equipment deleted');
+}
+
+function recordEquipmentService(id) {
+  const items = getEquipmentItems();
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  item.lastServiceAt = new Date().toISOString();
+  item.updatedAt = new Date().toISOString();
+  setEquipmentItems(items);
+  try {
+    const actions = getActionEntries();
+    actions.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      title: `Serviced ${item.name}`,
+      category: 'equipment',
+      notes: `${item.category || 'Equipment'}${item.maintenanceDays ? ` · interval ${item.maintenanceDays} days` : ''}`,
+      date: new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
+      isoDate: new Date().toISOString()
+    });
+    setActionEntries(actions.slice(0, 80));
+    renderActionHistory();
+    renderRecentChangesHome();
+  } catch(e) {}
+  renderEquipmentManager();
+  renderSmartTankDashboard?.();
+  showToast('✅ Service logged');
+}
+
+function toggleEquipmentCard(id) {
+  const card = document.getElementById(`equipment-card-${CSS.escape(id)}`);
+  if (card) card.classList.toggle('expanded');
+}
+
+function setEquipmentFilter(category) {
+  currentEquipmentFilter = category || 'All';
+  renderEquipmentManager();
+}
+
+function renderEquipmentManager() {
+  const list = document.getElementById('equipment-list');
+  const filters = document.getElementById('equipment-filter-row');
+  if (!list || !filters) return;
+  const items = getEquipmentItems();
+  const cats = equipmentCategories(items);
+  if (!cats.includes(currentEquipmentFilter)) currentEquipmentFilter = 'All';
+  filters.innerHTML = cats.map(cat => `<button class="equipment-filter-btn${cat === currentEquipmentFilter ? ' active' : ''}" type="button" onclick="setEquipmentFilter('${escapeHtml(cat)}')">${escapeHtml(cat)}</button>`).join('');
+  const shown = currentEquipmentFilter === 'All' ? items : items.filter(i => (i.category || 'Miscellaneous') === currentEquipmentFilter);
+  if (!shown.length) { list.innerHTML = '<div class="equipment-empty">No equipment saved in this category yet.</div>'; return; }
+  list.innerHTML = shown.map(item => {
+    const st = equipmentStatus(item);
+    const title = [item.brand, item.model].filter(Boolean).join(' ') || item.name;
+    const detailRows = [
+      ['Category', item.category || 'Miscellaneous'],
+      ['Maintenance', item.maintenanceDays ? `Every ${item.maintenanceDays} days` : 'Not set'],
+      ['Last service', equipmentDateLabel(item.lastServiceAt)],
+      ['Installed', equipmentDateLabel(item.installedDate)],
+      ['Purchased', equipmentDateLabel(item.purchaseDate)],
+      ['Serial / ID', item.serial || 'Not set'],
+      ['Manual', item.manual || 'Not set'],
+      ['Parts', item.parts || 'Not set']
+    ];
+    const photo = item.photoDataUrl ? `<img class="equipment-photo" src="${escapeHtml(item.photoDataUrl)}" alt="${escapeHtml(item.name)} photo">` : '';
+    return `<div class="equipment-card" id="equipment-card-${escapeHtml(item.id)}">
+      <div class="equipment-card-head" onclick="toggleEquipmentCard('${escapeHtml(item.id)}')">
+        <div><div class="equipment-card-title">${escapeHtml(item.name)}</div><div class="equipment-card-meta">${escapeHtml(title)} · ${escapeHtml(st.detail)}</div></div>
+        <div class="equipment-status ${st.cls}">${escapeHtml(st.label)}</div>
+      </div>
+      <div class="equipment-card-body">
+        ${photo}
+        <div class="equipment-detail-grid">${detailRows.map(([label,value]) => `<div class="equipment-detail"><div class="equipment-detail-label">${escapeHtml(label)}</div><div class="equipment-detail-value">${escapeHtml(value)}</div></div>`).join('')}</div>
+        ${item.notes ? `<div class="equipment-detail"><div class="equipment-detail-label">Notes</div><div class="equipment-detail-value">${escapeHtml(item.notes)}</div></div>` : ''}
+        <div class="equipment-card-actions">
+          <button class="equipment-primary-btn" type="button" onclick="recordEquipmentService('${escapeHtml(item.id)}')">Log Service</button>
+          <button class="equipment-secondary-btn" type="button" onclick="editEquipmentItem('${escapeHtml(item.id)}')">Edit</button>
+          <button class="equipment-secondary-btn" type="button" onclick="askAiAboutEquipment('${escapeHtml(item.id)}')">Ask AI</button>
+          <button class="equipment-danger-btn" type="button" onclick="deleteEquipmentItem('${escapeHtml(item.id)}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function askAiAboutEquipment(id) {
+  const item = getEquipmentItems().find(i => i.id === id);
+  if (!item) return;
+  closeLongTermTool('equipment');
+  showWorkspace?.('chat');
+  const input = document.getElementById('chat-input');
+  if (input) {
+    input.value = `Review this equipment item and tell me what maintenance I should do next: ${item.name}. Category: ${item.category || ''}. Brand/model: ${[item.brand,item.model].filter(Boolean).join(' ')}. Maintenance interval: ${item.maintenanceDays || 'not set'} days. Last service: ${item.lastServiceAt || 'not logged'}. Notes: ${item.notes || 'none'}.`;
+    input.focus();
+    try { autoResize(input); } catch(e) {}
+  }
+}
+
+function handleEquipmentPhotoUpload(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('⚠️ Choose an image'); return; }
+  if (file.size > 900000) { showToast('⚠️ Photo is large. Use a smaller/cropped image.'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const el = document.getElementById('equipment-photo-data');
+    if (el) el.value = String(reader.result || '');
+    showToast('📷 Equipment photo attached');
+  };
+  reader.onerror = () => showToast('⚠️ Could not read photo');
+  reader.readAsDataURL(file);
+}
+
+async function aiFillEquipmentItem() {
+  const name = equipmentFormValue('equipment-name');
+  const brand = equipmentFormValue('equipment-brand');
+  const model = equipmentFormValue('equipment-model');
+  if (!name && !brand && !model) { showToast('⚠️ Enter equipment name/model first'); return; }
+  const prompt = `Fill a reef aquarium equipment catalog entry for this gear: ${[name, brand, model].filter(Boolean).join(' ')}. Return ONLY valid JSON with this shape: {"category":"Return Pumps|Powerheads / Flow|Lighting|Filtration|Skimmer|Controller|Heating|Dosing|ATO|Reactors|UV|RODI / Mixing|Monitoring|Miscellaneous","brand":"","model":"","maintenanceDays":"number only as string","parts":"common replacement parts","notes":"short practical maintenance note"}.`;
+  try {
+    showToast('🤖 Filling equipment details...');
+    const result = await askOpenAI(prompt, [], 'quick');
+    const raw = result.answer || '';
+    let parsed = null;
+    try { parsed = JSON.parse(raw); } catch(e) {
+      const m = raw.match(/\{[\s\S]*\}/);
+      if (m) parsed = JSON.parse(m[0]);
+    }
+    if (!parsed) throw new Error('No JSON');
+    const allowed = equipmentCategories(defaultEquipmentItems()).filter(c => c !== 'All');
+    const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null && String(val).trim()) el.value = String(val).trim(); };
+    if (allowed.includes(parsed.category)) set('equipment-category', parsed.category);
+    set('equipment-brand', parsed.brand);
+    set('equipment-model', parsed.model);
+    set('equipment-maintenance-days', parsed.maintenanceDays);
+    set('equipment-parts', parsed.parts);
+    set('equipment-notes', parsed.notes);
+    showToast('✅ Equipment details filled');
+  } catch(e) {
+    showToast('⚠️ AI fill failed. Enter manually.');
+  }
+}
+
+function getEquipmentMemoryLines() {
+  return getEquipmentItems().slice(0, 30).map(item => {
+    const st = equipmentStatus(item);
+    return `${item.name} (${item.category || 'Equipment'}): ${st.label}, ${st.detail}; last service ${equipmentDateLabel(item.lastServiceAt)}; notes: ${item.notes || 'none'}`;
+  });
+}
+
 // ── Help overlay ─────────────────────────────────────────────────────────────
 const HELP_CONTENT = {
   home: {
@@ -5598,7 +5896,7 @@ function handleHelpOverlayClick(event) {
 }
 
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { closeHelp(); closeChatHistory(); closeLivestockCatalog(); closeLongTermTool('inventory'); closeLongTermTool('strategy'); closeLongTermTool('summary'); closeLongTermTool('tankhistory'); closeLongTermTool('familytree'); }
+  if (event.key === 'Escape') { closeHelp(); closeChatHistory(); closeLivestockCatalog(); closeLongTermTool('inventory'); closeLongTermTool('strategy'); closeLongTermTool('summary'); closeLongTermTool('tankhistory'); closeLongTermTool('familytree'); closeLongTermTool('equipment'); }
 });
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -5625,6 +5923,7 @@ renderTrendChart(currentTrendParam);
 renderTankStatus();
 renderTankDashboard();
 renderLongTermTools();
+renderEquipmentManager();
 migrateInventoryPhotosToIndexedDb();
 updateHomeChips();
 renderActionHistory();
