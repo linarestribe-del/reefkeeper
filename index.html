@@ -2811,6 +2811,10 @@ html.theme-dark .workspace-title, html.theme-dark .workspace-tile .tile-title, h
 html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detail, html.theme-dark .workspace-list-main span { color: #9bd8f0; }
 @media (max-width: 380px) { .workspace-grid, .workspace-grid.three { grid-template-columns: 1fr 1fr; } .workspace-title { font-size:24px; } }
 
+
+.tank-tabs-compact { margin: 4px 0 16px; }
+#page-tank .workspace-list-card { margin-top: 0; }
+
 </style>
 </head>
 <body>
@@ -2929,25 +2933,18 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
 
     <!-- MY TANK WORKSPACE -->
     <div class="page" id="page-tank">
-      <div class="card tank-dashboard-card my-tank-score-card">
-        <div class="card-title">⭐ Tank Score</div>
-        <div id="tank-dashboard-content-tank"></div>
-      </div>
-      <div class="workspace-pill-row tank-section-tabs" aria-label="My Tank sections">
+      <div class="workspace-pill-row tank-section-tabs tank-tabs-compact" aria-label="My Tank sections">
         <button class="workspace-pill active" type="button" onclick="openLivestockCatalog()">🐠 Fish</button>
         <button class="workspace-pill" type="button" onclick="openInventorySection('coral')">🪸 Coral</button>
         <button class="workspace-pill" type="button" onclick="openLongTermTool('equipment')">⚙️ Equipment</button>
         <button class="workspace-pill" type="button" onclick="showWorkspace('log')">📊 Params</button>
       </div>
-      <div class="workspace-grid">
-        <button class="workspace-tile" type="button" onclick="openLivestockCatalog()"><span class="tile-icon">🐠</span><span class="tile-title">Fish & Livestock</span><span class="tile-detail">Open the livestock catalog to browse and add fish, inverts, corals, photos, health, and notes.</span></button>
-        <button class="workspace-tile" type="button" onclick="openInventorySection('coral')"><span class="tile-icon">🪸</span><span class="tile-title">Coral Timeline</span><span class="tile-detail">Open the inventory on the coral tab for growth, AI analysis, and frag-family notes.</span></button>
-        <button class="workspace-tile" type="button" onclick="openLongTermTool('equipment')"><span class="tile-icon">🔧</span><span class="tile-title">Equipment</span><span class="tile-detail">Gear, maintenance intervals, and operating guardrails.</span></button>
-        <button class="workspace-tile" type="button" onclick="showWorkspace('settings')"><span class="tile-icon">🎯</span><span class="tile-title">Targets</span><span class="tile-detail">Personalized parameter ranges used by dashboard scoring.</span></button>
-      </div>
       <div class="workspace-section-title">Quick tank actions</div>
       <div class="workspace-list-card">
-        <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">🧪</span><span class="workspace-list-main"><strong>Log water test</strong><span>Save readings, view trends, and get AI analysis.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="openLivestockCatalog()"><span class="workspace-list-icon">🐠</span><span class="workspace-list-main"><strong>Fish & livestock catalog</strong><span>Browse, add, and identify livestock with photos, health notes, and AI help.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="openInventorySection('coral')"><span class="workspace-list-icon">🪸</span><span class="workspace-list-main"><strong>Coral inventory</strong><span>Open coral records, growth photos, health notes, and frag-family history.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="openLongTermTool('equipment')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Equipment manager</strong><span>View gear, maintenance intervals, service history, and operating notes.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">📊</span><span class="workspace-list-main"><strong>Parameters & targets</strong><span>Log tests, view trends, and adjust personalized scoring ranges.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Persistent facts, decisions, and livestock status.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-off work plan, reminders, and recurring reef tasks.</span></span><span class="workspace-chevron">›</span></button>
       </div>
@@ -3711,12 +3708,12 @@ html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detai
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260626-mytank-redesign"></script>
-<script src="state.js?v=20260626-mytank-redesign"></script>
-<script src="reef-ai-context.js?v=20260626-mytank-redesign"></script>
-<script src="days-off-plan.js?v=20260626-mytank-redesign"></script>
-<script src="diagnostics.js?v=20260626-mytank-redesign"></script>
-<script src="app.js?v=20260626-mytank-redesign"></script>
+<script src="storage.js?v=20260626-mytank-no-score"></script>
+<script src="state.js?v=20260626-mytank-no-score"></script>
+<script src="reef-ai-context.js?v=20260626-mytank-no-score"></script>
+<script src="days-off-plan.js?v=20260626-mytank-no-score"></script>
+<script src="diagnostics.js?v=20260626-mytank-no-score"></script>
+<script src="app.js?v=20260626-mytank-no-score"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
