@@ -1,4 +1,4 @@
-// Reef Keeper build marker: 20260619-refactor-v9
+// Reef Keeper build marker: 20260626-real-vision-1
 window.REEF_KEEPER_BUILD = '20260626-equipment-manager-v2';
 // Early Safari/PWA-safe completed-history aliases. These are intentionally defined before the rest of the app.
 (function(){
