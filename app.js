@@ -637,6 +637,8 @@ function openLongTermTool(tool) {
   if (tool === 'inventory') { renderInventory(); renderLivestockGuide(); }
   if (tool === 'strategy') { renderGuardrails(); renderMaintenanceIntervals(); }
   if (tool === 'summary') { refreshLongTermSummary(); }
+  if (tool === 'tankhistory') { renderTankHistory(); }
+  if (tool === 'familytree') { renderCoralFamilyTree(); }
   setTimeout(() => scrollToolToTop(tool), 20);
 }
 
@@ -695,7 +697,7 @@ function showPage(name, btn) {
   const content = document.querySelector('.app-content');
   if (content) content.scrollTop = 0;
   if (name === 'chat') autoRefreshQuickQuestionsOnChatOpen();
-  if (name === 'home') { renderTankStatus(); renderRecentChangesHome(); }
+  if (name === 'home') { renderTankStatus(); renderTankDashboard(); renderRecentChangesHome(); }
   if (name === 'log') renderLongTermTools();
 }
 
@@ -2273,7 +2275,11 @@ function normalizeInventoryItem(item) {
     facts: Array.isArray(item.facts) ? item.facts : (item.facts ? String(item.facts).split('\n').map(x => x.trim()).filter(Boolean) : (defaults.facts || [])),
     photoData: item.photoData || '',
     photoKey: item.photoKey || '',
-    photoUpdatedAt: item.photoUpdatedAt || ''
+    photoUpdatedAt: item.photoUpdatedAt || '',
+    photoAnalyses: Array.isArray(item.photoAnalyses) ? item.photoAnalyses : [],
+    parentColony: item.parentColony || item.parent || '',
+    fragDate: item.fragDate || item.acquiredDate || '',
+    lineageNotes: item.lineageNotes || ''
   };
 }
 
@@ -2577,6 +2583,8 @@ function currentInventoryFormItem() {
     status: document.getElementById('inventory-status')?.value || 'stable',
     scientificName: document.getElementById('inventory-scientific')?.value.trim() || '',
     location: document.getElementById('inventory-location')?.value.trim() || '',
+    parentColony: document.getElementById('inventory-parent')?.value.trim() || '',
+    fragDate: document.getElementById('inventory-frag-date')?.value.trim() || '',
     notes: document.getElementById('inventory-notes')?.value.trim() || ''
   };
 }
@@ -2591,6 +2599,9 @@ function renderInventoryAnalysisResult(result, itemId = '') {
     <div class="photo-analysis-section"><strong>Visible signs</strong>${list(result.visibleSigns)}</div>
     <div class="photo-analysis-section"><strong>Concerns</strong>${list(result.healthConcerns)}</div>
     ${result.growthAssessment ? `<div class="photo-analysis-section"><strong>Growth / coral condition</strong><br>${escapeHtml(result.growthAssessment)}</div>` : ''}
+    ${result.estimatedGrowthPercent && result.estimatedGrowthPercent !== 'unknown' ? `<div class="photo-analysis-section"><strong>Estimated growth change</strong><br>${escapeHtml(result.estimatedGrowthPercent)}</div>` : ''}
+    ${result.bodyCondition && result.bodyCondition !== 'unknown' ? `<div class="photo-analysis-section"><strong>Body/extension condition</strong><br>${escapeHtml(result.bodyCondition)}</div>` : ''}
+    ${result.timelineComparison && result.timelineComparison !== 'insufficient history' ? `<div class="photo-analysis-section"><strong>Compared with prior photos</strong><br>${escapeHtml(result.timelineComparison)}</div>` : ''}
     <div class="photo-analysis-section"><strong>Recommended actions</strong>${list(result.recommendedActions)}</div>
     ${result.trackingNotes ? `<div class="photo-analysis-section"><strong>Timeline note</strong><br>${escapeHtml(result.trackingNotes)}</div>` : ''}
     <div class="photo-analysis-section"><strong>Save suggestion:</strong> ${escapeHtml(result.saveSuggestion || 'growth progress photo')}</div>
@@ -2685,6 +2696,9 @@ async function saveInventoryAnalysisToTimeline() {
       visibleSigns: pendingInventoryAnalysis.result.visibleSigns || [],
       healthConcerns: pendingInventoryAnalysis.result.healthConcerns || [],
       growthAssessment: pendingInventoryAnalysis.result.growthAssessment || '',
+      estimatedGrowthPercent: pendingInventoryAnalysis.result.estimatedGrowthPercent || 'unknown',
+      bodyCondition: pendingInventoryAnalysis.result.bodyCondition || 'unknown',
+      timelineComparison: pendingInventoryAnalysis.result.timelineComparison || 'insufficient history',
       recommendedActions: pendingInventoryAnalysis.result.recommendedActions || [],
       trackingNotes: pendingInventoryAnalysis.result.trackingNotes || '',
       saveSuggestion: pendingInventoryAnalysis.result.saveSuggestion || 'growth progress photo'
@@ -2777,6 +2791,8 @@ async function saveInventoryItem() {
   const status = document.getElementById('inventory-status')?.value || 'stable';
   const location = document.getElementById('inventory-location')?.value.trim() || '';
   const naturalRange = document.getElementById('inventory-range')?.value.trim() || '';
+  const parentColony = document.getElementById('inventory-parent')?.value.trim() || '';
+  const fragDate = document.getElementById('inventory-frag-date')?.value.trim() || '';
   const scientificName = document.getElementById('inventory-scientific')?.value.trim() || '';
   const factsText = document.getElementById('inventory-facts')?.value.trim() || '';
   const facts = factsText ? factsText.split('\n').map(x => x.trim()).filter(Boolean) : [];
@@ -2846,7 +2862,7 @@ function clearInventoryForm() {
   // Make sure any late AI-fill response cannot repopulate the fields after save/clear.
   inventoryAiFillRequestId++;
   inventoryAiFillInProgress = false;
-  ['inventory-name','inventory-location','inventory-range','inventory-scientific','inventory-facts','inventory-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['inventory-name','inventory-location','inventory-parent','inventory-frag-date','inventory-range','inventory-scientific','inventory-facts','inventory-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const type = document.getElementById('inventory-type'); if (type) type.value = 'fish';
   const status = document.getElementById('inventory-status'); if (status) status.value = 'stable';
   const file = document.getElementById('inventory-photo-file');
@@ -2878,6 +2894,8 @@ async function loadInventoryItemForEdit(id) {
   const map = {
     'inventory-name': item.name || '',
     'inventory-location': item.location || '',
+    'inventory-parent': item.parentColony || '',
+    'inventory-frag-date': item.fragDate || '',
     'inventory-range': item.naturalRange || '',
     'inventory-scientific': item.scientificName || '',
     'inventory-facts': (item.facts || []).join('\n'),
@@ -2944,7 +2962,7 @@ function renderInventory() {
       <div class="inventory-main">
         <div class="inventory-name">${escapeHtml(i.name)}</div>
         ${i.scientificName ? `<div class="inventory-species">${escapeHtml(i.scientificName)}</div>` : ''}
-        <div class="inventory-meta">${escapeHtml(i.type || 'other')} · ${escapeHtml(i.status || 'stable')}${i.location ? ` · ${escapeHtml(i.location)}` : ''}${factsCount ? ` · ${factsCount} facts` : ''}</div>
+        <div class="inventory-meta">${escapeHtml(i.type || 'other')} · ${escapeHtml(i.status || 'stable')}${i.location ? ` · ${escapeHtml(i.location)}` : ''}${i.parentColony ? ` · Parent: ${escapeHtml(i.parentColony)}` : ''}${factsCount ? ` · ${factsCount} facts` : ''}</div>
         ${i.notes ? `<div class="inventory-notes-text">${escapeHtml(i.notes)}</div>` : ''}
         ${Array.isArray(i.photoAnalyses) && i.photoAnalyses.length ? `<div class="inventory-notes-text"><strong>Latest photo:</strong> ${escapeHtml(i.photoAnalyses[0].trackingNotes || i.photoAnalyses[0].growthAssessment || i.photoAnalyses[0].healthStatus || 'Analysis saved')}</div>` : ''}
         <div class="inventory-actions">
@@ -2952,9 +2970,11 @@ function renderInventory() {
           <input class="inventory-photo-input" id="inv-photo-${escapeHtml(i.id)}" type="file" accept="image/*" onchange="uploadInventoryPhoto('${escapeHtml(i.id)}', event)">
           <label class="inventory-small-btn" for="inv-analyze-${escapeHtml(i.id)}">Analyze</label>
           <input class="inventory-photo-input" id="inv-analyze-${escapeHtml(i.id)}" type="file" accept="image/*" capture="environment" onchange="analyzeInventoryPhoto('${escapeHtml(i.id)}', event)">
+          ${Array.isArray(i.photoAnalyses) && i.photoAnalyses.length ? `<button class="inventory-small-btn" onclick="toggleInventoryTimeline('${escapeHtml(i.id)}')">Timeline</button>` : ''}
           <button class="inventory-small-btn" onclick="loadInventoryItemForEdit('${escapeHtml(i.id)}')">Edit</button>
           ${inventoryPhotoKeyFor(i) ? `<button class="inventory-small-btn danger" onclick="removeInventoryPhoto('${escapeHtml(i.id)}')">Remove photo</button>` : ''}
         </div>
+        <div class="timeline-list" id="timeline-${escapeHtml(i.id)}" style="display:none;"></div>
       </div>
       <button class="reminder-delete-small" onclick="deleteInventoryItem('${escapeHtml(i.id)}')" aria-label="Delete inventory item">×</button>
     </div>`;
@@ -3021,6 +3041,8 @@ function getLivestockGuideHtml(filterGroup = 'all') {
         ${i.naturalRange ? `<div class="livestock-guide-range">Natural range: ${escapeHtml(i.naturalRange)}</div>` : ''}
         ${facts.length ? `<ul class="livestock-guide-facts">${facts.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>` : ''}
         ${i.notes ? `<div class="livestock-guide-notes"><strong>Your tank:</strong> ${escapeHtml(i.notes)}</div>` : ''}
+        ${Array.isArray(i.photoAnalyses) && i.photoAnalyses.length ? `<div class="timeline-chip-row"><span class="timeline-chip">${i.photoAnalyses.length} photo checks</span><span class="timeline-chip">Latest: ${escapeHtml(i.photoAnalyses[0].healthStatus || 'saved')}</span></div>` : ''}
+        ${i.parentColony || i.fragDate ? `<div class="livestock-guide-notes"><strong>Lineage:</strong> ${i.parentColony ? `Parent: ${escapeHtml(i.parentColony)}. ` : ''}${i.fragDate ? `Frag/acquired: ${escapeHtml(i.fragDate)}.` : ''}</div>` : ''}
       </div>
     </article>`;
   }).join('');
@@ -3052,6 +3074,110 @@ function printLivestockGuide() {
     document.querySelectorAll('.livestock-guide-card').forEach(card => card.classList.add('expanded'));
     window.print();
   }, 150);
+}
+
+
+function latestAnalysisForItem(item){
+  const list = Array.isArray(item?.photoAnalyses) ? item.photoAnalyses : [];
+  return list.length ? list[0] : null;
+}
+
+async function timelineEntryHtml(entry){
+  let img = '';
+  try { if (entry.imageKey) img = await getInventoryPhotoData(entry.imageKey); } catch(e) {}
+  const date = entry.analyzedAt ? memoryLineDate({ isoDate: entry.analyzedAt }) : 'Photo check';
+  const title = `${entry.healthStatus || 'photo'} · ${entry.confidence || 'saved'} confidence`;
+  const text = [entry.trackingNotes, entry.growthAssessment, entry.estimatedGrowthPercent && entry.estimatedGrowthPercent !== 'unknown' ? `Growth: ${entry.estimatedGrowthPercent}` : '', entry.bodyCondition && entry.bodyCondition !== 'unknown' ? `Condition: ${entry.bodyCondition}` : '', entry.timelineComparison && entry.timelineComparison !== 'insufficient history' ? `Comparison: ${entry.timelineComparison}` : '', Array.isArray(entry.healthConcerns) && entry.healthConcerns.length ? `Concerns: ${entry.healthConcerns.join('; ')}` : ''].filter(Boolean).join('\n');
+  return `<div class="timeline-entry"><div class="timeline-entry-photo">${img ? `<img src="${img}" alt="Timeline photo">` : '📷'}</div><div><div class="timeline-entry-title">${escapeHtml(title)}</div><div class="timeline-entry-meta">${escapeHtml(date)} · ${escapeHtml(entry.saveSuggestion || 'timeline')}</div><div class="timeline-entry-text">${escapeHtml(text || 'Analysis saved.')}</div></div></div>`;
+}
+
+async function toggleInventoryTimeline(id){
+  const el = document.getElementById(`timeline-${CSS.escape(id)}`) || document.getElementById(`timeline-${id}`);
+  const item = getInventoryItems().find(i => String(i.id) === String(id));
+  if (!el || !item) return;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  const entries = Array.isArray(item.photoAnalyses) ? item.photoAnalyses : [];
+  el.innerHTML = entries.length ? (await Promise.all(entries.slice(0,10).map(timelineEntryHtml))).join('') : '<div class="empty-state">No timeline entries yet.</div>';
+  el.style.display = 'grid';
+}
+
+function tankDashboardScore(){
+  const latest = getLatestLogForStatus();
+  let score = 84;
+  if (!latest) return { score:70, level:'Needs logs' };
+  const penalties = { critical:18, warn:8 };
+  ['po4','alk','no3','ca','mg','ph','sal'].forEach(k => {
+    const c = classifyStatusValue(k, latest[k]);
+    if (penalties[c]) score -= penalties[c];
+  });
+  const watch = getInventoryItems().filter(i => ['watch','recovering','stressed'].includes(i.status)).length;
+  score -= Math.min(12, watch * 3);
+  score = Math.max(20, Math.min(99, score));
+  return { score, level: score >= 85 ? 'Strong' : score >= 70 ? 'Watch' : 'Recovery' };
+}
+
+function renderTankDashboard(){
+  const el = document.getElementById('tank-dashboard-content');
+  if (!el) return;
+  const latest = getLatestLogForStatus();
+  const { score, level } = tankDashboardScore();
+  const inventory = getInventoryItems();
+  const watch = inventory.filter(i => ['watch','recovering','stressed'].includes(i.status));
+  const coralAnalyses = inventory.filter(i => Array.isArray(i.photoAnalyses) && i.photoAnalyses.length);
+  const photoLine = coralAnalyses.length ? `${coralAnalyses.length} livestock item${coralAnalyses.length===1?'':'s'} have AI photo timelines.` : 'No AI photo timelines saved yet.';
+  const trendLine = latest ? buildLogMemoryLine(latest).replace(/^[^:]+:\s*/, '') : 'No user parameter log yet.';
+  const watchLine = watch.length ? watch.slice(0,3).map(i => `${i.name} (${i.status})`).join(', ') : 'No livestock flagged as stressed/watch.';
+  const next = !latest ? 'Log parameters, then add a full-tank photo.' : watch.length ? 'Open Livestock Inventory and add/update photos for watch items.' : 'Add a monthly full-tank photo to build visual history.';
+  el.innerHTML = `<div class="tank-dashboard-grid"><div class="tank-score-ring" style="--score:${score}"><div class="tank-score-num">${score}</div><div class="tank-score-label">${escapeHtml(level)}</div></div><div class="tank-dashboard-list"><div class="tank-dashboard-row"><strong>Latest:</strong> ${escapeHtml(trendLine)}</div><div class="tank-dashboard-row"><strong>Watch:</strong> ${escapeHtml(watchLine)}</div><div class="tank-dashboard-row"><strong>Vision:</strong> ${escapeHtml(photoLine)}</div><div class="tank-dashboard-row"><strong>Next:</strong> ${escapeHtml(next)}</div></div></div><div class="tank-dashboard-actions"><button class="dashboard-btn" type="button" onclick="openLongTermTool('inventory')">Open Photo Timeline</button><button class="dashboard-btn secondary" type="button" onclick="openLongTermTool('tankhistory')">Add Full-Tank Photo</button></div>`;
+}
+
+const TANK_HISTORY_KEY = 'reef_tank_visual_history_v13';
+function getTankHistory(){ return memoryArray(TANK_HISTORY_KEY); }
+function setTankHistory(items){ try { localStorage.setItem(TANK_HISTORY_KEY, JSON.stringify((items||[]).slice(0,60))); return true; } catch(e){ return false; } }
+async function saveTankHistoryPhoto(event){
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  try {
+    const dataUrl = await resizeInventoryImage(file, 1280);
+    const id = 'tank-photo-' + Date.now().toString(36);
+    const key = 'tank-history-' + id;
+    await saveInventoryPhotoData(key, dataUrl);
+    const title = document.getElementById('tank-history-title')?.value.trim() || 'Full-tank photo';
+    const notes = document.getElementById('tank-history-notes')?.value.trim() || '';
+    const items = getTankHistory();
+    items.unshift({ id, imageKey:key, title, notes, createdAt:new Date().toISOString() });
+    if (!setTankHistory(items)) throw new Error('Could not save visual history.');
+    const t = document.getElementById('tank-history-title'); if (t) t.value = '';
+    const n = document.getElementById('tank-history-notes'); if (n) n.value = '';
+    renderTankHistory(); renderTankDashboard(); showToast('📷 Full-tank photo saved');
+  } catch(e){ console.error(e); showToast('⚠️ Could not save tank photo'); }
+  finally { if (event?.target) event.target.value = ''; }
+}
+async function renderTankHistory(){
+  const el = document.getElementById('tank-history-list');
+  if (!el) return;
+  const items = getTankHistory();
+  if (!items.length) { el.innerHTML = '<div class="empty-state"><div class="empty-emoji">📷</div>No full-tank photos saved yet.</div>'; return; }
+  const html = [];
+  for (const item of items) {
+    let img = ''; try { img = await getInventoryPhotoData(item.imageKey); } catch(e) {}
+    html.push(`<div class="timeline-entry"><div class="timeline-entry-photo">${img ? `<img src="${img}" alt="${escapeHtml(item.title)}">` : '📷'}</div><div><div class="timeline-entry-title">${escapeHtml(item.title)}</div><div class="timeline-entry-meta">${escapeHtml(memoryLineDate({ isoDate:item.createdAt }))} · visual tank history</div><div class="timeline-entry-text">${escapeHtml(item.notes || 'Full-tank reference photo saved.')}</div></div></div>`);
+  }
+  el.innerHTML = html.join('');
+}
+function renderCoralFamilyTree(){
+  const el = document.getElementById('coral-family-tree-list');
+  if (!el) return;
+  const corals = getInventoryItems().filter(i => ['coral','anemone'].includes(String(i.type||'').toLowerCase()) && (i.status || '') !== 'lost/resolved');
+  const withLineage = corals.filter(i => i.parentColony || i.fragDate || i.lineageNotes);
+  if (!withLineage.length) { el.innerHTML = '<div class="empty-state"><div class="empty-emoji">🪸</div>No coral lineage entries yet. Add parent colony or frag date in the inventory form.</div>'; return; }
+  const groups = new Map();
+  withLineage.forEach(i => {
+    const parent = i.parentColony || 'Unassigned parent';
+    if (!groups.has(parent)) groups.set(parent, []);
+    groups.get(parent).push(i);
+  });
+  el.innerHTML = Array.from(groups.entries()).map(([parent, children]) => `<div class="family-tree-card"><div class="family-tree-title">${escapeHtml(parent)}</div><div class="family-tree-meta">${children.length} related coral${children.length===1?'':'s'}</div><div class="family-tree-children">${children.map(c => `<div class="family-tree-child">↳ ${escapeHtml(c.name)}${c.fragDate ? ` · ${escapeHtml(c.fragDate)}` : ''}${c.status ? ` · ${escapeHtml(c.status)}` : ''}</div>`).join('')}</div></div>`).join('');
 }
 
 function defaultGuardrails() {
@@ -5257,7 +5383,7 @@ function handleHelpOverlayClick(event) {
 }
 
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { closeHelp(); closeChatHistory(); closeLivestockCatalog(); closeLongTermTool('inventory'); closeLongTermTool('strategy'); closeLongTermTool('summary'); }
+  if (event.key === 'Escape') { closeHelp(); closeChatHistory(); closeLivestockCatalog(); closeLongTermTool('inventory'); closeLongTermTool('strategy'); closeLongTermTool('summary'); closeLongTermTool('tankhistory'); closeLongTermTool('familytree'); }
 });
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -5282,6 +5408,7 @@ renderLogHistory();
 renderTrendControls();
 renderTrendChart(currentTrendParam);
 renderTankStatus();
+renderTankDashboard();
 renderLongTermTools();
 migrateInventoryPhotosToIndexedDb();
 updateHomeChips();

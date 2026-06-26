@@ -28,6 +28,9 @@ export default async function handler(req, res) {
   "visibleSigns": ["short visible observation"],
   "healthConcerns": ["short concern or empty if none visible"],
   "growthAssessment": "short growth/color/polyp-extension/tissue assessment, especially for coral",
+  "estimatedGrowthPercent": "conservative rough percent change vs prior photo, or unknown",
+  "bodyCondition": "fish body condition / coral extension summary, or unknown",
+  "timelineComparison": "what changed compared with prior analyses, or insufficient history",
   "recommendedActions": ["safe practical next step"],
   "trackingNotes": "one concise note suitable for a growth/health timeline",
   "saveSuggestion": "new livestock entry|update existing item|growth progress photo|health concern log|do not save"
@@ -80,6 +83,9 @@ ${JSON.stringify(context, null, 2).slice(0, 9000)}`;
       visibleSigns: cleanArray(parsed.visibleSigns),
       healthConcerns: cleanArray(parsed.healthConcerns),
       growthAssessment: String(parsed.growthAssessment || '').slice(0, 500),
+      estimatedGrowthPercent: String(parsed.estimatedGrowthPercent || 'unknown').slice(0, 80),
+      bodyCondition: String(parsed.bodyCondition || 'unknown').slice(0, 240),
+      timelineComparison: String(parsed.timelineComparison || 'insufficient history').slice(0, 500),
       recommendedActions: cleanArray(parsed.recommendedActions),
       trackingNotes: String(parsed.trackingNotes || '').slice(0, 500),
       saveSuggestion: String(parsed.saveSuggestion || 'growth progress photo').slice(0, 80)
