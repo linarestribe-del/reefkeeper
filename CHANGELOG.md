@@ -1,5 +1,33 @@
 # Reef Keeper Changelog
 
+## v3.2.0 — Phase 2 CSS Refactor
+
+### Changed
+- `index.html`
+  - Removed the large inline `<style>` block.
+  - Added a stylesheet link to `css/app.css`.
+  - Updated cache-busting strings to v3.2.0.
+  - Updated the visible version label in Settings.
+- `css/app.css`
+  - New stylesheet containing the app's existing CSS.
+  - Background image paths were adjusted for the new `css/` folder location.
+
+### Not Changed
+- No feature behavior was intentionally changed.
+- No API files were changed.
+- No app data/storage keys were changed.
+- No visual redesign was intended.
+
+### Test Checklist
+- [ ] Home loads normally.
+- [ ] Background still appears.
+- [ ] Bottom navigation works.
+- [ ] My Tank opens and each section works.
+- [ ] My Tank → Equip. shows installed/default equipment.
+- [ ] AI Vision opens.
+- [ ] Ask AI opens.
+- [ ] More/settings open.
+
 ## v3.1.2 — Equipment Merge Fix
 
 ### Changed
