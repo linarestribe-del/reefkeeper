@@ -2735,6 +2735,26 @@ html.theme-dark .target-input{background:rgba(8,27,42,.94);border-color:rgba(155
 }
 .workspace-title { font-size: 28px; font-weight: 900; color: var(--text-dark); line-height: 1.05; }
 .workspace-subtitle { margin-top: 6px; font-size: 14px; font-weight: 800; color: var(--text-light); line-height: 1.45; }
+.compact-page-bar {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin: 0 0 12px; padding: 4px 2px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.28);
+}
+.compact-page-title {
+  font-size: 20px; font-weight: 900; color: white; line-height:1;
+  text-shadow: 0 2px 8px rgba(0,60,120,0.28);
+}
+.compact-page-subtitle {
+  margin-top: 4px; font-size: 12px; font-weight: 800; color: rgba(255,255,255,0.82);
+  line-height:1.25; text-shadow: 0 2px 8px rgba(0,60,120,0.20);
+}
+.compact-page-action {
+  border: 0; border-radius: 999px; padding: 8px 12px;
+  background: rgba(255,255,255,0.88); color: var(--text-mid);
+  font-family:'Nunito',sans-serif; font-size:12px; font-weight:900;
+  box-shadow: var(--shadow); white-space:nowrap; cursor:pointer;
+}
+.compact-page-action:active { transform: scale(0.97); }
 .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
 .workspace-grid.three { grid-template-columns: repeat(3, 1fr); }
 .workspace-tile {
@@ -2793,6 +2813,8 @@ html.theme-dark .workspace-pill,
 html.theme-dark .workspace-list-card { background: rgba(8,27,42,0.94); border-color: rgba(155,216,240,0.18); }
 html.theme-dark .workspace-title, html.theme-dark .workspace-tile .tile-title, html.theme-dark .workspace-list-main strong { color: #ecfbff; }
 html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detail, html.theme-dark .workspace-list-main span { color: #9bd8f0; }
+html.theme-dark .compact-page-action { background: rgba(8,27,42,0.94); border:1px solid rgba(155,216,240,0.18); color:#ecfbff; }
+html.theme-dark .compact-page-bar { border-bottom-color: rgba(155,216,240,0.18); }
 
 
 /* My Tank cleanup v2.0.1 */
@@ -2993,11 +3015,11 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
     <!-- MY TANK WORKSPACE -->
     <div class="page mytank-page" id="page-tank">
       <div class="mytank-main">
-        <div class="workspace-section-title">My Tank</div>
-        <div class="workspace-list-card">
-          <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">🧪</span><span class="workspace-list-main"><strong>Log water test</strong><span>Save readings, view trends, and get AI analysis.</span></span><span class="workspace-chevron">›</span></button>
-          <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Persistent facts, decisions, and livestock status.</span></span><span class="workspace-chevron">›</span></button>
-          <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-off work plan, reminders, and recurring reef tasks.</span></span><span class="workspace-chevron">›</span></button>
+        <div class="compact-page-bar">
+          <div>
+            <div class="compact-page-title">My Tank</div>
+            <div class="compact-page-subtitle">Choose Fish, Coral, Equip., or Params below.</div>
+          </div>
         </div>
       </div>
       <div class="mytank-bottom-tabs" aria-label="My Tank sections">
@@ -3010,9 +3032,11 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
 
     <!-- AI VISION WORKSPACE -->
     <div class="page" id="page-vision">
-      <div class="workspace-hero">
-        <div class="workspace-title">AI Vision</div>
-        <div class="workspace-subtitle">One place for coral, fish, full-tank, algae, pest, ICP, and equipment photo analysis.</div>
+      <div class="compact-page-bar">
+        <div>
+          <div class="compact-page-title">AI Vision</div>
+          <div class="compact-page-subtitle">Photo analysis for livestock, full tank, pests, tests, and equipment.</div>
+        </div>
       </div>
       <div class="workspace-grid">
         <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this coral photo. Identify the coral if possible, evaluate color, tissue, polyp extension, algae/pest irritation, and growth signs. Be honest about uncertainty.', true)"><span class="tile-icon">🪸</span><span class="tile-title">Coral</span><span class="tile-detail">ID, health, color, tissue, growth.</span></button>
@@ -3030,9 +3054,11 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
 
     <!-- MORE WORKSPACE -->
     <div class="page" id="page-more">
-      <div class="workspace-hero">
-        <div class="workspace-title">More</div>
-        <div class="workspace-subtitle">Planner, reports, settings, backups, diagnostics, and long-term reef tools.</div>
+      <div class="compact-page-bar">
+        <div>
+          <div class="compact-page-title">More</div>
+          <div class="compact-page-subtitle">Planner, reports, settings, backup, and tools.</div>
+        </div>
       </div>
       <div class="workspace-list-card">
         <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
