@@ -3127,7 +3127,7 @@ html.theme-dark .mytank-helper-card {
         <div class="mytank-bottom-tabs" aria-label="My Tank sections">
           <button class="mytank-bottom-tab active" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish</strong></button>
           <button class="mytank-bottom-tab" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral</strong></button>
-          <button class="mytank-bottom-tab" type="button" onclick="openLongTermTool('equipment')"><span>⚙️</span><strong>Equip.</strong></button>
+          <button class="mytank-bottom-tab" type="button" onclick="openMyTankEquipment()"><span>⚙️</span><strong>Equip.</strong></button>
           <button class="mytank-bottom-tab" type="button" onclick="showWorkspace('log')"><span>📊</span><strong>Params</strong></button>
         </div>
         <div class="mytank-helper-card">Choose a section above. Fish and Coral open the livestock catalog, Equip. opens your equipment manager, and Params opens parameter logging.</div>
@@ -3921,6 +3921,84 @@ function showWorkspace(name, btn) {
     }, 60);
   }
 }
+
+function openMyTankEquipment() {
+  // Robust My Tank equipment entry point. This opens the full equipment manager
+  // and also backfills a readable equipment list if the normal renderer fails
+  // because of cache, storage, or render-order issues.
+  try {
+    if (typeof openLongTermTool === 'function') openLongTermTool('equipment');
+    else document.getElementById('tool-equipment-overlay')?.classList.add('visible');
+  } catch(e) {
+    document.getElementById('tool-equipment-overlay')?.classList.add('visible');
+  }
+  setTimeout(() => {
+    try { if (typeof renderEquipmentManager === 'function') renderEquipmentManager(); } catch(e) {}
+    try { ensureMyTankEquipmentListVisible(); } catch(e) {}
+  }, 80);
+}
+
+function ensureMyTankEquipmentListVisible() {
+  const list = document.getElementById('equipment-list');
+  const filters = document.getElementById('equipment-filter-row');
+  if (!list) return;
+  const currentText = (list.textContent || '').trim().toLowerCase();
+  const hasCards = list.querySelector('.equipment-card');
+  if (hasCards && !currentText.includes('no equipment saved')) return;
+
+  let items = [];
+  try { if (typeof getEquipmentItems === 'function') items = getEquipmentItems(); } catch(e) { items = []; }
+  if (!Array.isArray(items) || !items.length) {
+    const now = new Date().toISOString();
+    items = [
+      ['eq-return-1','Jebao MDP Smart DC Return Pump 1','Return Pumps','Jebao','MDP Smart DC','90','Primary return pump.'],
+      ['eq-return-2','Jebao MDP Smart DC Return Pump 2','Return Pumps','Jebao','MDP Smart DC','90','Second return pump.'],
+      ['eq-heater-1','Hygger 802 Titanium Heater 1','Heating','Hygger','802 Titanium','30','Inspect heater and Apex control state.'],
+      ['eq-heater-2','Hygger 802 Titanium Heater 2','Heating','Hygger','802 Titanium','30','Inspect heater and Apex control state.'],
+      ['eq-filter-roller','Bubble Magus Filter Roller','Filtration','Bubble Magus','Filter Roller','30','Track fleece changes and roller cleaning.'],
+      ['eq-skimmer','Simplicity 240 DC Protein Skimmer','Skimmer','Simplicity','240 DC','7','Outdoor air intake. Clean cup/neck regularly.'],
+      ['eq-uv','IceCap 27W UV Sterilizer','UV','IceCap','27W UV','90','Track sleeve cleaning and bulb replacement.'],
+      ['eq-gfo','IceCap 120 GFO Reactor','Reactors','IceCap','120','42','Track media changes and PO4 response.'],
+      ['eq-diy-reactor','DIY Two-Stage GFO / ROX Carbon Reactor','Reactors','DIY','Two-stage reactor','30','GFO then ROX 0.8 carbon separated by foam.'],
+      ['eq-light-1','A8se 11 Max Light 1','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+      ['eq-light-2','A8se 11 Max Light 2','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+      ['eq-light-3','A8se 11 Max Light 3','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+      ['eq-light-4','A8se 11 Max Light 4','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+      ['eq-mp40-1','MP40 Powerhead 1','Powerheads / Flow','EcoTech','MP40','60','Back wall flow. Track wet-side cleaning.'],
+      ['eq-mp40-2','MP40 Powerhead 2','Powerheads / Flow','EcoTech','MP40','60','Back wall flow. Track wet-side cleaning.'],
+      ['eq-dmp20','Jebao DMP20 Flow Pump','Powerheads / Flow','Jebao','DMP20','60','Left wall flow pump.'],
+      ['eq-ato','Useek Smart ATO','ATO','Useek','Smart ATO','30','10 gallon reservoir. Track sensor cleaning.'],
+      ['eq-apex','Neptune Apex Controller','Controller','Neptune Systems','Apex','90','Track probe calibration and outlet programming.'],
+      ['eq-rodi','5-Stage RODI with Booster Pump','RODI / Mixing','Mixed','5-stage RODI + booster','30','Track TDS, DI resin, and filters.'],
+      ['eq-mixing','55 Gallon Saltwater Mixing Drum','RODI / Mixing','Brute','55 gallon drum','30','Track cleaning and salinity consistency.'],
+      ['eq-kalk','DIY Kalk Stirrer','Dosing','DIY','Kalk stirrer','30','Not currently running. Keep kalk off until calcium/alk are ready.']
+    ].map(([id,name,category,brand,model,maintenanceDays,notes]) => ({ id,name,category,brand,model,maintenanceDays,notes,createdAt:now,defaultItem:true,status:'active' }));
+    try { if (typeof setEquipmentItems === 'function') setEquipmentItems(items); } catch(e) {}
+  }
+
+  if (filters) {
+    const cats = ['All', ...Array.from(new Set(items.map(i => i.category || 'Miscellaneous'))).sort()];
+    filters.innerHTML = cats.map(cat => `<button class="equipment-filter-btn${cat === 'All' ? ' active' : ''}" type="button" onclick="setEquipmentFilter && setEquipmentFilter('${String(cat).replace(/'/g, '\&#39;')}')">${cat}</button>`).join('');
+  }
+  list.innerHTML = items.map(item => `
+    <div class="equipment-card expanded" id="equipment-card-${String(item.id || '').replace(/[^a-zA-Z0-9_-]/g,'')}">
+      <div class="equipment-card-head">
+        <div>
+          <div class="equipment-card-title">${escapeHtml(String(item.name || 'Unnamed equipment'))}</div>
+          <div class="equipment-card-meta">${escapeHtml(String(item.category || 'Equipment'))} · ${escapeHtml([item.brand, item.model].filter(Boolean).join(' ') || 'No model saved')}</div>
+        </div>
+        <div class="equipment-status good">Installed</div>
+      </div>
+      <div class="equipment-card-body" style="display:block;">
+        <div class="equipment-detail-grid">
+          <div class="equipment-detail"><div class="equipment-detail-label">Maintenance</div><div class="equipment-detail-value">${escapeHtml(item.maintenanceDays ? `Every ${item.maintenanceDays} days` : 'Not set')}</div></div>
+          <div class="equipment-detail"><div class="equipment-detail-label">Status</div><div class="equipment-detail-value">${escapeHtml(String(item.status || 'active'))}</div></div>
+        </div>
+        ${item.notes ? `<div class="equipment-detail"><div class="equipment-detail-label">Notes</div><div class="equipment-detail-value">${escapeHtml(String(item.notes))}</div></div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
 function startVisionPrompt(prompt, preferCamera) {
   showWorkspace('chat');
   const input = document.getElementById('chat-input');

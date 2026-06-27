@@ -39,3 +39,17 @@
 - [ ] Save a new equipment item.
 - [ ] Log service on one equipment item.
 - [ ] Confirm the app still loads Home, AI Vision, Ask AI, and More.
+## v3.1.3 — My Tank Equipment Display Fix
+
+### Changed
+- `index.html`
+  - Routed My Tank → Equip. through a dedicated `openMyTankEquipment()` function.
+  - Forces the equipment manager to render after the overlay opens.
+  - Adds a defensive equipment-list backfill so the installed/default equipment appears even if the normal renderer or stored equipment state is empty.
+
+### Test Checklist
+- [ ] My Tank → Equip. opens the Equipment overlay.
+- [ ] Installed/default equipment appears without needing to add equipment manually.
+- [ ] Existing saved equipment still appears.
+- [ ] Fish, Coral, and Params buttons still work.
+
