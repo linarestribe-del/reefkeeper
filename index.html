@@ -2931,26 +2931,24 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
 @media (max-width: 380px) { .workspace-grid, .workspace-grid.three { grid-template-columns: 1fr 1fr; } .workspace-title { font-size:24px; } }
 
 
-/* v2.0.5 background-only reef image
-   Uses a background-only PNG. Do not use the full mockup screenshot as a background,
-   because that image includes UI text/cards and will appear duplicated behind the app. */
+
+/* v2.1 stabilization: scope My Tank selector to My Tank only and use a true background-only reef asset. */
+.page.mytank-page { display: none; }
+.page.mytank-page.active { display: flex; }
+
 .ocean-bg {
-  background: url("assets/images/reef-background.png") center top / cover no-repeat fixed !important;
+  background-color: #0065aa;
+  background-image: url('assets/images/reef-background.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
 }
 .ocean-bg::before,
-.ocean-bg::after {
-  display: none !important;
-}
+.ocean-bg::after { display: none; }
 .ocean-bg .bubbles,
-.ocean-bg .bubble,
 .ocean-bg .seaweed-container,
 .ocean-bg .sandy-bottom,
-.ocean-bg .critter {
-  display: none !important;
-}
-html.theme-dark .ocean-bg {
-  background: url("assets/images/reef-background.png") center top / cover no-repeat fixed !important;
-}
+.ocean-bg .critter { display: none; }
 
 </style>
 </head>
@@ -3420,7 +3418,7 @@ html.theme-dark .ocean-bg {
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v12 Night Reef + Livestock Vision</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v2.1 UI Stabilization</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3848,12 +3846,12 @@ html.theme-dark .ocean-bg {
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260626-equipment-manager"></script>
-<script src="state.js?v=20260626-equipment-manager"></script>
-<script src="reef-ai-context.js?v=20260626-equipment-manager"></script>
-<script src="days-off-plan.js?v=20260626-equipment-manager"></script>
-<script src="diagnostics.js?v=20260626-equipment-manager"></script>
-<script src="app.js?v=20260626-equipment-manager"></script>
+<script src="storage.js?v=20260626-v2-1-stabilization"></script>
+<script src="state.js?v=20260626-v2-1-stabilization"></script>
+<script src="reef-ai-context.js?v=20260626-v2-1-stabilization"></script>
+<script src="days-off-plan.js?v=20260626-v2-1-stabilization"></script>
+<script src="diagnostics.js?v=20260626-v2-1-stabilization"></script>
+<script src="app.js?v=20260626-v2-1-stabilization"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
