@@ -2767,22 +2767,6 @@ html.theme-dark .target-input{background:rgba(8,27,42,.94);border-color:rgba(155
   white-space: nowrap;
 }
 .workspace-pill.active { background: linear-gradient(135deg, var(--ocean-deep), var(--ocean-mid)); color: white; border-color: transparent; }
-.tank-section-tabs {
-  display:grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap:8px;
-  overflow:visible;
-  margin: 0 0 14px;
-  padding: 0;
-}
-.tank-section-tabs .workspace-pill {
-  width:100%;
-  padding: 10px 7px;
-  text-align:center;
-  font-size: 12px;
-}
-.my-tank-score-card { margin-top: 0; }
-@media(max-width:380px){ .tank-section-tabs .workspace-pill{font-size:11px;padding:9px 5px;} }
 .workspace-section-title {
   font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em;
   color: rgba(255,255,255,0.88); margin: 18px 0 10px; text-shadow: 0 2px 8px rgba(0,60,120,0.28);
@@ -2809,67 +2793,86 @@ html.theme-dark .workspace-pill,
 html.theme-dark .workspace-list-card { background: rgba(8,27,42,0.94); border-color: rgba(155,216,240,0.18); }
 html.theme-dark .workspace-title, html.theme-dark .workspace-tile .tile-title, html.theme-dark .workspace-list-main strong { color: #ecfbff; }
 html.theme-dark .workspace-subtitle, html.theme-dark .workspace-tile .tile-detail, html.theme-dark .workspace-list-main span { color: #9bd8f0; }
-@media (max-width: 380px) { .workspace-grid, .workspace-grid.three { grid-template-columns: 1fr 1fr; } .workspace-title { font-size:24px; } }
 
 
-.tank-tabs-compact { margin: 4px 0 16px; }
-#page-tank .workspace-list-card { margin-top: 0; }
-#page-tank { padding-bottom: 78px; }
-.my-tank-action-list { margin-bottom: 14px; }
-.my-tank-bottom-tabs .workspace-pill {
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+/* My Tank cleanup v2.0.1 */
+.mytank-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 6px;
 }
-.my-tank-bottom-tabs {
+.mytank-main {
+  flex: 1;
+  padding-bottom: 12px;
+}
+.mytank-bottom-tabs {
   position: sticky;
   bottom: 0;
-  z-index: 60;
-  margin: 18px -2px 0;
-  padding: 10px;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 14px -2px 0;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  border: 1px solid rgba(255,255,255,0.78);
   border-radius: 22px;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(255,255,255,0.86);
-  box-shadow: 0 -6px 24px rgba(0,119,182,0.18);
+  background: rgba(255,255,255,0.94);
+  box-shadow: 0 -4px 22px rgba(0,119,182,0.16);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
-html.theme-dark .my-tank-bottom-tabs {
+.mytank-bottom-tab {
+  min-width: 0;
+  border: 2px solid rgba(0,180,216,0.18);
+  border-radius: 17px;
+  background: rgba(255,255,255,0.88);
+  color: var(--text-mid);
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.05;
+  padding: 9px 4px 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,119,182,0.08);
+  transition: transform 0.15s, background 0.15s, border-color 0.15s;
+}
+.mytank-bottom-tab span {
+  display: block;
+  font-size: 20px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.mytank-bottom-tab strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mytank-bottom-tab:active { transform: scale(0.97); }
+.mytank-bottom-tab.active {
+  color: white;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--ocean-deep), var(--ocean-mid));
+}
+html.theme-dark .mytank-bottom-tabs {
   background: rgba(8,27,42,0.96);
   border-color: rgba(155,216,240,0.18);
-  box-shadow: 0 -8px 28px rgba(0,0,0,0.40);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.34);
+}
+html.theme-dark .mytank-bottom-tab {
+  background: rgba(12,38,56,0.95);
+  border-color: rgba(155,216,240,0.18);
+  color: #9bd8f0;
+}
+html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
+@media (max-width: 380px) {
+  .mytank-bottom-tabs { gap: 5px; padding-left: 6px; padding-right: 6px; }
+  .mytank-bottom-tab { font-size: 10px; padding-left: 2px; padding-right: 2px; }
+  .mytank-bottom-tab span { font-size: 19px; }
 }
 
-
-/* Reef Keeper AI Vision 1.0 */
-.vision-engine-card{background:rgba(255,255,255,.86);border:1px solid rgba(0,180,216,.18);border-radius:20px;padding:14px;margin:0 0 14px;box-shadow:var(--shadow);}
-.vision-engine-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
-.vision-engine-title{font-size:16px;font-weight:900;color:var(--text-dark);line-height:1.15;}
-.vision-engine-subtitle{font-size:12px;font-weight:700;color:var(--text-light);line-height:1.35;margin-top:2px;}
-.vision-mode-chip{border-radius:999px;background:rgba(199,125,255,.13);color:#7b2d8b;border:1px solid rgba(199,125,255,.24);padding:6px 9px;font-size:11px;font-weight:900;white-space:nowrap;}
-.vision-engine-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;}
-.vision-select{width:100%;border:2px solid rgba(0,180,216,.22);border-radius:14px;background:rgba(255,255,255,.92);color:var(--text-dark);font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:10px;outline:none;}
-.vision-action-btn{border:none;border-radius:14px;padding:12px 11px;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;cursor:pointer;background:linear-gradient(135deg,var(--ocean-deep),var(--ocean-mid));color:white;box-shadow:0 4px 14px rgba(0,119,182,.22);}
-.vision-action-btn.secondary{background:rgba(255,255,255,.86);color:var(--text-mid);border:2px solid rgba(0,180,216,.22);box-shadow:var(--shadow);}
-.vision-result-card{display:none;margin-top:12px;background:rgba(0,180,216,.08);border:1px solid rgba(0,180,216,.18);border-radius:16px;padding:12px;color:var(--text-dark);font-size:13px;font-weight:700;line-height:1.55;}
-.vision-result-card.visible{display:block;}
-.vision-result-title{font-size:15px;font-weight:900;color:var(--text-dark);margin-bottom:4px;}
-.vision-result-meta{font-size:12px;font-weight:900;color:var(--text-mid);margin-bottom:8px;}
-.vision-result-section{margin-top:9px;}
-.vision-result-section strong{color:var(--text-dark);}
-.vision-result-section ul{padding-left:18px;margin-top:4px;}
-.vision-preview{display:none;gap:10px;align-items:center;background:rgba(255,255,255,.70);border:1px solid rgba(0,180,216,.16);border-radius:14px;padding:9px;margin-top:8px;}
-.vision-preview.visible{display:flex;}
-.vision-preview img{width:58px;height:58px;object-fit:cover;border-radius:12px;box-shadow:var(--shadow);}
-.vision-save-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-.vision-save-row button{border:none;border-radius:999px;padding:9px 12px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;cursor:pointer;}
-.vision-save-primary{background:linear-gradient(135deg,var(--seaweed),#40916c);color:white;}
-.vision-save-secondary{background:linear-gradient(135deg,var(--anemone-purple),#7b2d8b);color:white;}
-html.theme-dark .vision-engine-card,html.theme-dark .vision-select,html.theme-dark .vision-preview{background:rgba(8,27,42,.92);border-color:rgba(155,216,240,.20);color:var(--text-dark);}
-html.theme-dark .vision-mode-chip{color:#d8a8ff;background:rgba(199,125,255,.16);}
-html.theme-dark .vision-result-card{background:rgba(8,27,42,.82);border-color:rgba(155,216,240,.20);}
-@media(max-width:380px){.vision-engine-row{grid-template-columns:1fr}.vision-engine-head{flex-direction:column}.vision-mode-chip{align-self:flex-start}}
+@media (max-width: 380px) { .workspace-grid, .workspace-grid.three { grid-template-columns: 1fr 1fr; } .workspace-title { font-size:24px; } }
 
 </style>
 </head>
@@ -2988,21 +2991,20 @@ html.theme-dark .vision-result-card{background:rgba(8,27,42,.82);border-color:rg
 
 
     <!-- MY TANK WORKSPACE -->
-    <div class="page" id="page-tank">
-      <div class="workspace-section-title">Quick tank actions</div>
-      <div class="workspace-list-card my-tank-action-list">
-        <button class="workspace-list-row" type="button" onclick="openLivestockCatalog()"><span class="workspace-list-icon">🐠</span><span class="workspace-list-main"><strong>Fish & livestock catalog</strong><span>Browse, add, and identify livestock with photos, health notes, and AI help.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="openInventorySection('coral')"><span class="workspace-list-icon">🪸</span><span class="workspace-list-main"><strong>Coral inventory</strong><span>Open coral records, growth photos, health notes, and frag-family history.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="openLongTermTool('equipment')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Equipment manager</strong><span>View gear, maintenance intervals, service history, and operating notes.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">📊</span><span class="workspace-list-main"><strong>Parameters & targets</strong><span>Log tests, view trends, and adjust personalized scoring ranges.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Persistent facts, decisions, and livestock status.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-off work plan, reminders, and recurring reef tasks.</span></span><span class="workspace-chevron">›</span></button>
+    <div class="page mytank-page" id="page-tank">
+      <div class="mytank-main">
+        <div class="workspace-section-title">My Tank</div>
+        <div class="workspace-list-card">
+          <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">🧪</span><span class="workspace-list-main"><strong>Log water test</strong><span>Save readings, view trends, and get AI analysis.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Persistent facts, decisions, and livestock status.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-off work plan, reminders, and recurring reef tasks.</span></span><span class="workspace-chevron">›</span></button>
+        </div>
       </div>
-      <div class="workspace-pill-row tank-section-tabs tank-tabs-compact my-tank-bottom-tabs" aria-label="My Tank sections">
-        <button class="workspace-pill active" type="button" onclick="openLivestockCatalog()">🐠 Fish</button>
-        <button class="workspace-pill" type="button" onclick="openInventorySection('coral')">🪸 Coral</button>
-        <button class="workspace-pill" type="button" onclick="openLongTermTool('equipment')">⚙️ Equip.</button>
-        <button class="workspace-pill" type="button" onclick="showWorkspace('log')">📊 Params</button>
+      <div class="mytank-bottom-tabs" aria-label="My Tank sections">
+        <button class="mytank-bottom-tab active" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish</strong></button>
+        <button class="mytank-bottom-tab" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral</strong></button>
+        <button class="mytank-bottom-tab" type="button" onclick="openLongTermTool('equipment')"><span>⚙️</span><strong>Equip.</strong></button>
+        <button class="mytank-bottom-tab" type="button" onclick="showWorkspace('log')"><span>📊</span><strong>Params</strong></button>
       </div>
     </div>
 
@@ -3010,50 +3012,19 @@ html.theme-dark .vision-result-card{background:rgba(8,27,42,.82);border-color:rg
     <div class="page" id="page-vision">
       <div class="workspace-hero">
         <div class="workspace-title">AI Vision</div>
-        <div class="workspace-subtitle">Analyze reef photos, save observations, and build visual history for livestock, equipment, and the whole tank.</div>
+        <div class="workspace-subtitle">One place for coral, fish, full-tank, algae, pest, ICP, and equipment photo analysis.</div>
       </div>
-
-      <div class="vision-engine-card">
-        <div class="vision-engine-head">
-          <div>
-            <div class="vision-engine-title">Vision Engine 1.0</div>
-            <div class="vision-engine-subtitle">Choose what you are analyzing, attach a photo, then save the result to livestock timeline, full-tank history, or action history.</div>
-          </div>
-          <div class="vision-mode-chip" id="vision-current-mode">Mode: Coral</div>
-        </div>
-        <div class="vision-engine-row">
-          <select class="vision-select" id="vision-mode-select" onchange="setVisionMode(this.value)">
-            <option value="coral">🪸 Coral health / growth</option>
-            <option value="fish">🐠 Fish health</option>
-            <option value="fulltank">📷 Full tank scan</option>
-            <option value="algae">🦠 Algae / pests</option>
-            <option value="icp">🔬 ICP / test image</option>
-            <option value="equipment">🔧 Equipment check</option>
-          </select>
-          <select class="vision-select" id="vision-target-select" onchange="setVisionTarget(this.value)">
-            <option value="">No livestock target</option>
-          </select>
-        </div>
-        <div class="vision-engine-row">
-          <button class="vision-action-btn" type="button" onclick="startVisionEngine(null,'camera')">📸 Take Photo</button>
-          <button class="vision-action-btn secondary" type="button" onclick="startVisionEngine(null,'library')">🖼️ Choose Photo</button>
-        </div>
-        <input class="file-input-hidden" id="vision-file-input" type="file" accept="image/*" onchange="handleVisionFile(event)">
-        <div class="vision-preview" id="vision-preview"></div>
-        <div class="vision-result-card" id="vision-result-card"></div>
-      </div>
-
       <div class="workspace-grid">
-        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionEngine('coral','camera')"><span class="tile-icon">🪸</span><span class="tile-title">Coral</span><span class="tile-detail">ID, health, color, tissue, growth.</span></button>
-        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionEngine('fish','camera')"><span class="tile-icon">🐠</span><span class="tile-title">Fish</span><span class="tile-detail">ID, body condition, fins, stress.</span></button>
-        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionEngine('fulltank','camera')"><span class="tile-icon">📷</span><span class="tile-title">Full Tank</span><span class="tile-detail">Overall visual reef check.</span></button>
-        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionEngine('algae','camera')"><span class="tile-icon">🦠</span><span class="tile-title">Algae / Pests</span><span class="tile-detail">Aiptasia, algae, irritation clues.</span></button>
-        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionEngine('icp','library')"><span class="tile-icon">🔬</span><span class="tile-title">ICP / Test</span><span class="tile-detail">Report, chart, or test-kit reading.</span></button>
-        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionEngine('equipment','camera')"><span class="tile-icon">🔧</span><span class="tile-title">Equipment</span><span class="tile-detail">Setup and maintenance checks.</span></button>
+        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this coral photo. Identify the coral if possible, evaluate color, tissue, polyp extension, algae/pest irritation, and growth signs. Be honest about uncertainty.', true)"><span class="tile-icon">🪸</span><span class="tile-title">Coral</span><span class="tile-detail">ID, health, color, tissue, growth.</span></button>
+        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this fish photo. Identify the fish if possible and check visible body condition, fins, color, injury, parasites, and stress signs. Separate observation from diagnosis.', true)"><span class="tile-icon">🐠</span><span class="tile-title">Fish</span><span class="tile-detail">ID, body condition, fins, stress.</span></button>
+        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this full-tank photo. Summarize livestock you can see, coral condition, algae, flow/placement clues, and the top things to inspect next.', true)"><span class="tile-icon">📷</span><span class="tile-title">Full Tank</span><span class="tile-detail">Overall visual reef check.</span></button>
+        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this image for algae or pests. Identify likely algae/pest types, confidence, visual clues, and safest next steps for my reef tank.', true)"><span class="tile-icon">🦠</span><span class="tile-title">Algae / Pests</span><span class="tile-detail">Aiptasia, algae, irritation clues.</span></button>
+        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this ICP report or water-test image. Extract values if readable, flag concerns, and compare to my personalized reef targets when available.', false)"><span class="tile-icon">🔬</span><span class="tile-title">ICP / Test</span><span class="tile-detail">Report, chart, or test-kit reading.</span></button>
+        <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this equipment photo. Identify the equipment if possible, note visible setup issues, maintenance concerns, and what to verify.', true)"><span class="tile-icon">🔧</span><span class="tile-title">Equipment</span><span class="tile-detail">Setup and maintenance checks.</span></button>
       </div>
       <div class="workspace-list-card">
-        <button class="workspace-list-row" type="button" onclick="openLongTermTool('inventory')"><span class="workspace-list-icon">📈</span><span class="workspace-list-main"><strong>Open livestock timelines</strong><span>View saved photo analyses, health notes, and growth history.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="openLongTermTool('tankhistory')"><span class="workspace-list-icon">🖼️</span><span class="workspace-list-main"><strong>Visual tank history</strong><span>Save monthly full-tank photos and compare reef changes over time.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="chooseCameraPhoto()"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Take a photo</strong><span>Use the camera and then ask AI what to inspect.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="choosePhotoLibrary()"><span class="workspace-list-icon">🖼️</span><span class="workspace-list-main"><strong>Choose existing photos</strong><span>Compare progress photos or upload multiple angles.</span></span><span class="workspace-chevron">›</span></button>
       </div>
     </div>
 
@@ -3795,13 +3766,12 @@ html.theme-dark .vision-result-card{background:rgba(8,27,42,.82);border-color:rg
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260626-real-vision-1"></script>
-<script src="state.js?v=20260626-real-vision-1"></script>
-<script src="reef-ai-context.js?v=20260626-real-vision-1"></script>
-<script src="days-off-plan.js?v=20260626-real-vision-1"></script>
-<script src="diagnostics.js?v=20260626-real-vision-1"></script>
-<script src="app.js?v=20260626-real-vision-1"></script>
-<script src="maintenance-engine.js?v=20260627-maintenance-engine-1"></script>
+<script src="storage.js?v=20260626-equipment-manager"></script>
+<script src="state.js?v=20260626-equipment-manager"></script>
+<script src="reef-ai-context.js?v=20260626-equipment-manager"></script>
+<script src="days-off-plan.js?v=20260626-equipment-manager"></script>
+<script src="diagnostics.js?v=20260626-equipment-manager"></script>
+<script src="app.js?v=20260626-equipment-manager"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -3830,9 +3800,6 @@ function startVisionPrompt(prompt, preferCamera) {
     else if (typeof openAddMenu === 'function') openAddMenu();
   }, 120);
 }
-</script>
-<script src="vision.js?v=20260626-real-vision-1"></script>
-
 </script>
 </body>
 </html>
