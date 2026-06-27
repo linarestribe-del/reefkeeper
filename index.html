@@ -2999,118 +2999,6 @@ html.theme-dark .mytank-helper-card {
   background-repeat: no-repeat;
 }
 
-
-/* v3.1.0 Phase 1 UI cleanup: shared spacing, readable headers, and page-scoped controls. */
-.app-content {
-  padding: 0 16px 22px;
-}
-.page.active {
-  padding-bottom: 8px;
-}
-.card,
-.status-chip,
-.workspace-tile,
-.workspace-list-card,
-.mytank-helper-card,
-.analysis-result,
-.photo-analysis-panel {
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.card {
-  background: rgba(255,255,255,0.88);
-  border-color: rgba(255,255,255,0.86);
-  margin-bottom: 16px;
-}
-.compact-page-bar {
-  margin: 0 0 14px;
-  padding: 14px 16px;
-  border: 1px solid rgba(255,255,255,0.80);
-  border-radius: 22px;
-  background: rgba(255,255,255,0.86);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.compact-page-title {
-  color: var(--text-dark);
-  text-shadow: none;
-  font-size: 22px;
-}
-.compact-page-subtitle {
-  color: var(--text-light);
-  text-shadow: none;
-  font-size: 13px;
-  line-height: 1.35;
-}
-.workspace-grid {
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.workspace-tile {
-  background: rgba(255,255,255,0.88);
-  border-color: rgba(255,255,255,0.82);
-  min-height: 116px;
-}
-.workspace-tile .tile-detail,
-.workspace-list-main span,
-.catalog-chip .catalog-subtitle {
-  color: var(--text-light);
-}
-.workspace-list-card {
-  background: rgba(255,255,255,0.88);
-  border-color: rgba(255,255,255,0.82);
-}
-.workspace-list-row {
-  min-height: 64px;
-}
-#page-tank .mytank-bottom-tabs {
-  position: static !important;
-  display: grid;
-  margin: 0 0 14px;
-  border-radius: 22px;
-  background: rgba(255,255,255,0.88);
-  border-color: rgba(255,255,255,0.82);
-}
-#page-tank .mytank-bottom-tab {
-  min-height: 66px;
-}
-#page-tank .mytank-bottom-tab.active {
-  box-shadow: 0 8px 22px rgba(0,119,182,0.22);
-}
-.mytank-helper-card {
-  margin-bottom: 16px;
-}
-.bottom-nav {
-  border-top-color: rgba(255,255,255,0.76);
-}
-.nav-btn { min-width: 0; }
-.nav-label {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-html.theme-dark .card,
-html.theme-dark .compact-page-bar,
-html.theme-dark .workspace-tile,
-html.theme-dark .workspace-list-card,
-html.theme-dark #page-tank .mytank-bottom-tabs,
-html.theme-dark .mytank-helper-card {
-  background: rgba(8,27,42,0.92);
-  border-color: rgba(155,216,240,0.18);
-}
-html.theme-dark .compact-page-title,
-html.theme-dark .workspace-tile .tile-title,
-html.theme-dark .workspace-list-main strong {
-  color: #ecfbff;
-}
-html.theme-dark .compact-page-subtitle,
-html.theme-dark .workspace-tile .tile-detail,
-html.theme-dark .workspace-list-main span {
-  color: #9bd8f0;
-}
-
 </style>
 </head>
 <body>
@@ -3203,8 +3091,6 @@ html.theme-dark .workspace-list-main span {
           <span class="reminder-text">Replace GFO media</span>
           <span class="reminder-when">Mid-June</span>
         </div>
-      </div>
-
       <!-- Tank status summary -->
       <div class="card tank-status-card">
         <div class="card-title">🧭 Tank Status</div>
@@ -3224,6 +3110,7 @@ html.theme-dark .workspace-list-main span {
         </div>
       </div>
 
+      </div>
     </div>
 
 
@@ -4009,12 +3896,12 @@ html.theme-dark .workspace-list-main span {
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260627-v3-1-0-ui-cleanup"></script>
-<script src="state.js?v=20260627-v3-1-0-ui-cleanup"></script>
-<script src="reef-ai-context.js?v=20260627-v3-1-0-ui-cleanup"></script>
-<script src="days-off-plan.js?v=20260627-v3-1-0-ui-cleanup"></script>
-<script src="diagnostics.js?v=20260627-v3-1-0-ui-cleanup"></script>
-<script src="app.js?v=20260627-v3-1-0-ui-cleanup"></script>
+<script src="storage.js?v=20260627-v3-1-1-equipment-defaults"></script>
+<script src="state.js?v=20260627-v3-1-1-equipment-defaults"></script>
+<script src="reef-ai-context.js?v=20260627-v3-1-1-equipment-defaults"></script>
+<script src="days-off-plan.js?v=20260627-v3-1-1-equipment-defaults"></script>
+<script src="diagnostics.js?v=20260627-v3-1-1-equipment-defaults"></script>
+<script src="app.js?v=20260627-v3-1-1-equipment-defaults"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
