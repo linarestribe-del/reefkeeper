@@ -1,5 +1,23 @@
 # Reef Keeper Changelog
 
+## v3.1.2 — Equipment Merge Fix
+
+### Changed
+- `app.js`
+  - My Tank → Equip. now always merges the default installed equipment list with any saved equipment instead of choosing one or the other.
+  - Saved custom equipment still stays saved.
+  - Default tank equipment is backfilled into local storage so it remains visible after refresh.
+- `index.html`
+  - Updated script cache-busting strings so Vercel/Safari loads the new `app.js`.
+
+### Test Checklist
+- [ ] Open My Tank.
+- [ ] Tap Equip.
+- [ ] Equipment Manager opens.
+- [ ] Installed/default equipment appears, including return pumps, heaters, skimmer, UV, GFO reactor, lights, MP40s, ATO, Apex, RODI, and mixing drum.
+- [ ] Add/save a custom equipment item and confirm it remains visible with the defaults.
+
+
 ## v3.1.1 — My Tank Equipment Defaults Fix
 
 ### Changed

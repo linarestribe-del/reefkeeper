@@ -6512,6 +6512,29 @@ function defaultEquipmentItems() {
   ];
 }
 
+function normalizeEquipmentItem(item) {
+  const src = item && typeof item === 'object' ? item : {};
+  const id = String(src.id || '').trim();
+  const name = String(src.name || '').trim();
+  if (!id && !name) return null;
+  return {
+    ...src,
+    id: id || `eq-${name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || Date.now().toString(36)}`,
+    name: name || 'Unnamed equipment',
+    category: src.category || 'Miscellaneous',
+    status: src.status || 'active'
+  };
+}
+
+function mergeDefaultEquipmentWithSaved(savedItems) {
+  const defaults = defaultEquipmentItems().map(normalizeEquipmentItem).filter(Boolean);
+  const saved = (Array.isArray(savedItems) ? savedItems : []).map(normalizeEquipmentItem).filter(Boolean);
+  const byId = new Map();
+  defaults.forEach(item => byId.set(String(item.id), item));
+  saved.forEach(item => byId.set(String(item.id), { ...(byId.get(String(item.id)) || {}), ...item, defaultItem: item.defaultItem || byId.get(String(item.id))?.defaultItem || false }));
+  return Array.from(byId.values());
+}
+
 function getEquipmentItems() {
   let stored = [];
   try {
@@ -6519,13 +6542,19 @@ function getEquipmentItems() {
     stored = raw ? JSON.parse(raw) : [];
   } catch(e) { stored = []; }
   if (!Array.isArray(stored)) stored = [];
-  if (!stored.length) {
-    try {
-      const dbEquipment = window.ReefKeeperStorage?.readDb?.()?.data?.equipment;
-      if (Array.isArray(dbEquipment) && dbEquipment.length) stored = dbEquipment;
-    } catch(e) {}
-  }
-  return stored.length ? stored : defaultEquipmentItems();
+  try {
+    const dbEquipment = window.ReefKeeperStorage?.readDb?.()?.data?.equipment;
+    if (Array.isArray(dbEquipment) && dbEquipment.length) {
+      stored = [...stored, ...dbEquipment];
+    }
+  } catch(e) {}
+  const merged = mergeDefaultEquipmentWithSaved(stored);
+  try {
+    const raw = localStorage.getItem(REEF_EQUIPMENT_KEY_V1);
+    const saved = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(saved) || saved.length < merged.length) setEquipmentItems(merged);
+  } catch(e) {}
+  return merged;
 }
 
 function setEquipmentItems(items) {
