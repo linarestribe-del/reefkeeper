@@ -1,5 +1,23 @@
 # Reef Keeper Changelog
 
+## v3.1.0 — Phase 1 UI Cleanup
+
+### Changed
+- `index.html`
+  - Fixed Home page card nesting so Tank Status is no longer inside the Coming Up card.
+  - Added shared spacing and frosted-card styling for compact page headers.
+  - Cleaned My Tank section selector spacing and kept it scoped to My Tank only.
+  - Standardized workspace tiles, list cards, card readability, and bottom navigation text handling.
+  - Updated cache-busting strings to v3.1.0.
+
+### Test Checklist
+- [ ] Home loads and Tank Status appears as its own card.
+- [ ] My Tank shows one Fish / Coral / Equip. / Params selector.
+- [ ] AI Vision, Ask AI, and More do not show the My Tank selector.
+- [ ] Bottom navigation labels fit.
+- [ ] Dark mode remains readable.
+
+
 ## v2.1.1 — Background + My Tank Repair
 
 ### Changed
