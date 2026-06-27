@@ -1,5 +1,23 @@
 # Reef Keeper Changelog
 
+## v3.4.2 — Home Action Routing Fix
+
+### Changed
+- `index.html`
+  - Reef Status now scrolls to/highlights the AI Tank Dashboard instead of doing nothing visible.
+  - AI Monitoring now scrolls to/highlights the AI Watching panel.
+  - `+ Water Test` now opens Log Parameters and focuses the first water-test field.
+  - `+ Maintenance` now opens the Maintenance / Action History form and focuses the action field.
+- `css/app.css`
+  - Added a brief focus pulse so shortcut destinations are obvious.
+
+### Test Checklist
+- [ ] Home → Reef Status visibly jumps/highlights the dashboard section.
+- [ ] Home → AI Monitoring visibly jumps/highlights the AI Watching section.
+- [ ] Home → + Water Test opens the parameter form.
+- [ ] Home → + Maintenance opens the maintenance/action form.
+- [ ] My Tank, AI Vision, Ask AI, and More still open normally.
+
 ## v3.4.1 — Home Status Chips
 
 ### Changed

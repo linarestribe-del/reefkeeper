@@ -3362,3 +3362,16 @@ html.theme-dark .home-score-pill { box-shadow: 0 10px 26px rgba(0,0,0,.28); }
 .home-intel-grid { grid-template-columns: 1fr; }
   .home-quick-actions { grid-template-columns: 1fr; }
 }
+
+
+/* v3.4.2 focus cue for Home shortcuts and Quick Actions */
+.rk-focus-pulse {
+  animation: rkFocusPulse 1.05s ease;
+  outline: 3px solid rgba(0,180,216,.38);
+  outline-offset: 3px;
+}
+@keyframes rkFocusPulse {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,180,216,.35); }
+  42% { transform: scale(1.015); box-shadow: 0 0 0 12px rgba(0,180,216,.10); }
+  100% { transform: scale(1); box-shadow: inherit; }
+}

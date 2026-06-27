@@ -61,11 +61,11 @@
           </div>
         </div>
         <div class="home-status-grid" id="home-status-grid" aria-label="Reef status summary">
-          <button class="home-status-chip" type="button" onclick="showWorkspace('home')">
+          <button class="home-status-chip" type="button" onclick="openHomeReefStatus()">
             <span class="home-status-label" id="home-status-label">🟡 Reef Status</span>
             <strong id="home-status-value">Checking</strong>
           </button>
-          <button class="home-status-chip" type="button" onclick="document.getElementById('home-intel-watching')?.scrollIntoView({block:'nearest', behavior:'smooth'});">
+          <button class="home-status-chip" type="button" onclick="openHomeMonitoring()">
             <span class="home-status-label">👀 AI Monitoring</span>
             <strong id="home-monitoring-value">Checking</strong>
           </button>
@@ -89,8 +89,8 @@
           </div>
         </div>
         <div class="home-quick-actions">
-          <button type="button" onclick="showWorkspace('log')">+ Water Test</button>
-          <button type="button" onclick="showWorkspace('log')">+ Maintenance</button>
+          <button type="button" onclick="openWaterTestLog()">+ Water Test</button>
+          <button type="button" onclick="openMaintenanceLog()">+ Maintenance</button>
           <button type="button" onclick="showWorkspace('vision')">📸 AI Vision</button>
           <button type="button" onclick="showWorkspace('chat')">Ask AI</button>
         </div>
@@ -981,12 +981,12 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260627-v3-4-0-home-dashboard"></script>
-<script src="state.js?v=20260627-v3-4-0-home-dashboard"></script>
-<script src="reef-ai-context.js?v=20260627-v3-4-0-home-dashboard"></script>
-<script src="days-off-plan.js?v=20260627-v3-4-0-home-dashboard"></script>
-<script src="diagnostics.js?v=20260627-v3-4-0-home-dashboard"></script>
-<script src="app.js?v=20260627-v3-4-0-home-dashboard"></script>
+<script src="storage.js?v=20260627-v3-4-2-home-actions"></script>
+<script src="state.js?v=20260627-v3-4-2-home-actions"></script>
+<script src="reef-ai-context.js?v=20260627-v3-4-2-home-actions"></script>
+<script src="days-off-plan.js?v=20260627-v3-4-2-home-actions"></script>
+<script src="diagnostics.js?v=20260627-v3-4-2-home-actions"></script>
+<script src="app.js?v=20260627-v3-4-2-home-actions"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -1000,6 +1000,53 @@ function showWorkspace(name, btn) {
   if (pageName === 'tank') {
     try { renderMyTankHub(); } catch(e) {}
   }
+}
+
+
+function rkScrollAndFlash(target) {
+  if (!target) return;
+  try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  catch(e) { try { target.scrollIntoView(); } catch(_) {} }
+  target.classList.add('rk-focus-pulse');
+  setTimeout(() => target.classList.remove('rk-focus-pulse'), 1200);
+}
+
+function openHomeReefStatus() {
+  showWorkspace('home');
+  setTimeout(() => {
+    const target = document.querySelector('.tank-dashboard-card') || document.getElementById('tank-dashboard-content') || document.getElementById('home-intelligence-card');
+    rkScrollAndFlash(target);
+  }, 120);
+}
+
+function openHomeMonitoring() {
+  showWorkspace('home');
+  setTimeout(() => {
+    const target = document.getElementById('home-intel-watching')?.closest('.home-intel-panel') || document.getElementById('home-intel-watching');
+    rkScrollAndFlash(target);
+  }, 120);
+}
+
+function openWaterTestLog() {
+  showWorkspace('log');
+  setTimeout(() => {
+    const input = document.getElementById('log-po4') || document.getElementById('log-alk');
+    const card = input?.closest('.card') || input;
+    rkScrollAndFlash(card);
+    try { input?.focus({ preventScroll: true }); } catch(e) { try { input?.focus(); } catch(_) {} }
+  }, 160);
+}
+
+function openMaintenanceLog() {
+  showWorkspace('log');
+  setTimeout(() => {
+    const category = document.getElementById('action-category');
+    if (category) category.value = 'maintenance';
+    const input = document.getElementById('action-title');
+    const card = input?.closest('.card') || input;
+    rkScrollAndFlash(card);
+    try { input?.focus({ preventScroll: true }); } catch(e) { try { input?.focus(); } catch(_) {} }
+  }, 160);
 }
 
 function rkDaysAgoLabel(iso) {
