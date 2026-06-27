@@ -53,7 +53,7 @@ html.theme-dark {
   --shadow-strong: 0 16px 48px rgba(0,0,0,0.52);
 }
 html.theme-dark body { background:#061826; }
-html.theme-dark .ocean-bg { background: linear-gradient(180deg,#123d54 0%,#092536 45%,#061826 100%); }
+html.theme-dark .ocean-bg { background: radial-gradient(circle at 50% -8%, rgba(160,222,255,0.38) 0%, rgba(26,92,136,0.38) 18%, transparent 34%), linear-gradient(180deg,#043d63 0%,#032844 42%,#061826 100%); }
 html.theme-dark .bottom-nav, html.theme-dark .msg.ai .msg-bubble, html.theme-dark .typing-indicator, html.theme-dark .quick-q, html.theme-dark .quick-refresh-btn, html.theme-dark .attach-btn, html.theme-dark .chat-input, html.theme-dark .quick-ask-input, html.theme-dark .param-input, html.theme-dark .action-input, html.theme-dark .action-select, html.theme-dark .long-term-select, html.theme-dark .inventory-input, html.theme-dark .inventory-notes, html.theme-dark .model-selector-wrap, html.theme-dark .context-toggle-row, html.theme-dark .attachment-status { background: rgba(8,27,42,0.94); color: var(--text-dark); border-color: rgba(155,216,240,0.20); }
 html.theme-dark .status-chip, html.theme-dark .inventory-item, html.theme-dark .plan-day-card, html.theme-dark .tank-status-row, html.theme-dark .trend-chart-wrap, html.theme-dark .long-term-panel, html.theme-dark .tool-panel, html.theme-dark .catalog-panel, html.theme-dark .management-card, html.theme-dark .analysis-result { background: rgba(8,27,42,0.88); border-color: rgba(155,216,240,0.18); }
 html.theme-dark input::placeholder, html.theme-dark textarea::placeholder { color: rgba(155,216,240,0.55); }
@@ -85,15 +85,44 @@ html, body {
 .ocean-bg {
   position: fixed;
   inset: 0;
-  background: linear-gradient(180deg,
-    #48cae4 0%,
-    #00b4d8 25%,
-    #0096c7 55%,
-    #0077b6 80%,
-    #023e8a 100%
-  );
+  background:
+    radial-gradient(circle at 50% -8%, rgba(255,255,255,0.92) 0%, rgba(190,238,255,0.62) 8%, rgba(69,194,236,0.30) 18%, transparent 34%),
+    linear-gradient(180deg, #07b9e1 0%, #078bd0 28%, #0065aa 58%, #00427d 100%);
   z-index: 0;
   overflow: hidden;
+}
+
+.ocean-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(102deg, transparent 0 31%, rgba(255,255,255,0.24) 36%, transparent 43%),
+    linear-gradient(82deg, transparent 0 44%, rgba(255,255,255,0.18) 49%, transparent 56%),
+    linear-gradient(118deg, transparent 0 53%, rgba(255,255,255,0.12) 58%, transparent 65%),
+    radial-gradient(circle at 12% 14%, rgba(255,255,255,0.20) 0 2px, transparent 3px),
+    radial-gradient(circle at 88% 18%, rgba(255,255,255,0.22) 0 3px, transparent 4px),
+    radial-gradient(circle at 9% 32%, rgba(255,255,255,0.18) 0 4px, transparent 5px),
+    radial-gradient(circle at 91% 42%, rgba(255,255,255,0.16) 0 5px, transparent 6px);
+  opacity: 0.9;
+  mix-blend-mode: screen;
+}
+
+.ocean-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at -6% 72%, rgba(255,94,128,0.95) 0 7%, transparent 14%),
+    radial-gradient(ellipse at 3% 88%, rgba(255,176,42,0.92) 0 8%, transparent 16%),
+    radial-gradient(ellipse at -2% 98%, rgba(157,88,255,0.90) 0 10%, transparent 19%),
+    radial-gradient(ellipse at 106% 69%, rgba(56,184,255,0.95) 0 8%, transparent 15%),
+    radial-gradient(ellipse at 99% 86%, rgba(66,210,111,0.88) 0 9%, transparent 18%),
+    radial-gradient(ellipse at 106% 98%, rgba(255,77,96,0.90) 0 10%, transparent 20%),
+    linear-gradient(90deg, rgba(0,33,78,0.42), transparent 18%, transparent 82%, rgba(0,33,78,0.42));
+  filter: saturate(1.25);
 }
 
 /* Animated bubbles */
@@ -174,6 +203,11 @@ html, body {
 .critter.clown  { bottom: 35%; right: 8%; animation-delay: 0s; animation-duration: 5s; }
 .critter.star   { bottom: 5%;  left: 15%; font-size: 28px; animation: none; }
 .critter.bubble-tip { bottom: 8%; right: 20%; font-size: 36px; animation: sway 4s ease-in-out infinite alternate; transform-origin: bottom; }
+
+/* v2.0.3 reef background uses CSS reef framing instead of the older emoji/seaweed layer. */
+.ocean-bg .seaweed-container,
+.ocean-bg .sandy-bottom,
+.ocean-bg .critter { display: none; }
 
 @keyframes float {
   0%, 100% { transform: translateY(0) rotate(-3deg); }
