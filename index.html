@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Reef Keeper">
 <title>Reef Keeper</title>
+<!-- Reef Keeper patch v2.0.4 exact background -->
 <script>
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
@@ -2929,6 +2930,28 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
 }
 
 @media (max-width: 380px) { .workspace-grid, .workspace-grid.three { grid-template-columns: 1fr 1fr; } .workspace-title { font-size:24px; } }
+
+
+
+/* v2.0.4 exact reef image background
+   Uses the selected image file directly as the app background. */
+.ocean-bg {
+  background: url("assets/images/reef-background.png") center top / cover no-repeat fixed !important;
+}
+.ocean-bg::before,
+.ocean-bg::after {
+  display: none !important;
+}
+.ocean-bg .bubbles,
+.ocean-bg .bubble,
+.ocean-bg .seaweed-container,
+.ocean-bg .sandy-bottom,
+.ocean-bg .critter {
+  display: none !important;
+}
+html.theme-dark .ocean-bg {
+  background: url("assets/images/reef-background.png") center top / cover no-repeat fixed !important;
+}
 
 </style>
 </head>
