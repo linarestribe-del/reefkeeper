@@ -3136,16 +3136,99 @@ function renderTankDashboard(){
   const inventory = getInventoryItems();
   const watch = inventory.filter(i => ['watch','recovering','stressed'].includes(i.status));
   const coralAnalyses = inventory.filter(i => Array.isArray(i.photoAnalyses) && i.photoAnalyses.length);
-  const photoLine = coralAnalyses.length ? `${coralAnalyses.length} livestock item${coralAnalyses.length===1?'':'s'} have AI photo timelines.` : 'No AI photo timelines saved yet.';
+  const visualStatus = visualTankHistoryStatus();
+  const photoLine = visualStatus.latest ? `${visualStatus.label} ${coralAnalyses.length ? `${coralAnalyses.length} livestock item${coralAnalyses.length===1?'':'s'} have AI timelines.` : 'No livestock AI timelines yet.'}` : 'No full-tank photo saved yet.';
   const trendLine = latest ? buildLogMemoryLine(latest).replace(/^[^:]+:\s*/, '') : 'No user parameter log yet.';
   const watchLine = watch.length ? watch.slice(0,3).map(i => `${i.name} (${i.status})`).join(', ') : 'No livestock flagged as stressed/watch.';
-  const next = !latest ? 'Log parameters, then add a full-tank photo.' : watch.length ? 'Open Livestock Inventory and add/update photos for watch items.' : 'Add a monthly full-tank photo to build visual history.';
+  const next = !latest ? 'Log parameters, then add a full-tank photo.' : visualStatus.due ? 'Take a full-tank photo in AI Vision for Visual Tank History.' : watch.length ? 'Open Livestock Inventory and add/update photos for watch items.' : 'Review coral/fish timelines and keep visual history current.';
   el.innerHTML = `<div class="tank-dashboard-grid"><div class="tank-score-ring" style="--score:${score}"><div class="tank-score-num">${score}</div><div class="tank-score-label">${escapeHtml(level)}</div></div><div class="tank-dashboard-list"><div class="tank-dashboard-row"><strong>Latest:</strong> ${escapeHtml(trendLine)}</div><div class="tank-dashboard-row"><strong>Watch:</strong> ${escapeHtml(watchLine)}</div><div class="tank-dashboard-row"><strong>Vision:</strong> ${escapeHtml(photoLine)}</div><div class="tank-dashboard-row"><strong>Next:</strong> ${escapeHtml(next)}</div></div></div><div class="tank-dashboard-actions"><button class="dashboard-btn" type="button" onclick="openLongTermTool('inventory')">Open Photo Timeline</button><button class="dashboard-btn secondary" type="button" onclick="openLongTermTool('tankhistory')">Add Full-Tank Photo</button></div>`;
 }
 
 const TANK_HISTORY_KEY = 'reef_tank_visual_history_v13';
-function getTankHistory(){ return memoryArray(TANK_HISTORY_KEY); }
-function setTankHistory(items){ try { localStorage.setItem(TANK_HISTORY_KEY, JSON.stringify((items||[]).slice(0,60))); return true; } catch(e){ return false; } }
+const LEGACY_TANK_HISTORY_KEY = 'reef_tank_history';
+const VISUAL_TANK_HISTORY_REMINDER_ID = 'visual-tank-history-photo';
+const VISUAL_TANK_HISTORY_REPEAT_DAYS = 14;
+
+function normalizeTankHistoryItem(item){
+  if (!item || typeof item !== 'object') return null;
+  return {
+    ...item,
+    id: item.id || ('tank-photo-' + Math.random().toString(36).slice(2)),
+    createdAt: item.createdAt || item.analyzedAt || item.isoDate || item.date || new Date().toISOString(),
+    title: item.title || 'Full-tank photo',
+    notes: item.notes || item.trackingNotes || ''
+  };
+}
+
+function getTankHistory(){
+  const primary = memoryArray(TANK_HISTORY_KEY).map(normalizeTankHistoryItem).filter(Boolean);
+  const legacy = memoryArray(LEGACY_TANK_HISTORY_KEY).map(normalizeTankHistoryItem).filter(Boolean);
+  const byId = new Map();
+  [...primary, ...legacy].forEach(item => { if (!byId.has(item.id)) byId.set(item.id, item); });
+  return Array.from(byId.values()).sort((a,b) => memoryDateValue(b) - memoryDateValue(a));
+}
+
+function setTankHistory(items){
+  const normalized = (items || []).map(normalizeTankHistoryItem).filter(Boolean).slice(0,60);
+  try {
+    localStorage.setItem(TANK_HISTORY_KEY, JSON.stringify(normalized));
+    localStorage.setItem(LEGACY_TANK_HISTORY_KEY, JSON.stringify(normalized));
+    return true;
+  } catch(e){ return false; }
+}
+
+function getLatestTankHistoryPhoto(){
+  const items = getTankHistory();
+  return items.length ? items[0] : null;
+}
+
+function visualTankHistoryStatus(){
+  const latest = getLatestTankHistoryPhoto();
+  if (!latest) return { latest:null, due:true, daysSince:null, nextDueAt:null, label:'No full-tank photo saved yet.' };
+  const latestTime = memoryDateValue(latest);
+  const nextDue = addReminderDays(VISUAL_TANK_HISTORY_REPEAT_DAYS, new Date(latestTime || latest.createdAt || Date.now()));
+  const due = nextDue.getTime() <= Date.now();
+  const daysSince = latestTime ? Math.max(0, Math.floor((Date.now() - latestTime) / 86400000)) : null;
+  return { latest, due, daysSince, nextDueAt: nextDue.toISOString(), label: due ? `Last full-tank photo was ${daysSince} day${daysSince===1?'':'s'} ago.` : `Next full-tank photo due ${formatDueDate(nextDue.toISOString())}.` };
+}
+
+function syncVisualTankHistoryReminder(){
+  const status = visualTankHistoryStatus();
+  const states = getStaticReminderStates();
+  const current = states[VISUAL_TANK_HISTORY_REMINDER_ID] || {};
+  if (!status.latest || status.due) {
+    if (current.completed) {
+      states[VISUAL_TANK_HISTORY_REMINDER_ID] = { completed:false, completedAt:null, nextDueAt:null };
+      setStaticReminderStates(states);
+    }
+    return status;
+  }
+  const completedAt = new Date(memoryDateValue(status.latest) || status.latest.createdAt || Date.now()).toISOString();
+  if (!current.completed || current.completedAt !== completedAt || current.nextDueAt !== status.nextDueAt) {
+    states[VISUAL_TANK_HISTORY_REMINDER_ID] = { completed:true, completedAt, nextDueAt:status.nextDueAt };
+    setStaticReminderStates(states);
+  }
+  return status;
+}
+
+function markVisualTankHistoryCaptured(source='Visual Tank History'){
+  const latest = getLatestTankHistoryPhoto();
+  const completedAt = latest ? new Date(memoryDateValue(latest) || latest.createdAt || Date.now()).toISOString() : new Date().toISOString();
+  const nextDueAt = addReminderDays(VISUAL_TANK_HISTORY_REPEAT_DAYS, new Date(completedAt)).toISOString();
+  const states = getStaticReminderStates();
+  states[VISUAL_TANK_HISTORY_REMINDER_ID] = { completed:true, completedAt, nextDueAt };
+  setStaticReminderStates(states);
+  recordCompletedHistory({
+    type:'reminder',
+    source:'Built-in Reminder',
+    sourceId:VISUAL_TANK_HISTORY_REMINDER_ID,
+    title:'Take Full-Tank Photo for Visual History',
+    notes:`Saved from ${source}. Repeats every 2 weeks.`,
+    completedAt,
+    nextDueAt
+  });
+  try { renderReminderCenter(); renderDaysOffWorkPlan(); renderTankDashboard(); } catch(e) {}
+}
 async function saveTankHistoryPhoto(event){
   const file = event?.target?.files?.[0];
   if (!file) return;
@@ -3161,7 +3244,7 @@ async function saveTankHistoryPhoto(event){
     if (!setTankHistory(items)) throw new Error('Could not save visual history.');
     const t = document.getElementById('tank-history-title'); if (t) t.value = '';
     const n = document.getElementById('tank-history-notes'); if (n) n.value = '';
-    renderTankHistory(); renderTankDashboard(); showToast('📷 Full-tank photo saved');
+    markVisualTankHistoryCaptured('Visual Tank History'); renderTankHistory(); renderTankDashboard(); showToast('📷 Full-tank photo saved');
   } catch(e){ console.error(e); showToast('⚠️ Could not save tank photo'); }
   finally { if (event?.target) event.target.value = ''; }
 }
@@ -3370,7 +3453,7 @@ function renderLongTermTools() {
 
 
 // ── Backup / restore ───────────────────────────────────────────────────────
-const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_personalized_targets_v15', 'reef_equipment_inventory_v1'];
+const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_personalized_targets_v15', 'reef_equipment_inventory_v1', 'reef_tank_visual_history_v13', 'reef_tank_history'];
 
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
@@ -3891,6 +3974,7 @@ function renderReminderCenter() {
   const summary = document.getElementById('reminder-center-summary');
   if (!list) return;
 
+  syncVisualTankHistoryReminder();
   const hidden = new Set(getHiddenStaticReminders());
   const staticItems = STATIC_REMINDER_LIBRARY.filter(r => !hidden.has(r.id));
   const saved = normalizeSavedReminderRecurrences();
@@ -3930,7 +4014,8 @@ const STATIC_REMINDER_RULES = {
   'water-change-20-gal-fritz-rpm': { repeatDays: 14, label: 'every days-off cycle' },
   'water-change-20-gallons': { repeatDays: 14, label: 'every days-off cycle' },
   'replace-gfo-media': { repeatDays: 42, label: 'about every 6 weeks' },
-  'replace-rox-0-8-carbon': { repeatDays: 28, label: 'every 4 weeks' }
+  'replace-rox-0-8-carbon': { repeatDays: 28, label: 'every 4 weeks' },
+  'visual-tank-history-photo': { repeatDays: 14, label: 'every 2 weeks' }
 };
 
 
@@ -3943,6 +4028,7 @@ const STATIC_REMINDER_LIBRARY = [
   { id:'post-australians-for-rehoming', title:'Post Australians for Rehoming', detail:'Reef2Reef classifieds + local Facebook reef groups.', emoji:'🦐', priority:'soon', group:'Days-Off' },
   { id:'replace-gfo-media', title:'Replace GFO Media', detail:'BRS High Capacity GFO. ~6 weeks from install — target mid-June 2026.', emoji:'🔬', priority:'normal', group:'Upcoming' },
   { id:'replace-rox-0-8-carbon', title:'Replace ROX 0.8 Carbon', detail:'Every 4 weeks. Exhausted carbon leaches back — do not skip.', emoji:'♻️', priority:'normal', group:'Upcoming' },
+  { id:'visual-tank-history-photo', title:'Take Full-Tank Photo for Visual History', detail:'Every 2 weeks. Use AI Vision → Full Tank and save to Full-Tank History.', emoji:'📷', priority:'normal', group:'Days-Off' },
   { id:'next-icp-test-fauna-marin', title:'Next ICP Test — Fauna Marin', detail:'Mail sample late June to early July 2026.', emoji:'🧫', priority:'normal', group:'Upcoming' }
 ];
 
@@ -5251,6 +5337,7 @@ function getPlanTaskMeta(taskId) {
 }
 
 function getAllActiveReefTasksForPlanning() {
+  syncVisualTankHistoryReminder();
   const hidden = new Set(getHiddenStaticReminders());
   const staticTasks = STATIC_REMINDER_LIBRARY
     .filter(r => !hidden.has(r.id) && !getStaticReminderStateById(r.id).completed && !isTaskTextCompletedRecently(r.title, r.detail, { maxAgeDays: 21 }) && !shouldFilterResolvedPlanTask(`${r.title} ${r.detail}`))
@@ -5276,6 +5363,7 @@ function getCurrentPlanPromptContext() {
     authoritativeTankStateLines: getAuthoritativeTankStateMemoryLines(),
     localMemory: getLocalTankMemorySummary('days off work plan'),
     resolvedIssues: getResolvedIssues(),
+    visualTankHistory: visualTankHistoryStatus(),
     currentPlan: currentPlan.isTemplate ? null : currentPlan,
     activeReefTasks: getAllActiveReefTasksForPlanning()
   };

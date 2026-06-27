@@ -243,10 +243,19 @@ async function saveVisionToTankHistory() {
   try {
     const key = `tank-history-${Date.now().toString(36)}`;
     await saveInventoryPhotoData(key, rkPendingVision.imageDataUrl);
-    const items = JSON.parse(localStorage.getItem('reef_tank_history') || '[]');
-    items.unshift({ id:key, imageKey:key, title:`AI Vision ${RK_VISION_MODES[rkPendingVision.mode]?.label || 'Photo'}`, notes:visionSummaryText(), createdAt:new Date().toISOString() });
-    localStorage.setItem('reef_tank_history', JSON.stringify(items.slice(0, 60)));
-    try { renderTankHistory(); } catch(e) {}
+    const entry = { id:key, imageKey:key, title:`AI Vision ${RK_VISION_MODES[rkPendingVision.mode]?.label || 'Photo'}`, notes:visionSummaryText(), createdAt:new Date().toISOString() };
+    if (typeof getTankHistory === 'function' && typeof setTankHistory === 'function') {
+      const items = getTankHistory();
+      items.unshift(entry);
+      setTankHistory(items);
+    } else {
+      const items = JSON.parse(localStorage.getItem('reef_tank_visual_history_v13') || '[]');
+      items.unshift(entry);
+      localStorage.setItem('reef_tank_visual_history_v13', JSON.stringify(items.slice(0, 60)));
+      localStorage.setItem('reef_tank_history', JSON.stringify(items.slice(0, 60)));
+    }
+    try { markVisualTankHistoryCaptured('AI Vision'); } catch(e) {}
+    try { renderTankHistory(); renderTankDashboard(); } catch(e) {}
     showToast('🖼️ Saved to visual tank history');
     clearVisionAnalysis('Saved to full-tank history');
   } catch(e) { console.error(e); showToast('⚠️ Could not save tank history'); }
