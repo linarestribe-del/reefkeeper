@@ -2987,3 +2987,164 @@ html.theme-dark .mytank-helper-card {
   background-position: center top;
   background-repeat: no-repeat;
 }
+
+/* v3.3.0 My Tank Hub */
+.mytank-page-bar {
+  margin-bottom: 14px;
+}
+.mytank-overview-card {
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(255,255,255,0.88);
+  border-radius: 24px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  margin-bottom: 14px;
+}
+.mytank-overview-top {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom: 14px;
+}
+.mytank-eyebrow {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+.mytank-overview-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: var(--text-dark);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+.mytank-overview-action {
+  border: 2px solid rgba(0,180,216,0.20);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.90);
+  color: var(--text-mid);
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 12px;
+  box-shadow: 0 4px 14px rgba(0,119,182,0.10);
+  white-space: nowrap;
+}
+.mytank-stat-grid {
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 8px;
+}
+.mytank-stat {
+  background: rgba(255,255,255,0.64);
+  border: 1px solid rgba(0,180,216,0.14);
+  border-radius: 18px;
+  padding: 10px 6px;
+  text-align:center;
+}
+.mytank-stat span { display:block; font-size: 20px; line-height:1; margin-bottom: 5px; }
+.mytank-stat strong { display:block; color: var(--text-dark); font-size: 18px; font-weight: 900; line-height:1; }
+.mytank-stat small { display:block; color: var(--text-light); font-size: 10px; font-weight: 900; margin-top: 3px; text-transform: uppercase; letter-spacing:.05em; }
+.mytank-section-grid {
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mytank-section-card {
+  border: 1px solid rgba(255,255,255,0.86);
+  background: rgba(255,255,255,0.86);
+  border-radius: 22px;
+  box-shadow: var(--shadow);
+  padding: 16px 14px;
+  min-height: 144px;
+  font-family: 'Nunito', sans-serif;
+  text-align:left;
+  color: var(--text-dark);
+  cursor:pointer;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.mytank-section-card:active { transform: scale(.98); }
+.mytank-section-card span { display:block; font-size: 30px; margin-bottom: 12px; line-height:1; }
+.mytank-section-card strong { display:block; font-size: 16px; font-weight: 900; color: var(--text-dark); line-height: 1.12; }
+.mytank-section-card small { display:block; margin-top: 7px; font-size: 12px; font-weight: 800; line-height: 1.35; color: var(--text-light); }
+.mytank-secondary-list { margin-bottom: 16px; }
+html.theme-dark .mytank-overview-card,
+html.theme-dark .mytank-section-card {
+  background: rgba(8,27,42,0.94);
+  border-color: rgba(155,216,240,0.18);
+}
+html.theme-dark .mytank-overview-title,
+html.theme-dark .mytank-stat strong,
+html.theme-dark .mytank-section-card strong { color: #ecfbff; }
+html.theme-dark .mytank-eyebrow,
+html.theme-dark .mytank-stat small,
+html.theme-dark .mytank-section-card small { color: #9bd8f0; }
+html.theme-dark .mytank-stat {
+  background: rgba(12,38,56,0.72);
+  border-color: rgba(155,216,240,0.14);
+}
+html.theme-dark .mytank-overview-action {
+  background: rgba(12,38,56,0.95);
+  border-color: rgba(155,216,240,0.18);
+  color: #ecfbff;
+}
+@media (max-width: 380px) {
+  .mytank-section-card { min-height: 132px; padding: 14px 12px; }
+  .mytank-section-card strong { font-size: 15px; }
+  .mytank-stat-grid { gap: 6px; }
+  .mytank-stat { padding-left: 4px; padding-right: 4px; }
+}
+
+/* v3.3.1 My Tank simplification: compact summary strip, no duplicate pill bar */
+.mytank-summary-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,180,216,0.16);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.66);
+}
+.mytank-summary-strip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-dark);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.mytank-summary-strip b {
+  font-size: 16px;
+  line-height: 1;
+}
+.mytank-summary-strip strong {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--text-dark);
+}
+#page-tank .mytank-bottom-tabs { display: none !important; }
+.mytank-section-grid { margin-top: 14px; }
+html.theme-dark .mytank-summary-strip {
+  background: rgba(12,38,56,0.72);
+  border-color: rgba(155,216,240,0.14);
+}
+html.theme-dark .mytank-summary-strip,
+html.theme-dark .mytank-summary-strip strong { color: #ecfbff; }
+@media (max-width: 380px) {
+  .mytank-summary-strip { gap: 6px; padding: 9px 10px; }
+  .mytank-summary-strip span,
+  .mytank-summary-strip strong { font-size: 11px; }
+  .mytank-summary-strip b { font-size: 15px; }
+}
