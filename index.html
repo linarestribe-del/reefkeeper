@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260627-v3-2-0-phase2-css-refactor">
+<link rel="stylesheet" href="css/app.css?v=20260627-v3-3-1-mytank-simplified">
 </head>
 <body>
 
@@ -130,19 +130,44 @@
     <!-- MY TANK WORKSPACE -->
     <div class="page mytank-page" id="page-tank">
       <div class="mytank-main">
-        <div class="compact-page-bar">
+        <div class="compact-page-bar mytank-page-bar">
           <div>
             <div class="compact-page-title">My Tank</div>
-            <div class="compact-page-subtitle">Open the tank section you need.</div>
+            <div class="compact-page-subtitle">Inventory, equipment, parameters, targets, and reef history.</div>
+          </div>
+          <button class="compact-page-action" type="button" onclick="showWorkspace('log')">+ Log</button>
+        </div>
+
+        <div class="mytank-overview-card" id="mytank-overview-card">
+          <div class="mytank-overview-top">
+            <div>
+              <div class="mytank-eyebrow">Reef control center</div>
+              <div class="mytank-overview-title">Open the section you need</div>
+            </div>
+            <button class="mytank-overview-action" type="button" onclick="showWorkspace('home')">Dashboard</button>
+          </div>
+          <div class="mytank-summary-strip" id="mytank-summary-strip" aria-label="Tank summary">
+            <span><b>🐠</b><strong id="mytank-fish-count">— Fish</strong></span>
+            <span><b>🪸</b><strong id="mytank-coral-count">— Coral</strong></span>
+            <span><b>⚙️</b><strong id="mytank-equipment-count">— Gear</strong></span>
+            <span><b>📊</b><strong id="mytank-latest-log-age">Last log: —</strong></span>
           </div>
         </div>
-        <div class="mytank-bottom-tabs" aria-label="My Tank sections">
-          <button class="mytank-bottom-tab active" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish</strong></button>
-          <button class="mytank-bottom-tab" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral</strong></button>
-          <button class="mytank-bottom-tab" type="button" onclick="openMyTankEquipment()"><span>⚙️</span><strong>Equip.</strong></button>
-          <button class="mytank-bottom-tab" type="button" onclick="showWorkspace('log')"><span>📊</span><strong>Params</strong></button>
+
+        <div class="mytank-section-grid" aria-label="My Tank primary sections">
+          <button class="mytank-section-card" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish & Livestock</strong><small>Catalog, photos, health, and notes.</small></button>
+          <button class="mytank-section-card" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral Inventory</strong><small>Corals, anemones, growth, and timeline.</small></button>
+          <button class="mytank-section-card" type="button" onclick="openMyTankEquipment()"><span>⚙️</span><strong>Equipment Manager</strong><small>Installed gear, service intervals, and history.</small></button>
+          <button class="mytank-section-card" type="button" onclick="showWorkspace('log')"><span>📊</span><strong>Parameters Log</strong><small>Readings, trends, and recent stability.</small></button>
         </div>
-        <div class="mytank-helper-card">Choose a section above. Fish and Coral open the livestock catalog, Equip. opens your equipment manager, and Params opens parameter logging.</div>
+
+        <div class="workspace-list-card mytank-secondary-list">
+          <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">🎯</span><span class="workspace-list-main"><strong>Targets & scoring</strong><span>Customize your parameter thresholds and dashboard scoring.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="showWorkspace('vision')"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Reef Timeline</strong><span>Analyze coral, fish, equipment, and full-tank progress photos.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">🗓️</span><span class="workspace-list-main"><strong>Maintenance Planner</strong><span>Days-Off Plan, reminders, overdue tasks, and completed history.</span></span><span class="workspace-chevron">›</span></button>
+        </div>
+
+
       </div>
     </div>
 
@@ -908,12 +933,12 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260627-v3-2-0-phase2-css-refactor"></script>
-<script src="state.js?v=20260627-v3-2-0-phase2-css-refactor"></script>
-<script src="reef-ai-context.js?v=20260627-v3-2-0-phase2-css-refactor"></script>
-<script src="days-off-plan.js?v=20260627-v3-2-0-phase2-css-refactor"></script>
-<script src="diagnostics.js?v=20260627-v3-2-0-phase2-css-refactor"></script>
-<script src="app.js?v=20260627-v3-2-0-phase2-css-refactor"></script>
+<script src="storage.js?v=20260627-v3-3-1-mytank-simplified"></script>
+<script src="state.js?v=20260627-v3-3-1-mytank-simplified"></script>
+<script src="reef-ai-context.js?v=20260627-v3-3-1-mytank-simplified"></script>
+<script src="days-off-plan.js?v=20260627-v3-3-1-mytank-simplified"></script>
+<script src="diagnostics.js?v=20260627-v3-3-1-mytank-simplified"></script>
+<script src="app.js?v=20260627-v3-3-1-mytank-simplified"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -925,13 +950,87 @@ function showWorkspace(name, btn) {
     if (more) more.classList.add('active');
   }
   if (pageName === 'tank') {
-    try { renderTankDashboard(); } catch(e) {}
-    setTimeout(() => {
-      const homeDash = document.getElementById('tank-dashboard-content');
-      const tankDash = document.getElementById('tank-dashboard-content-tank');
-      if (homeDash && tankDash) tankDash.innerHTML = homeDash.innerHTML;
-    }, 60);
+    try { renderMyTankHub(); } catch(e) {}
   }
+}
+
+function rkDaysAgoLabel(iso) {
+  if (!iso) return 'No log';
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return 'Recent';
+  const days = Math.max(0, Math.floor((Date.now() - t) / 86400000));
+  if (days === 0) return 'Today';
+  if (days === 1) return '1 day';
+  return `${days} days`;
+}
+
+function getMyTankInventoryItems() {
+  try { if (typeof getInventoryItems === 'function') return getInventoryItems() || []; } catch(e) {}
+  try { const v = JSON.parse(localStorage.getItem('reef_inventory_custom_v2') || '[]'); if (Array.isArray(v)) return v; } catch(e) {}
+  try { const v = JSON.parse(localStorage.getItem('reef_inventory') || '[]'); if (Array.isArray(v)) return v; } catch(e) {}
+  return [];
+}
+
+function getMyTankEquipmentSnapshot() {
+  let items = [];
+  try { if (typeof getEquipmentItems === 'function') items = getEquipmentItems() || []; } catch(e) {}
+  try {
+    if ((!Array.isArray(items) || !items.length) && window.ReefKeeperStorage?.readDb) {
+      const dbItems = window.ReefKeeperStorage.readDb()?.data?.equipment;
+      if (Array.isArray(dbItems)) items = dbItems;
+    }
+  } catch(e) {}
+  if (!Array.isArray(items) || !items.length) {
+    items = getDefaultMyTankEquipmentItems();
+  }
+  return items;
+}
+
+function getDefaultMyTankEquipmentItems() {
+  const now = new Date().toISOString();
+  return [
+    ['eq-return-1','Jebao MDP Smart DC Return Pump 1','Return Pumps','Jebao','MDP Smart DC','90','Primary return pump.'],
+    ['eq-return-2','Jebao MDP Smart DC Return Pump 2','Return Pumps','Jebao','MDP Smart DC','90','Second return pump.'],
+    ['eq-heater-1','Hygger 802 Titanium Heater 1','Heating','Hygger','802 Titanium','30','Inspect heater and Apex control state.'],
+    ['eq-heater-2','Hygger 802 Titanium Heater 2','Heating','Hygger','802 Titanium','30','Inspect heater and Apex control state.'],
+    ['eq-filter-roller','Bubble Magus Filter Roller','Filtration','Bubble Magus','Filter Roller','30','Track fleece changes and roller cleaning.'],
+    ['eq-skimmer','Simplicity 240 DC Protein Skimmer','Skimmer','Simplicity','240 DC','7','Outdoor air intake. Clean cup/neck regularly.'],
+    ['eq-uv','IceCap 27W UV Sterilizer','UV','IceCap','27W UV','90','Track sleeve cleaning and bulb replacement.'],
+    ['eq-gfo','IceCap 120 GFO Reactor','Reactors','IceCap','120','42','Track media changes and PO4 response.'],
+    ['eq-diy-reactor','DIY Two-Stage GFO / ROX Carbon Reactor','Reactors','DIY','Two-stage reactor','30','GFO then ROX 0.8 carbon separated by foam.'],
+    ['eq-light-1','A8se 11 Max Light 1','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+    ['eq-light-2','A8se 11 Max Light 2','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+    ['eq-light-3','A8se 11 Max Light 3','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+    ['eq-light-4','A8se 11 Max Light 4','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
+    ['eq-mp40-1','MP40 Powerhead 1','Powerheads / Flow','EcoTech','MP40','60','Back wall flow. Track wet-side cleaning.'],
+    ['eq-mp40-2','MP40 Powerhead 2','Powerheads / Flow','EcoTech','MP40','60','Back wall flow. Track wet-side cleaning.'],
+    ['eq-dmp20','Jebao DMP20 Flow Pump','Powerheads / Flow','Jebao','DMP20','60','Left wall flow pump.'],
+    ['eq-ato','Useek Smart ATO','ATO','Useek','Smart ATO','30','10 gallon reservoir. Track sensor cleaning.'],
+    ['eq-apex','Neptune Apex Controller','Controller','Neptune Systems','Apex','90','Track probe calibration and outlet programming.'],
+    ['eq-rodi','5-Stage RODI with Booster Pump','RODI / Mixing','Mixed','5-stage RODI + booster','30','Track TDS, DI resin, and filters.'],
+    ['eq-mixing','55 Gallon Saltwater Mixing Drum','RODI / Mixing','Brute','55 gallon drum','30','Track cleaning and salinity consistency.'],
+    ['eq-kalk','DIY Kalk Stirrer','Dosing','DIY','Kalk stirrer','30','Not currently running. Keep kalk off until calcium/alk are ready.']
+  ].map(([id,name,category,brand,model,maintenanceDays,notes]) => ({ id,name,category,brand,model,maintenanceDays,notes,createdAt:now,defaultItem:true,status:'active' }));
+}
+
+function renderMyTankHub() {
+  const inventory = getMyTankInventoryItems();
+  const active = inventory.filter(i => !/lost|resolved|historical|removed/i.test(String(i.status || '')));
+  const fish = active.filter(i => String(i.type || '').toLowerCase() === 'fish').length;
+  const coral = active.filter(i => ['coral','anemone'].includes(String(i.type || '').toLowerCase())).length;
+  const equipment = getMyTankEquipmentSnapshot().filter(i => !/retired|removed|inactive/i.test(String(i.status || ''))).length;
+
+  let latestLog = null;
+  try {
+    const logs = [...(typeof getDefaultLogs === 'function' ? getDefaultLogs() : []), ...JSON.parse(localStorage.getItem('reef_logs') || '[]')];
+    latestLog = logs.sort((a,b) => new Date(b.isoDate || b.date || 0) - new Date(a.isoDate || a.date || 0))[0];
+  } catch(e) {}
+
+  const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  setText('mytank-fish-count', `${fish || '—'} Fish`);
+  setText('mytank-coral-count', `${coral || '—'} Coral`);
+  setText('mytank-equipment-count', `${equipment || '—'} Gear`);
+  setText('mytank-latest-log-age', `Last log: ${rkDaysAgoLabel(latestLog?.isoDate || latestLog?.date)}`);
 }
 
 function openMyTankEquipment() {
@@ -961,30 +1060,7 @@ function ensureMyTankEquipmentListVisible() {
   let items = [];
   try { if (typeof getEquipmentItems === 'function') items = getEquipmentItems(); } catch(e) { items = []; }
   if (!Array.isArray(items) || !items.length) {
-    const now = new Date().toISOString();
-    items = [
-      ['eq-return-1','Jebao MDP Smart DC Return Pump 1','Return Pumps','Jebao','MDP Smart DC','90','Primary return pump.'],
-      ['eq-return-2','Jebao MDP Smart DC Return Pump 2','Return Pumps','Jebao','MDP Smart DC','90','Second return pump.'],
-      ['eq-heater-1','Hygger 802 Titanium Heater 1','Heating','Hygger','802 Titanium','30','Inspect heater and Apex control state.'],
-      ['eq-heater-2','Hygger 802 Titanium Heater 2','Heating','Hygger','802 Titanium','30','Inspect heater and Apex control state.'],
-      ['eq-filter-roller','Bubble Magus Filter Roller','Filtration','Bubble Magus','Filter Roller','30','Track fleece changes and roller cleaning.'],
-      ['eq-skimmer','Simplicity 240 DC Protein Skimmer','Skimmer','Simplicity','240 DC','7','Outdoor air intake. Clean cup/neck regularly.'],
-      ['eq-uv','IceCap 27W UV Sterilizer','UV','IceCap','27W UV','90','Track sleeve cleaning and bulb replacement.'],
-      ['eq-gfo','IceCap 120 GFO Reactor','Reactors','IceCap','120','42','Track media changes and PO4 response.'],
-      ['eq-diy-reactor','DIY Two-Stage GFO / ROX Carbon Reactor','Reactors','DIY','Two-stage reactor','30','GFO then ROX 0.8 carbon separated by foam.'],
-      ['eq-light-1','A8se 11 Max Light 1','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
-      ['eq-light-2','A8se 11 Max Light 2','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
-      ['eq-light-3','A8se 11 Max Light 3','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
-      ['eq-light-4','A8se 11 Max Light 4','Lighting','A8se','11 Max','90','Track cleaning and output concerns.'],
-      ['eq-mp40-1','MP40 Powerhead 1','Powerheads / Flow','EcoTech','MP40','60','Back wall flow. Track wet-side cleaning.'],
-      ['eq-mp40-2','MP40 Powerhead 2','Powerheads / Flow','EcoTech','MP40','60','Back wall flow. Track wet-side cleaning.'],
-      ['eq-dmp20','Jebao DMP20 Flow Pump','Powerheads / Flow','Jebao','DMP20','60','Left wall flow pump.'],
-      ['eq-ato','Useek Smart ATO','ATO','Useek','Smart ATO','30','10 gallon reservoir. Track sensor cleaning.'],
-      ['eq-apex','Neptune Apex Controller','Controller','Neptune Systems','Apex','90','Track probe calibration and outlet programming.'],
-      ['eq-rodi','5-Stage RODI with Booster Pump','RODI / Mixing','Mixed','5-stage RODI + booster','30','Track TDS, DI resin, and filters.'],
-      ['eq-mixing','55 Gallon Saltwater Mixing Drum','RODI / Mixing','Brute','55 gallon drum','30','Track cleaning and salinity consistency.'],
-      ['eq-kalk','DIY Kalk Stirrer','Dosing','DIY','Kalk stirrer','30','Not currently running. Keep kalk off until calcium/alk are ready.']
-    ].map(([id,name,category,brand,model,maintenanceDays,notes]) => ({ id,name,category,brand,model,maintenanceDays,notes,createdAt:now,defaultItem:true,status:'active' }));
+    items = getDefaultMyTankEquipmentItems();
     try { if (typeof setEquipmentItems === 'function') setEquipmentItems(items); } catch(e) {}
   }
 

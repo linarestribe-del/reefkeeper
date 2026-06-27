@@ -1,5 +1,48 @@
 # Reef Keeper Changelog
 
+## v3.3.1 — My Tank Simplification
+
+### Changed
+- Removed the redundant Fish / Coral / Equip. / Params pill bar from My Tank.
+- Replaced the four stat tiles with a compact informational summary strip.
+- Kept the large My Tank cards as the primary navigation.
+- Renamed Visual Tank History to Reef Timeline.
+- Renamed Maintenance Schedule to Maintenance Planner.
+
+### Test Checklist
+- [ ] My Tank no longer shows the bottom Fish / Coral / Equip. / Params pill bar.
+- [ ] Fish & Livestock opens the livestock catalog.
+- [ ] Coral Inventory opens coral inventory.
+- [ ] Equipment Manager opens installed gear.
+- [ ] Parameters Log opens parameter logging.
+- [ ] Reef Timeline opens AI Vision.
+- [ ] Maintenance Planner opens reminders / days-off planning.
+
+
+## v3.3.0 — My Tank Hub
+
+### Changed
+- `index.html`
+  - Rebuilt the My Tank page into a control-center hub instead of a single helper card.
+  - Added My Tank overview stats for fish, coral, installed equipment, and latest parameter log age.
+  - Added primary section cards for Fish & Livestock, Coral Inventory, Equipment Manager, and Parameters Log.
+  - Added secondary links for Targets & scoring, Visual Tank History, and Maintenance Schedule.
+  - Added resilient My Tank rendering so counts still populate even if saved data is partial.
+- `css/app.css`
+  - Added scoped My Tank hub styling.
+  - Preserved the bottom quick section selector without affecting other pages.
+
+### Test Checklist
+- [ ] Home still loads correctly.
+- [ ] My Tank shows the new overview card and section cards.
+- [ ] Fish & Livestock opens the fish catalog.
+- [ ] Coral Inventory opens the coral catalog.
+- [ ] Equipment Manager opens installed equipment.
+- [ ] Parameters Log opens parameter logging.
+- [ ] AI Vision, Ask AI, and More do not show the My Tank selector.
+- [ ] Dark mode still looks readable.
+
+
 ## v3.2.0 — Phase 2 CSS Refactor
 
 ### Changed
