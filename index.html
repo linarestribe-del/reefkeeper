@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260627-v3-4-0-home-dashboard">
+<link rel="stylesheet" href="css/app.css?v=20260627-v3-4-1-home-status-chips">
 </head>
 <body>
 
@@ -46,7 +46,7 @@
     <!-- HOME PAGE -->
     <div class="page active" id="page-home">
       <div class="page-help-row"><button class="help-btn" onclick="openHelp('home')" aria-label="Help for Home tab">?</button></div>
-      <div class="greeting">Hey, Reefer! 👋</div>
+      <div class="greeting">Welcome back 👋</div>
 
 
       <div class="home-intelligence-card" id="home-intelligence-card">
@@ -60,7 +60,20 @@
             <small>/100</small>
           </div>
         </div>
-        <div class="home-intel-subtitle" id="home-intel-summary">Checking your latest tank data…</div>
+        <div class="home-status-grid" id="home-status-grid" aria-label="Reef status summary">
+          <button class="home-status-chip" type="button" onclick="showWorkspace('home')">
+            <span class="home-status-label" id="home-status-label">🟡 Reef Status</span>
+            <strong id="home-status-value">Checking</strong>
+          </button>
+          <button class="home-status-chip" type="button" onclick="document.getElementById('home-intel-watching')?.scrollIntoView({block:'nearest', behavior:'smooth'});">
+            <span class="home-status-label">👀 AI Monitoring</span>
+            <strong id="home-monitoring-value">Checking</strong>
+          </button>
+          <button class="home-status-chip" type="button" onclick="showWorkspace('log')">
+            <span class="home-status-label">🧪 Last Test</span>
+            <strong id="home-last-test-value">—</strong>
+          </button>
+        </div>
         <div class="home-intel-grid">
           <div class="home-intel-panel">
             <div class="home-intel-label">Today</div>
@@ -1172,13 +1185,19 @@ function renderHomeIntelligence() {
   const latest = rkHomeLatestLog();
   const score = rkHomeScoreFromLog(latest || {});
   const scoreEl = document.getElementById('home-intel-score');
-  const summaryEl = document.getElementById('home-intel-summary');
+  const statusLabelEl = document.getElementById('home-status-label');
+  const statusValueEl = document.getElementById('home-status-value');
+  const monitoringValueEl = document.getElementById('home-monitoring-value');
+  const lastTestValueEl = document.getElementById('home-last-test-value');
   const todayEl = document.getElementById('home-intel-today');
   const watchingEl = document.getElementById('home-intel-watching');
   if (scoreEl) scoreEl.textContent = score;
   const latestAge = rkDaysAgoLabel(latest?.isoDate || latest?.date);
-  const level = score >= 92 ? 'stable' : score >= 84 ? 'watching a few items' : 'needs attention';
-  if (summaryEl) summaryEl.textContent = `Tank health looks ${level}. Latest parameter log: ${latestAge}.`;
+  const statusEmoji = score >= 92 ? '🟢' : score >= 84 ? '🟡' : '🔴';
+  const statusText = score >= 92 ? 'Excellent' : score >= 84 ? 'Stable' : 'Needs Attention';
+  if (statusLabelEl) statusLabelEl.textContent = `${statusEmoji} Reef Status`;
+  if (statusValueEl) statusValueEl.textContent = statusText;
+  if (lastTestValueEl) lastTestValueEl.textContent = latestAge;
 
   let due = [];
   try { due = window.ReefKeeperMaintenance?.getDueTasks?.({ windowDays: 10 }) || []; } catch(e) { due = []; }
@@ -1205,6 +1224,8 @@ function renderHomeIntelligence() {
   if (!latestPhoto) watchLines.push(rkHomeFormatLine('Full-tank photo missing', 'Start Reef Timeline'));
   else watchLines.push(rkHomeFormatLine('Latest reef photo', photoAge));
   if (due.length) watchLines.push(rkHomeFormatLine('Maintenance coming due', `${due.length} item${due.length === 1 ? '' : 's'}`));
+  const monitoringCount = watchLines.length;
+  if (monitoringValueEl) monitoringValueEl.textContent = monitoringCount ? `${monitoringCount} Item${monitoringCount === 1 ? '' : 's'}` : 'Nothing New';
   if (watchingEl) watchingEl.innerHTML = watchLines.slice(0, 4).join('');
 }
 

@@ -1,5 +1,21 @@
 # Reef Keeper Changelog
 
+## v3.4.1 — Home Status Chips
+
+### Changed
+- Replaced the awkward Home dashboard summary sentence with three compact status chips.
+- Updated Home greeting to “Welcome back 👋”.
+- Reduced the app header height slightly to give the dashboard more room.
+- Made Last Test chip open the parameter log.
+
+### Test Checklist
+- [ ] Home says “Welcome back 👋”.
+- [ ] Home shows Reef Status, AI Monitoring, and Last Test chips.
+- [ ] No awkward sentence appears under Today’s Reef Brief.
+- [ ] Last Test chip opens logging/parameters.
+- [ ] Dark mode still looks readable.
+
+
 ## v3.4.0 — Home Dashboard Intelligence
 
 ### Changed
