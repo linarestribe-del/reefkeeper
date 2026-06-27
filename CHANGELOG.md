@@ -1,5 +1,26 @@
 # Reef Keeper Changelog
 
+## v3.4.0 — Home Dashboard Intelligence
+
+### Changed
+- `index.html`
+  - Added a new Today's Reef Brief card at the top of Home.
+  - Added live tank-health score, Today list, AI Watching list, and quick actions.
+  - The Home brief reads latest parameters, active reminders, Maintenance Engine due tasks, and Reef Timeline photo history when available.
+  - Added defensive render hooks so the brief refreshes when returning to Home.
+- `css/app.css`
+  - Added polished Home dashboard styles for the intelligence card, score pill, status panels, and quick action buttons.
+
+### Test Checklist
+- [ ] Home loads normally.
+- [ ] Today's Reef Brief appears under the greeting.
+- [ ] Tank score displays.
+- [ ] Today list displays reminders/maintenance or a safe fallback.
+- [ ] AI Watching displays parameter/photo/maintenance observations.
+- [ ] Quick Actions open Water Test, Maintenance, AI Vision, and Ask AI.
+- [ ] My Tank still looks like v3.3.1.
+- [ ] Dark mode remains readable.
+
 ## v3.3.1 — My Tank Simplification
 
 ### Changed
