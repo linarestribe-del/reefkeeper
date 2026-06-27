@@ -2950,6 +2950,55 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
 .ocean-bg .sandy-bottom,
 .ocean-bg .critter { display: none; }
 
+
+/* v2.1.1 repair: background is a clean app asset, and My Tank selector is page-local, not a floating overlay. */
+.page.mytank-page {
+  display: none;
+  min-height: auto;
+  padding-bottom: 18px;
+}
+.page.mytank-page.active {
+  display: block;
+}
+#page-tank .mytank-main {
+  min-height: auto;
+  padding-bottom: 0;
+}
+#page-tank .mytank-bottom-tabs {
+  position: static;
+  z-index: 1;
+  margin: 16px 0 14px;
+  padding: 10px 8px;
+}
+.page:not(#page-tank) .mytank-bottom-tabs {
+  display: none !important;
+}
+.mytank-helper-card {
+  background: rgba(255,255,255,0.86);
+  border: 1px solid rgba(255,255,255,0.86);
+  border-radius: 20px;
+  padding: 14px 16px;
+  color: var(--text-dark);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html.theme-dark .mytank-helper-card {
+  background: rgba(8,27,42,0.92);
+  border-color: rgba(155,216,240,0.18);
+  color: #ecfbff;
+}
+.ocean-bg {
+  background-color: #004b91;
+  background-image: url('assets/images/reef-background.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
 </style>
 </head>
 <body>
@@ -3072,15 +3121,16 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
         <div class="compact-page-bar">
           <div>
             <div class="compact-page-title">My Tank</div>
-            <div class="compact-page-subtitle">Choose Fish, Coral, Equip., or Params below.</div>
+            <div class="compact-page-subtitle">Open the tank section you need.</div>
           </div>
         </div>
-      </div>
-      <div class="mytank-bottom-tabs" aria-label="My Tank sections">
-        <button class="mytank-bottom-tab active" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish</strong></button>
-        <button class="mytank-bottom-tab" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral</strong></button>
-        <button class="mytank-bottom-tab" type="button" onclick="openLongTermTool('equipment')"><span>⚙️</span><strong>Equip.</strong></button>
-        <button class="mytank-bottom-tab" type="button" onclick="showWorkspace('log')"><span>📊</span><strong>Params</strong></button>
+        <div class="mytank-bottom-tabs" aria-label="My Tank sections">
+          <button class="mytank-bottom-tab active" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish</strong></button>
+          <button class="mytank-bottom-tab" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral</strong></button>
+          <button class="mytank-bottom-tab" type="button" onclick="openLongTermTool('equipment')"><span>⚙️</span><strong>Equip.</strong></button>
+          <button class="mytank-bottom-tab" type="button" onclick="showWorkspace('log')"><span>📊</span><strong>Params</strong></button>
+        </div>
+        <div class="mytank-helper-card">Choose a section above. Fish and Coral open the livestock catalog, Equip. opens your equipment manager, and Params opens parameter logging.</div>
       </div>
     </div>
 
@@ -3846,12 +3896,12 @@ html.theme-dark .mytank-bottom-tab.active { color: #ffffff; }
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260626-v2-1-stabilization"></script>
-<script src="state.js?v=20260626-v2-1-stabilization"></script>
-<script src="reef-ai-context.js?v=20260626-v2-1-stabilization"></script>
-<script src="days-off-plan.js?v=20260626-v2-1-stabilization"></script>
-<script src="diagnostics.js?v=20260626-v2-1-stabilization"></script>
-<script src="app.js?v=20260626-v2-1-stabilization"></script>
+<script src="storage.js?v=20260626-v2-1-1-bg-mytank-fix"></script>
+<script src="state.js?v=20260626-v2-1-1-bg-mytank-fix"></script>
+<script src="reef-ai-context.js?v=20260626-v2-1-1-bg-mytank-fix"></script>
+<script src="days-off-plan.js?v=20260626-v2-1-1-bg-mytank-fix"></script>
+<script src="diagnostics.js?v=20260626-v2-1-1-bg-mytank-fix"></script>
+<script src="app.js?v=20260626-v2-1-1-bg-mytank-fix"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
