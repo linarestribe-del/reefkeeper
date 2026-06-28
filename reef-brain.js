@@ -1,10 +1,10 @@
-// Reef Keeper v3.7.0 Equipment Intelligence
+// Reef Keeper v3.9.1 Reef Brain Intelligence
 // A shared intelligence layer that turns local tank data into one consistent snapshot
 // for Home, Ask AI, Days-Off Planner, reports, and future smart reminders.
 (function(){
   'use strict';
 
-  const VERSION = '3.7.0';
+  const VERSION = '3.9.1';
   const ONE_DAY = 86400000;
 
   function parseJson(key, fallback){
@@ -78,6 +78,104 @@
       mg: number(log?.mg),
       sal: number(log?.sal),
       ph: number(log?.ph)
+    };
+  }
+
+  const PARAM_CONFIG = {
+    po4: { label:'Phosphate', unit:'ppm', high:0.12, target:'0.05–0.10', precision:2, stableDelta:0.03 },
+    alk: { label:'Alkalinity', unit:'dKH', high:9.7, low:7.8, target:'8.5–9.5', precision:1, stableDelta:0.2 },
+    no3: { label:'Nitrate', unit:'ppm', high:15, target:'5–10', precision:0, stableDelta:3 },
+    ca: { label:'Calcium', unit:'ppm', high:470, low:380, target:'400–450', precision:0, stableDelta:20 },
+    mg: { label:'Magnesium', unit:'ppm', low:1250, high:1450, target:'1280–1400', precision:0, stableDelta:40 },
+    ph: { label:'pH', unit:'', low:7.9, high:8.6, target:'8.1–8.4', precision:2, stableDelta:0.08 },
+    sal: { label:'Salinity', unit:'SG', low:1.024, high:1.027, target:'1.025–1.026', precision:3, stableDelta:0.001 }
+  };
+
+  function fmtValue(value, key){
+    const cfg = PARAM_CONFIG[key] || { precision:2, unit:'' };
+    const n = number(value);
+    if (n === null) return '—';
+    return `${n.toFixed(cfg.precision)}${cfg.unit ? ' ' + cfg.unit : ''}`;
+  }
+
+  function getParamPoints(logs, key){
+    return asArray(logs)
+      .map(log => ({ log, value:number(log?.[key]), at:log?.isoDate || log?.createdAt || log?.date }))
+      .filter(p => p.value !== null && dateMs(p.at))
+      .sort((a,b) => dateMs(a.at) - dateMs(b.at));
+  }
+
+  function buildTrendAnalysis(logs){
+    const trends = {};
+    Object.keys(PARAM_CONFIG).forEach(key => {
+      const points = getParamPoints(logs, key);
+      if (!points.length) return;
+      const latest = points[points.length - 1];
+      const previous = points.length > 1 ? points[points.length - 2] : null;
+      const firstRecent = points[Math.max(0, points.length - 4)];
+      const delta = previous ? latest.value - previous.value : 0;
+      const recentDelta = latest.value - firstRecent.value;
+      const cfg = PARAM_CONFIG[key];
+      const absDelta = Math.abs(delta);
+      const stable = previous ? absDelta <= cfg.stableDelta : true;
+      let direction = 'stable';
+      if (!stable) direction = delta > 0 ? 'rising' : 'falling';
+      let status = 'in range';
+      if (cfg.high != null && latest.value > cfg.high) status = 'above target';
+      if (cfg.low != null && latest.value < cfg.low) status = 'below target';
+      const detail = previous
+        ? `${fmtValue(previous.value, key)} → ${fmtValue(latest.value, key)} (${direction})`
+        : `${fmtValue(latest.value, key)} single reading`;
+      trends[key] = {
+        key,
+        label: cfg.label,
+        unit: cfg.unit,
+        latest: latest.value,
+        previous: previous?.value ?? null,
+        delta,
+        recentDelta,
+        direction,
+        stable,
+        status,
+        target: cfg.target,
+        points: points.length,
+        latestAt: latest.at,
+        detail
+      };
+    });
+    return trends;
+  }
+
+  function buildTrendInsights(trends){
+    const insights = [];
+    const add = (title, detail, severity='info', key='') => insights.push({ title, detail:compact(detail, 180), severity, key });
+    Object.values(trends || {}).forEach(t => {
+      if (t.points < 2) return;
+      if (t.status !== 'in range') add(`${t.label} ${t.status}`, `${t.detail}. Target ${t.target}.`, t.status === 'above target' || t.status === 'below target' ? 'watch' : 'info', t.key);
+      else if (t.stable) add(`${t.label} stable`, `${t.detail}. Target ${t.target}.`, 'good', t.key);
+      else add(`${t.label} ${t.direction}`, `${t.detail}. Target ${t.target}.`, 'info', t.key);
+    });
+    return insights.slice(0, 8);
+  }
+
+  function buildScoreExplanation(scoring, trends, inputs){
+    const penalties = asArray(scoring.penalties);
+    const positives = [];
+    Object.values(trends || {}).forEach(t => {
+      if (t.points >= 2 && t.status === 'in range' && t.stable) positives.push(`${t.label} is stable`);
+      if (t.key === 'po4' && t.points >= 2 && t.direction === 'falling') positives.push('Phosphate is trending down');
+    });
+    if (inputs?.dueTasks?.length === 0) positives.push('No major maintenance queue');
+    if (inputs?.latestPhoto) positives.push('Reef Timeline has a recent visual record');
+    const mainPenalty = penalties[0];
+    const summary = mainPenalty
+      ? `Score is mainly limited by ${mainPenalty.title.toLowerCase()} (${mainPenalty.detail}).`
+      : 'Score is supported by stable logs and no major warnings.';
+    return {
+      summary,
+      positives: [...new Set(positives)].slice(0, 4),
+      penalties: penalties.slice(0, 5),
+      explainLines: [summary, ...[...new Set(positives)].slice(0, 3).map(p => `Positive: ${p}.`)]
     };
   }
 
@@ -217,7 +315,9 @@
     lines.push(`Inventory summary: ${snapshot.inventory.fish} fish, ${snapshot.inventory.coral} coral/anemone, ${snapshot.inventory.equipment} gear items.`);
     if (snapshot.equipmentIntelligence) lines.push(`Equipment intelligence: ${snapshot.equipmentIntelligence.summary}; ${snapshot.equipmentIntelligence.total} tracked gear items.`);
     (snapshot.equipmentIntelligence?.priority || []).slice(0, 4).forEach(item => lines.push(`Equipment: ${item.name} — ${item.label}, ${item.detail}; last service ${item.lastService}.`));
-    return lines.map(x => compact(x, 240));
+    if (snapshot.scoreExplanation?.summary) lines.push(`Score explanation: ${snapshot.scoreExplanation.summary}`);
+    (snapshot.trendInsights || []).slice(0, 5).forEach(item => lines.push(`Trend insight: ${item.title} — ${item.detail}.`));
+    return lines.map(x => compact(x, 260));
   }
 
 
@@ -225,27 +325,43 @@
     const score = scoring.score;
     const lastTestDays = daysAgo(inputs.latestLog?.isoDate || inputs.latestLog?.date);
     const latestPhotoDays = inputs.latestPhoto ? daysAgo(inputs.latestPhoto.createdAt || inputs.latestPhoto.isoDate || inputs.latestPhoto.date) : null;
+    const trends = inputs.trends || {};
+    const explanation = inputs.scoreExplanation || { positives:[], penalties:[] };
     const bullets = [];
-    const add = (text, detail = '', action = '') => {
+    const add = (text, detail = '', action = '', priority = 50) => {
       if (!text || bullets.some(b => b.text === text)) return;
-      bullets.push({ text: compact(text, 120), detail: compact(detail, 140), action });
+      bullets.push({ text: compact(text, 120), detail: compact(detail, 150), action, priority });
     };
 
-    if (lastTestDays === null || lastTestDays > 7) add('Log a fresh water test', lastTestDays === null ? 'No recent parameter log found.' : `Last test was ${lastTestDays} days ago.`, 'water-test');
-    else if (lastTestDays >= 3) add('Consider a quick Alk / PO₄ check', `Last test was ${lastTestDays} days ago.`, 'water-test');
+    if (lastTestDays === null || lastTestDays > 7) add('Log a fresh water test', lastTestDays === null ? 'No recent parameter log found.' : `Last test was ${lastTestDays} days ago.`, 'water-test', 95);
+    else if (lastTestDays >= 3) add('Consider a quick Alk / PO₄ check', `Last test was ${lastTestDays} days ago.`, 'water-test', 70);
 
-    if (values.po4 !== null && values.po4 > 0.12) add('Keep watching phosphate', `${values.po4} ppm. Lower slowly; avoid aggressive stripping.`, 'params');
-    if (values.alk !== null && (values.alk > 9.7 || values.alk < 7.8)) add('Prioritize alkalinity stability', `${values.alk} dKH. Retest before major dosing changes.`, 'params');
-    if (values.no3 !== null && values.no3 > 15) add('Nitrate is still above preferred range', `${values.no3} ppm. Confirm trend before changing multiple things.`, 'params');
+    const po4Trend = trends.po4;
+    const alkTrend = trends.alk;
+    const no3Trend = trends.no3;
+    if (po4Trend && po4Trend.status !== 'in range') add('Keep watching phosphate', `${po4Trend.detail}. Lower slowly; avoid aggressive stripping.`, 'params', 86);
+    else if (po4Trend && po4Trend.direction === 'falling') add('Phosphate trend is improving', `${po4Trend.detail}. Hold the current export strategy unless coral response changes.`, 'params', 45);
+    else if (values.po4 !== null && values.po4 > 0.12) add('Keep watching phosphate', `${values.po4} ppm. Lower slowly; avoid aggressive stripping.`, 'params', 82);
 
-    inputs.dueTasks.slice(0, 2).forEach(task => add(task.title || 'Maintenance due', task.detail || task.when || 'Due soon.', 'maintenance'));
-    (inputs.equipmentIntelligence?.priority || []).filter(item => item.level === 'due' || item.level === 'soon').slice(0, 2).forEach(item => add(`${item.name} ${item.label.toLowerCase()}`, item.detail, 'maintenance'));
-    inputs.reminders.slice(0, 2).forEach(reminder => add(`${reminder.emoji || '⏰'} ${reminder.title || 'Reminder'}`, reminder.when || reminder.repeat || 'Active reminder.', 'maintenance'));
+    if (alkTrend && (alkTrend.status !== 'in range' || !alkTrend.stable)) add('Prioritize alkalinity stability', `${alkTrend.detail}. Retest before dosing changes.`, 'params', 90);
+    else if (values.alk !== null && (values.alk > 9.7 || values.alk < 7.8)) add('Prioritize alkalinity stability', `${values.alk} dKH. Retest before major dosing changes.`, 'params', 82);
 
-    if (!inputs.latestPhoto) add('Take a full-tank photo', 'This starts the Reef Timeline and gives AI Vision a baseline.', 'vision');
-    else if (latestPhotoDays !== null && latestPhotoDays >= 14) add('Update the Reef Timeline photo', `Last full-tank photo was ${latestPhotoDays} days ago.`, 'vision');
+    if (no3Trend && no3Trend.status !== 'in range') add('Nitrate is outside target', `${no3Trend.detail}. Confirm trend before changing multiple things.`, 'params', 68);
+    else if (values.no3 !== null && values.no3 > 15) add('Nitrate is still above preferred range', `${values.no3} ppm. Confirm trend before changing multiple things.`, 'params', 62);
 
-    if (!bullets.length) add('Nothing urgent today', 'Log anything you do so the Reef Brain can keep the plan current.', 'maintenance');
+    inputs.dueTasks.slice(0, 2).forEach(task => add(task.title || 'Maintenance due', task.detail || task.when || 'Due soon.', 'maintenance', 78));
+    (inputs.equipmentIntelligence?.priority || []).filter(item => item.level === 'due' || item.level === 'soon').slice(0, 2).forEach(item => add(`${item.name} ${item.label.toLowerCase()}`, item.detail, 'maintenance', item.level === 'due' ? 88 : 74));
+    inputs.reminders.slice(0, 2).forEach(reminder => add(`${reminder.emoji || '⏰'} ${reminder.title || 'Reminder'}`, reminder.when || reminder.repeat || 'Active reminder.', 'maintenance', 65));
+
+    if (!inputs.latestPhoto) add('Take a full-tank photo', 'This starts the Reef Timeline and gives AI Vision a baseline.', 'vision', 58);
+    else if (latestPhotoDays !== null && latestPhotoDays >= 14) add('Update the Reef Timeline photo', `Last full-tank photo was ${latestPhotoDays} days ago.`, 'vision', 58);
+
+    if (explanation.positives?.length && bullets.length < 5) add(explanation.positives[0], 'This is helping your reef score.', 'monitoring', 35);
+    if (!bullets.length) add('Nothing urgent today', 'Log anything you do so the Reef Brain can keep the plan current.', 'maintenance', 40);
+
+    const sorted = bullets.sort((a,b) => b.priority - a.priority).slice(0, 5);
+    const urgentCount = sorted.filter(b => b.priority >= 85).length;
+    const estimate = sorted.reduce((total, b) => total + (b.action === 'vision' ? 3 : b.action === 'water-test' || b.action === 'params' ? 8 : b.action === 'maintenance' ? 10 : 2), 0);
 
     const headline = score >= 92
       ? 'Your reef looks strong today.'
@@ -255,12 +371,15 @@
           ? 'Your reef is in watch mode today.'
           : 'Your reef needs attention today.';
 
-    const primaryAction = bullets[0]?.action || (score < 84 ? 'params' : 'maintenance');
+    const primaryAction = sorted[0]?.action || (score < 84 ? 'params' : 'maintenance');
     return {
       headline,
       updatedAt: new Date().toISOString(),
       primaryAction,
-      bullets: bullets.slice(0, 5)
+      estimateMinutes: estimate,
+      urgentCount,
+      scoreSummary: explanation.summary || '',
+      bullets: sorted
     };
   }
 
@@ -276,7 +395,10 @@
     const inventoryItems = getInventory();
     const equipmentItems = getEquipment();
     const values = latestLogValues(latestLog || {});
+    const trends = buildTrendAnalysis(logs);
+    const trendInsights = buildTrendInsights(trends);
     const scoring = scoreFromValues(values, { latestLog, dueTasks, latestPhoto });
+    const scoreExplanation = buildScoreExplanation(scoring, trends, { latestLog, dueTasks, latestPhoto });
     const status = statusFromScore(scoring.score);
     const inventory = buildInventorySummary(inventoryItems, equipmentItems);
     const equipmentIntelligence = buildEquipmentIntelligence(equipmentItems);
@@ -289,6 +411,9 @@
       score: scoring.score,
       status,
       values,
+      trends,
+      trendInsights,
+      scoreExplanation,
       penalties: scoring.penalties,
       lastTest,
       today,
@@ -301,7 +426,7 @@
       recentActions: actions.slice(0, 8),
       recentCompleted: completed.slice(0, 8)
     };
-    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto, equipmentIntelligence });
+    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto, equipmentIntelligence, trends, scoreExplanation });
     snapshot.aiContextLines = buildAiContextLines(snapshot);
     return snapshot;
   }
@@ -346,6 +471,8 @@
     getPlainTextSummary,
     refresh: getSnapshot,
     daysLabel,
+    buildTrendAnalysis,
+    buildScoreExplanation,
     install
   };
 
