@@ -1,5 +1,32 @@
 # Reef Keeper Changelog
 
+## v4.0.1 — Apex Integration Cleanup
+
+### Goal
+Make Apex setup accurate for users who use Apex Fusion and stop implying that Fusion credentials can be tested directly from the browser.
+
+### Changed
+- `index.html`
+  - Renames Apex Connection to Apex Integration.
+  - Updates Settings copy to explain Fusion vs local bridge setup.
+  - Bumps Apex script/cache version.
+- `apex-connect.js`
+  - Adds Fusion mode and Local/Bridge mode.
+  - Fusion mode saves profile/context only and does not run a misleading browser connection test.
+  - Local/Bridge mode keeps the old read-only browser test for future bridge/local endpoint testing.
+  - Improves status messages and setup guidance.
+- `css/app.css`
+  - Adds mobile-friendly Apex mode cards, info panels, and cleaner toggle rows.
+
+### Test Checklist
+- [ ] More → Apex Integration opens Settings.
+- [ ] Fusion mode can be selected and saved.
+- [ ] Check Setup in Fusion mode shows a saved/ready status, not a failed browser test.
+- [ ] Local/Bridge mode still shows URL, username, password/token fields.
+- [ ] Local/Bridge Check Setup still attempts the local endpoint and gives clear failure guidance if blocked.
+- [ ] Settings page stays readable on phone.
+- [ ] Dark mode remains readable.
+
 ## v4.0.0 — Apex Connect
 
 ### Goal

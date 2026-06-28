@@ -264,7 +264,7 @@
         <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('report')"><span class="workspace-list-icon">📄</span><span class="workspace-list-main"><strong>Reports</strong><span>Monthly reef report, livestock summary, timeline, and exports.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Connection</strong><span>Save and test your local Apex connection profile.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Fusion profile now; local bridge/live sync comes next.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('library')"><span class="workspace-list-icon">📚</span><span class="workspace-list-main"><strong>Reef Library</strong><span>Protocols, manuals, ICP files, and reference documents.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
@@ -542,7 +542,7 @@
       <div class="settings-card" id="apex-settings-card">
         <div class="settings-section-title">Apex Integration</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Connection profile</strong><span>Set up read-only local Apex access. v4.0.0 only saves and tests the connection; live syncing comes next.</span></div>
+          <div class="settings-copy"><strong>Integration profile</strong><span>Select Apex Fusion or a future local bridge. v4.0.1 stops treating Fusion like a direct browser connection.</span></div>
         </div>
         <div id="apex-settings-panel" class="apex-settings-panel"></div>
       </div>
@@ -573,7 +573,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.0.0 Apex Connect</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.0.1 Apex Integration Cleanup</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -1031,7 +1031,7 @@
 <script src="app.js?v=20260628-v3-9-2-polish-performance"></script>
 <script src="reef-brain.js?v=20260628-v3-9-2-polish-performance"></script>
 <script src="reef-timeline.js?v=20260628-v3-9-2-polish-performance"></script>
-<script src="apex-connect.js?v=20260628-v4-0-0-apex-connect"></script>
+<script src="apex-connect.js?v=20260628-v4-0-1-apex-integration-cleanup"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;

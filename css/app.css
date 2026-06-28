@@ -3533,215 +3533,50 @@ html.theme-dark .equipment-intel-banner.good{background:rgba(82,183,136,.12);}
   .equipment-intel-summary span{text-align:left;}
 }
 
-/* ============ REEF TIMELINE v3.8 ============ */
-.reef-timeline-controls{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:10px;
-  margin:12px 0;
-}
-.reef-timeline-count{
-  display:inline-flex;
-  width:fit-content;
-  align-items:center;
-  border-radius:999px;
-  padding:7px 11px;
-  font-size:12px;
-  font-weight:900;
-  color:var(--text-mid);
-  background:rgba(255,255,255,.72);
-  border:1px solid rgba(0,180,216,.18);
-}
-.reef-timeline-add-photo{
-  margin:10px 0 14px;
-  border:1px solid rgba(0,180,216,.18);
-  border-radius:16px;
-  background:rgba(255,255,255,.62);
-  overflow:hidden;
-}
-.reef-timeline-add-photo summary{
-  cursor:pointer;
-  list-style:none;
-  padding:12px 14px;
-  font-weight:900;
-  color:var(--text-dark);
-}
-.reef-timeline-add-photo summary::-webkit-details-marker{display:none;}
-.reef-timeline-add-photo .tank-history-form{padding:0 12px 12px;}
-.reef-timeline-day{
-  display:inline-flex;
-  align-items:center;
-  width:fit-content;
-  margin:16px 2px 8px;
-  padding:5px 10px;
-  border-radius:999px;
-  font-size:12px;
-  font-weight:900;
-  text-transform:uppercase;
-  letter-spacing:.08em;
-  color:var(--text-dark);
-  background:rgba(255,255,255,.88);
-  border:1px solid rgba(0,180,216,.18);
-  box-shadow:0 4px 14px rgba(0,119,182,.14);
-  text-shadow:none;
-}
-.reef-timeline-entry{
-  cursor:pointer;
-  transition:transform .15s ease, box-shadow .15s ease;
-}
-.reef-timeline-entry:active{transform:scale(.985);}
-.reef-timeline-main{min-width:0;}
-.reef-timeline-entry.type-params{border-left:4px solid rgba(0,180,216,.6);}
-.reef-timeline-entry.type-photo{border-left:4px solid rgba(199,125,255,.62);}
-.reef-timeline-entry.type-maintenance,.reef-timeline-entry.type-completed{border-left:4px solid rgba(82,183,136,.62);}
-.reef-timeline-entry.type-equipment{border-left:4px solid rgba(255,183,3,.70);}
-.reef-timeline-entry.type-livestock{border-left:4px solid rgba(255,107,53,.65);}
+/* ============ v4.0.0 APEX CONNECT ============ */
+.apex-settings-panel{margin-top:8px;}
+.apex-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0;}
+.apex-field{display:flex;flex-direction:column;gap:5px;}
+.apex-field.full{grid-column:1 / -1;}
+.apex-field span{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);}
+.apex-field input{width:100%;border:2px solid rgba(0,180,216,.22);border-radius:14px;background:rgba(255,255,255,.92);color:var(--text-dark);font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;padding:10px 12px;outline:none;}
+.apex-field input:focus{border-color:var(--ocean-mid);box-shadow:0 0 0 3px rgba(0,180,216,.12);}
+.apex-toggle-list{display:grid;gap:8px;margin:10px 0;}
+.apex-toggle{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;color:var(--text-dark);}
+.apex-toggle input{width:18px;height:18px;accent-color:var(--ocean-mid);}
+.apex-status-box{border:1px solid rgba(0,119,182,.14);border-radius:16px;padding:12px;margin:12px 0;background:rgba(255,255,255,.70);}
+.apex-status-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:4px;}
+.apex-status-head strong{font-size:14px;font-weight:900;color:var(--text-dark);}
+.apex-status-head span{font-size:11px;font-weight:800;color:var(--text-light);}
+.apex-status-detail{font-size:12px;font-weight:700;line-height:1.35;color:var(--text-mid);}
+.apex-status-good{border-color:rgba(45,106,79,.28);background:rgba(82,183,136,.16);}
+.apex-status-bad{border-color:rgba(214,40,40,.24);background:rgba(255,107,53,.12);}
+.apex-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.apex-actions button:disabled{opacity:.65;cursor:wait;}
+.apex-note{font-size:12px;line-height:1.4;font-weight:700;color:var(--text-light);margin-top:10px;}
+html.theme-dark .apex-field input,html.theme-dark .apex-status-box{background:rgba(8,27,42,.92);border-color:rgba(155,216,240,.20);color:var(--text-dark);}
+@media(max-width:390px){.apex-form-grid,.apex-actions{grid-template-columns:1fr;}}
 
-html.theme-dark .reef-timeline-day{
-  background:rgba(8,27,42,.88);
-  border-color:rgba(155,216,240,.20);
-  color:var(--text-dark);
-}
-
-html.theme-dark .reef-timeline-count,
-html.theme-dark .reef-timeline-add-photo{
-  background:rgba(8,27,42,.88);
-  border-color:rgba(155,216,240,.20);
-  color:var(--text-dark);
-}
-
-/* ============ REEF TIMELINE v3.9 Intelligence ============ */
-.reef-timeline-intelligence{
-  margin:12px 0 10px;
-  border:1px solid rgba(0,180,216,.18);
-  border-radius:18px;
-  background:rgba(255,255,255,.72);
-  box-shadow:0 8px 22px rgba(0,119,182,.12);
-  padding:12px;
-}
-.timeline-intel-head{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-}
-.timeline-intel-head strong{
-  display:block;
-  color:var(--text-dark);
-  font-size:14px;
-  font-weight:900;
-}
-.timeline-intel-head span{
-  display:block;
-  color:var(--text-light);
-  font-size:12px;
-  font-weight:800;
-  line-height:1.35;
-  margin-top:2px;
-}
-.timeline-intel-head button{
-  border:none;
-  border-radius:999px;
-  background:linear-gradient(135deg,var(--ocean-deep),var(--ocean-mid));
-  color:white;
-  font-family:'Nunito',sans-serif;
-  font-size:12px;
-  font-weight:900;
-  padding:8px 11px;
-  cursor:pointer;
-  box-shadow:0 4px 14px rgba(0,119,182,.20);
-}
-.timeline-intel-grid{
-  display:grid;
-  grid-template-columns:1fr;
-  gap:8px;
-}
-.timeline-intel-card{
-  border:1px solid rgba(0,180,216,.14);
-  border-radius:14px;
-  background:rgba(255,255,255,.66);
-  padding:10px 11px;
-}
-.timeline-intel-card b{
-  display:block;
-  color:var(--text-dark);
-  font-size:13px;
-  font-weight:900;
-  margin-bottom:3px;
-}
-.timeline-intel-card span{
-  display:block;
-  color:var(--text-mid);
-  font-size:12px;
-  font-weight:800;
-  line-height:1.35;
-}
-.reef-timeline-milestones{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin:10px 0 12px;
-}
-.timeline-milestone{
-  display:flex;
-  gap:8px;
-  align-items:flex-start;
-  border:1px solid rgba(0,180,216,.14);
-  border-radius:14px;
-  background:rgba(255,255,255,.62);
-  padding:10px;
-}
-.timeline-milestone>span{
-  font-size:20px;
-  line-height:1;
-}
-.timeline-milestone strong{
-  display:block;
-  color:var(--text-dark);
-  font-size:12px;
-  font-weight:900;
-}
-.timeline-milestone small{
-  display:block;
-  color:var(--text-light);
-  font-size:11px;
-  font-weight:800;
-  line-height:1.25;
-  margin-top:2px;
-}
-.timeline-intelligence-note{
-  margin-top:7px;
-  padding:8px 10px;
-  border-radius:12px;
-  background:rgba(0,180,216,.09);
-  border:1px solid rgba(0,180,216,.13);
-  color:var(--text-mid);
-  font-size:12px;
-  font-weight:800;
-  line-height:1.35;
-}
-.recent-change-note{
-  color:var(--text-light);
-  font-size:11px;
-  font-weight:800;
-  line-height:1.25;
-  margin-top:2px;
-}
-.reef-timeline-entry.subtype-fish{border-left-color:rgba(0,119,182,.60);}
-.reef-timeline-entry.subtype-coral{border-left-color:rgba(255,107,53,.68);}
-.reef-timeline-entry.subtype-water-change{border-left-color:rgba(0,180,216,.62);}
-html.theme-dark .reef-timeline-intelligence,
-html.theme-dark .timeline-intel-card,
-html.theme-dark .timeline-milestone{
-  background:rgba(8,27,42,.88);
-  border-color:rgba(155,216,240,.20);
-}
-html.theme-dark .timeline-intelligence-note{
-  background:rgba(155,216,240,.08);
-  border-color:rgba(155,216,240,.18);
-  color:var(--text-mid);
-}
-@media(max-width:390px){
-  .reef-timeline-milestones{grid-template-columns:1fr;}
-}
+/* v4.0.1 Apex Integration Cleanup */
+.apex-mode-grid{display:grid;grid-template-columns:1fr;gap:10px;margin:12px 0;}
+.apex-mode-card{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:start;border:2px solid rgba(0,180,216,.18);border-radius:18px;background:rgba(255,255,255,.76);padding:12px;cursor:pointer;box-shadow:0 4px 14px rgba(0,119,182,.08);}
+.apex-mode-card input{grid-row:1 / span 3;margin-top:4px;accent-color:var(--ocean-mid);}
+.apex-mode-card>span{font-size:22px;line-height:1;}
+.apex-mode-card strong{display:block;font-size:14px;font-weight:900;color:var(--text-dark);}
+.apex-mode-card small{display:block;grid-column:2;font-size:12px;line-height:1.35;font-weight:700;color:var(--text-mid);}
+.apex-mode-card.active{border-color:rgba(0,180,216,.55);background:rgba(255,255,255,.92);}
+.apex-info-card{border:1px solid rgba(0,180,216,.20);border-radius:16px;background:rgba(255,255,255,.68);padding:12px;margin:10px 0;}
+.apex-info-card strong{display:block;font-size:13px;font-weight:900;color:var(--text-dark);margin-bottom:4px;}
+.apex-info-card p{font-size:12px;line-height:1.45;font-weight:700;color:var(--text-mid);margin:0;}
+.apex-info-card.caution{border-color:rgba(255,183,3,.35);background:rgba(255,248,231,.76);}
+.apex-form-grid.single{display:grid;grid-template-columns:1fr;gap:10px;}
+.apex-switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(0,180,216,.16);border-radius:16px;background:rgba(255,255,255,.64);padding:12px;margin:9px 0;}
+.apex-switch-row span strong{display:block;font-size:13px;font-weight:900;color:var(--text-dark);}
+.apex-switch-row span small{display:block;font-size:11px;line-height:1.3;font-weight:700;color:var(--text-light);margin-top:2px;}
+.apex-switch-row input{width:22px;height:22px;accent-color:var(--ocean-mid);flex-shrink:0;}
+.apex-status-tips{margin:8px 0 0 18px;color:var(--text-mid);font-size:12px;font-weight:700;line-height:1.35;}
+[data-apex-mode-panel].hidden{display:none!important;}
+html.theme-dark .apex-mode-card,html.theme-dark .apex-info-card,html.theme-dark .apex-switch-row{background:rgba(8,27,42,.86);border-color:rgba(155,216,240,.20);}
+html.theme-dark .apex-mode-card.active{background:rgba(8,27,42,.96);border-color:rgba(112,184,212,.48);}
+html.theme-dark .apex-info-card.caution{background:rgba(44,37,18,.72);border-color:rgba(255,183,3,.28);}
+@media(min-width:430px){.apex-mode-grid{grid-template-columns:1fr 1fr;}}
