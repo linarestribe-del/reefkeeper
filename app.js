@@ -1,5 +1,5 @@
 // Reef Keeper build marker: 20260619-refactor-v9
-window.REEF_KEEPER_BUILD = '20260627-v3.1.1-equipment-defaults';
+window.REEF_KEEPER_BUILD = '20260626-v2.0.1-mytank-cleanup';
 // Early Safari/PWA-safe completed-history aliases. These are intentionally defined before the rest of the app.
 (function(){
   window.getCompletedHistory = window.getCompletedHistory || function(){
@@ -3124,7 +3124,9 @@ function renderTankDashboard(){
   const el = document.getElementById('tank-dashboard-content');
   if (!el) return;
   const latest = getLatestLogForStatus();
-  const { score, level } = tankDashboardScore();
+  const brain = window.ReefKeeperBrain?.getSnapshot?.();
+  const score = Number.isFinite(brain?.score) ? brain.score : tankDashboardScore().score;
+  const statusLabel = brain?.status?.label || tankDashboardScore().level;
   const inventory = getInventoryItems();
   const watch = inventory.filter(i => ['watch','recovering','stressed'].includes(i.status));
   const coralAnalyses = inventory.filter(i => Array.isArray(i.photoAnalyses) && i.photoAnalyses.length);
@@ -3132,7 +3134,21 @@ function renderTankDashboard(){
   const trendLine = latest ? buildLogMemoryLine(latest).replace(/^[^:]+:\s*/, '') : 'No user parameter log yet.';
   const watchLine = watch.length ? watch.slice(0,3).map(i => `${i.name} (${i.status})`).join(', ') : 'No livestock flagged as stressed/watch.';
   const next = !latest ? 'Log parameters, then add a full-tank photo.' : watch.length ? 'Open Livestock Inventory and add/update photos for watch items.' : 'Add a monthly full-tank photo to build visual history.';
-  el.innerHTML = `<div class="tank-dashboard-grid"><div class="tank-score-ring" style="--score:${score}"><div class="tank-score-num">${score}</div><div class="tank-score-label">${escapeHtml(level)}</div></div><div class="tank-dashboard-list"><div class="tank-dashboard-row"><strong>Latest:</strong> ${escapeHtml(trendLine)}</div><div class="tank-dashboard-row"><strong>Watch:</strong> ${escapeHtml(watchLine)}</div><div class="tank-dashboard-row"><strong>Vision:</strong> ${escapeHtml(photoLine)}</div><div class="tank-dashboard-row"><strong>Next:</strong> ${escapeHtml(next)}</div></div></div><div class="tank-dashboard-actions"><button class="dashboard-btn" type="button" onclick="openLongTermTool('inventory')">Open Photo Timeline</button><button class="dashboard-btn secondary" type="button" onclick="openLongTermTool('tankhistory')">Add Full-Tank Photo</button></div>`;
+  const reasonLines = [];
+  if (brain?.watching?.length) brain.watching.slice(0, 3).forEach(item => reasonLines.push(`${item.title}${item.detail ? ` — ${item.detail}` : ''}`));
+  if (!reasonLines.length && watch.length) reasonLines.push(`Livestock watch list: ${watchLine}`);
+  if (!reasonLines.length && latest) reasonLines.push(`Latest parameters: ${trendLine}`);
+  if (!reasonLines.length) reasonLines.push('Add recent tests, maintenance, and photo history to improve score confidence.');
+  el.innerHTML = `
+    <div class="tank-dashboard-list">
+      <div class="tank-dashboard-row"><strong>Score detail:</strong> The main Reef Brain score is ${escapeHtml(score)}/100 — ${escapeHtml(statusLabel)}.</div>
+      <div class="tank-dashboard-row"><strong>Latest:</strong> ${escapeHtml(trendLine)}</div>
+      <div class="tank-dashboard-row"><strong>Watch:</strong> ${escapeHtml(watchLine)}</div>
+      <div class="tank-dashboard-row"><strong>Vision:</strong> ${escapeHtml(photoLine)}</div>
+      <div class="tank-dashboard-row"><strong>Why not 100?</strong> ${escapeHtml(reasonLines[0])}</div>
+      <div class="tank-dashboard-row"><strong>Next:</strong> ${escapeHtml(next)}</div>
+    </div>
+    <div class="tank-dashboard-actions"><button class="dashboard-btn" type="button" onclick="showWorkspace('vision')">Open Reef Timeline</button><button class="dashboard-btn secondary" type="button" onclick="openLongTermTool('tankhistory')">Add Full-Tank Photo</button></div>`;
 }
 
 const TANK_HISTORY_KEY = 'reef_tank_visual_history_v13';
@@ -6478,295 +6494,4 @@ function downloadSelectedReportDOCX() {
   const report = getSelectedReport();
   const blob = rkCreateSimpleDOCX(report.title, report.text);
   rkDownloadBlob(blob, `${rkSafeFilename(report.title)}-${rkNowFileStamp()}.docx`);
-}
-
-// ── Equipment Manager fallback / My Tank Equipment integration ─────────────
-// v3.1.1: Ensures the My Tank → Equip. section always shows the installed/default equipment list.
-const REEF_EQUIPMENT_KEY_V1 = 'reef_equipment_inventory_v1';
-let currentEquipmentFilter = 'All';
-
-function defaultEquipmentItems() {
-  const now = new Date().toISOString();
-  return [
-    { id:'eq-return-jebao-mdp-1', name:'Jebao MDP Smart DC Return Pump 1', category:'Return Pumps', brand:'Jebao', model:'MDP Smart DC', installed:'', maintenanceDays:90, status:'active', notes:'One of two return pumps on the 120g SCA / Red Sea Reefer sump system.', createdAt:now, defaultItem:true },
-    { id:'eq-return-jebao-mdp-2', name:'Jebao MDP Smart DC Return Pump 2', category:'Return Pumps', brand:'Jebao', model:'MDP Smart DC', installed:'', maintenanceDays:90, status:'active', notes:'Second return pump. Track cleaning, impeller checks, and flow changes.', createdAt:now, defaultItem:true },
-    { id:'eq-heater-hygger-1', name:'Hygger 802 Titanium Heater 1', category:'Heating', brand:'Hygger', model:'802 Titanium Tube', installed:'', maintenanceDays:30, status:'active', notes:'Inspect regularly and verify Apex programming remains AUTO after water changes.', createdAt:now, defaultItem:true },
-    { id:'eq-heater-hygger-2', name:'Hygger 802 Titanium Heater 2', category:'Heating', brand:'Hygger', model:'802 Titanium Tube', installed:'', maintenanceDays:30, status:'active', notes:'Second heater. Inspect for corrosion, controller behavior, and abnormal temperature swings.', createdAt:now, defaultItem:true },
-    { id:'eq-filter-roller', name:'Bubble Magus Filter Roller', category:'Filtration', brand:'Bubble Magus', model:'Filter Roller', installed:'', maintenanceDays:30, status:'active', notes:'Track fleece changes, roller jams, and cleaning.', createdAt:now, defaultItem:true },
-    { id:'eq-skimmer-simplicity-240', name:'Simplicity 240 DC Protein Skimmer', category:'Skimmer', brand:'Simplicity', model:'240 DC', installed:'', maintenanceDays:7, status:'active', notes:'Outdoor air intake. Log cup/neck cleaning and deeper pump service separately.', createdAt:now, defaultItem:true },
-    { id:'eq-uv-icecap-27w', name:'IceCap 27W UV Sterilizer', category:'UV', brand:'IceCap', model:'27W UV', installed:'', maintenanceDays:90, status:'active', notes:'Track quartz sleeve cleaning, flow verification, and annual bulb replacement.', createdAt:now, defaultItem:true },
-    { id:'eq-gfo-icecap-120', name:'IceCap 120 GFO Reactor', category:'Reactors', brand:'IceCap', model:'120', installed:'', maintenanceDays:42, status:'active', notes:'In-sump GFO reactor. Track media change dates and PO4 response.', createdAt:now, defaultItem:true },
-    { id:'eq-carbon-gfo-diy-reactor', name:'DIY Two-Stage GFO / ROX Carbon Reactor', category:'Reactors', brand:'DIY', model:'Two-stage reactor', installed:'', maintenanceDays:30, status:'active', notes:'GFO then ROX 0.8 carbon separated by foam. Track media changes and flow.', createdAt:now, defaultItem:true },
-    { id:'eq-light-a8se-1', name:'A8se 11 Max Light 1', category:'Lighting', brand:'A8se', model:'11 Max', installed:'', maintenanceDays:90, status:'active', notes:'One of four lights. Track schedule changes, cleaning, and output concerns.', createdAt:now, defaultItem:true },
-    { id:'eq-light-a8se-2', name:'A8se 11 Max Light 2', category:'Lighting', brand:'A8se', model:'11 Max', installed:'', maintenanceDays:90, status:'active', notes:'One of four lights. Track schedule changes, cleaning, and output concerns.', createdAt:now, defaultItem:true },
-    { id:'eq-light-a8se-3', name:'A8se 11 Max Light 3', category:'Lighting', brand:'A8se', model:'11 Max', installed:'', maintenanceDays:90, status:'active', notes:'One of four lights. Track schedule changes, cleaning, and output concerns.', createdAt:now, defaultItem:true },
-    { id:'eq-light-a8se-4', name:'A8se 11 Max Light 4', category:'Lighting', brand:'A8se', model:'11 Max', installed:'', maintenanceDays:90, status:'active', notes:'One of four lights. Track schedule changes, cleaning, and output concerns.', createdAt:now, defaultItem:true },
-    { id:'eq-mp40-1', name:'MP40 Powerhead 1', category:'Powerheads / Flow', brand:'EcoTech', model:'MP40', installed:'', maintenanceDays:60, status:'active', notes:'Back wall flow. Track wet-side cleanings and abnormal noise.', createdAt:now, defaultItem:true },
-    { id:'eq-mp40-2', name:'MP40 Powerhead 2', category:'Powerheads / Flow', brand:'EcoTech', model:'MP40', installed:'', maintenanceDays:60, status:'active', notes:'Back wall flow. Track wet-side cleanings and abnormal noise.', createdAt:now, defaultItem:true },
-    { id:'eq-jebao-dmp20', name:'Jebao DMP20 Flow Pump', category:'Powerheads / Flow', brand:'Jebao', model:'DMP20', installed:'', maintenanceDays:60, status:'active', notes:'Left wall flow pump. Track cleaning and flow pattern changes.', createdAt:now, defaultItem:true },
-    { id:'eq-ato-useek', name:'Useek Smart ATO', category:'ATO', brand:'Useek', model:'Smart ATO', installed:'', maintenanceDays:30, status:'active', notes:'10 gallon reservoir. Track sensor cleaning and reservoir checks.', createdAt:now, defaultItem:true },
-    { id:'eq-controller-apex', name:'Neptune Apex Controller', category:'Controller', brand:'Neptune Systems', model:'Apex', installed:'', maintenanceDays:90, status:'active', notes:'Track probe calibration, outlet programming, and safety checks.', createdAt:now, defaultItem:true },
-    { id:'eq-rodi', name:'5-Stage RODI with Booster Pump', category:'RODI / Mixing', brand:'Mixed', model:'5-stage RODI + booster', installed:'', maintenanceDays:30, status:'active', notes:'Track TDS, DI resin, sediment/carbon filters, and booster pump performance.', createdAt:now, defaultItem:true },
-    { id:'eq-mixing-brute', name:'55 Gallon Saltwater Mixing Drum', category:'RODI / Mixing', brand:'Brute', model:'55 gallon drum', installed:'', maintenanceDays:30, status:'active', notes:'Track cleaning, salt mix batches, heater/pump use, and salinity consistency.', createdAt:now, defaultItem:true },
-    { id:'eq-kalk-stirrer', name:'DIY Kalk Stirrer', category:'Dosing', brand:'DIY', model:'Kalk stirrer', installed:'', maintenanceDays:30, status:'watch', notes:'Not currently running. Do not dose kalk until calcium is below 450 and alkalinity is stable.', createdAt:now, defaultItem:true }
-  ];
-}
-
-function normalizeEquipmentItem(item) {
-  const src = item && typeof item === 'object' ? item : {};
-  const id = String(src.id || '').trim();
-  const name = String(src.name || '').trim();
-  if (!id && !name) return null;
-  return {
-    ...src,
-    id: id || `eq-${name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || Date.now().toString(36)}`,
-    name: name || 'Unnamed equipment',
-    category: src.category || 'Miscellaneous',
-    status: src.status || 'active'
-  };
-}
-
-function mergeDefaultEquipmentWithSaved(savedItems) {
-  const defaults = defaultEquipmentItems().map(normalizeEquipmentItem).filter(Boolean);
-  const saved = (Array.isArray(savedItems) ? savedItems : []).map(normalizeEquipmentItem).filter(Boolean);
-  const byId = new Map();
-  defaults.forEach(item => byId.set(String(item.id), item));
-  saved.forEach(item => byId.set(String(item.id), { ...(byId.get(String(item.id)) || {}), ...item, defaultItem: item.defaultItem || byId.get(String(item.id))?.defaultItem || false }));
-  return Array.from(byId.values());
-}
-
-function getEquipmentItems() {
-  let stored = [];
-  try {
-    const raw = localStorage.getItem(REEF_EQUIPMENT_KEY_V1);
-    stored = raw ? JSON.parse(raw) : [];
-  } catch(e) { stored = []; }
-  if (!Array.isArray(stored)) stored = [];
-  try {
-    const dbEquipment = window.ReefKeeperStorage?.readDb?.()?.data?.equipment;
-    if (Array.isArray(dbEquipment) && dbEquipment.length) {
-      stored = [...stored, ...dbEquipment];
-    }
-  } catch(e) {}
-  const merged = mergeDefaultEquipmentWithSaved(stored);
-  try {
-    const raw = localStorage.getItem(REEF_EQUIPMENT_KEY_V1);
-    const saved = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(saved) || saved.length < merged.length) setEquipmentItems(merged);
-  } catch(e) {}
-  return merged;
-}
-
-function setEquipmentItems(items) {
-  const clean = Array.isArray(items) ? items : [];
-  try { localStorage.setItem(REEF_EQUIPMENT_KEY_V1, JSON.stringify(clean)); } catch(e) {}
-  try { window.ReefKeeperStorage?.updateDb?.(db => { db.data = db.data || {}; db.data.equipment = clean; return db; }); } catch(e) {}
-}
-
-function equipmentDateLabel(value) {
-  if (!value) return 'Not set';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-}
-
-function equipmentNextService(item) {
-  const days = parseInt(item.maintenanceDays || item.maintenanceIntervalDays || 0, 10);
-  if (!days) return { label:'No interval', status:'good' };
-  const base = item.lastServiceIso || item.lastServiced || item.installed || item.createdAt;
-  if (!base) return { label:`Every ${days} days`, status:'watch' };
-  const d = new Date(base);
-  if (Number.isNaN(d.getTime())) return { label:`Every ${days} days`, status:'watch' };
-  d.setDate(d.getDate() + days);
-  const diff = Math.ceil((d.getTime() - Date.now()) / 86400000);
-  if (diff < 0) return { label:`Overdue ${Math.abs(diff)}d`, status:'due' };
-  if (diff <= 7) return { label:`Due in ${diff}d`, status:'watch' };
-  return { label:`Due in ${diff}d`, status:'good' };
-}
-
-function renderEquipmentManager() {
-  const list = document.getElementById('equipment-list');
-  const filters = document.getElementById('equipment-filter-row');
-  if (!list) return;
-  const items = getEquipmentItems();
-  const categories = ['All', ...Array.from(new Set(items.map(i => i.category || 'Miscellaneous'))).sort()];
-  if (!categories.includes(currentEquipmentFilter)) currentEquipmentFilter = 'All';
-  if (filters) {
-    filters.innerHTML = categories.map(cat => `<button class="equipment-filter-btn ${cat === currentEquipmentFilter ? 'active' : ''}" type="button" onclick="setEquipmentFilter('${escapeHtml(cat)}')">${escapeHtml(cat)}</button>`).join('');
-  }
-  const visible = currentEquipmentFilter === 'All' ? items : items.filter(i => (i.category || 'Miscellaneous') === currentEquipmentFilter);
-  if (!visible.length) {
-    list.innerHTML = '<div class="equipment-empty">No equipment saved in this category.</div>';
-    return;
-  }
-  list.innerHTML = visible.map(item => {
-    const service = equipmentNextService(item);
-    return `<div class="equipment-card" id="equipment-card-${escapeHtml(item.id)}">
-      <div class="equipment-card-head" onclick="toggleEquipmentCard('${escapeHtml(item.id)}')">
-        <div>
-          <div class="equipment-card-title">${escapeHtml(item.name || 'Unnamed equipment')}</div>
-          <div class="equipment-card-meta">${escapeHtml(item.category || 'Miscellaneous')} · ${escapeHtml([item.brand, item.model].filter(Boolean).join(' ') || 'No model saved')}</div>
-        </div>
-        <div class="equipment-status ${service.status}">${escapeHtml(service.label)}</div>
-      </div>
-      <div class="equipment-card-body">
-        ${item.photoData ? `<img class="equipment-photo" src="${item.photoData}" alt="${escapeHtml(item.name || 'Equipment photo')}">` : ''}
-        <div class="equipment-detail-grid">
-          <div class="equipment-detail"><div class="equipment-detail-label">Installed</div><div class="equipment-detail-value">${escapeHtml(equipmentDateLabel(item.installed))}</div></div>
-          <div class="equipment-detail"><div class="equipment-detail-label">Purchased</div><div class="equipment-detail-value">${escapeHtml(equipmentDateLabel(item.purchaseDate || item.purchased))}</div></div>
-          <div class="equipment-detail"><div class="equipment-detail-label">Maintenance</div><div class="equipment-detail-value">${escapeHtml(item.maintenanceDays ? `Every ${item.maintenanceDays} days` : 'Not set')}</div></div>
-          <div class="equipment-detail"><div class="equipment-detail-label">Last Service</div><div class="equipment-detail-value">${escapeHtml(equipmentDateLabel(item.lastServiceIso || item.lastServiced))}</div></div>
-          <div class="equipment-detail"><div class="equipment-detail-label">Serial / ID</div><div class="equipment-detail-value">${escapeHtml(item.serial || 'Not set')}</div></div>
-          <div class="equipment-detail"><div class="equipment-detail-label">Manual</div><div class="equipment-detail-value">${escapeHtml(item.manual || 'Not set')}</div></div>
-        </div>
-        ${item.parts ? `<div class="equipment-detail"><div class="equipment-detail-label">Replacement Parts</div><div class="equipment-detail-value">${escapeHtml(item.parts)}</div></div>` : ''}
-        ${item.notes ? `<div class="equipment-detail"><div class="equipment-detail-label">Notes</div><div class="equipment-detail-value">${escapeHtml(item.notes)}</div></div>` : ''}
-        <div class="equipment-card-actions">
-          <button class="equipment-secondary-btn" type="button" onclick="editEquipmentItem('${escapeHtml(item.id)}')">Edit</button>
-          <button class="equipment-primary-btn" type="button" onclick="logEquipmentService('${escapeHtml(item.id)}')">Log Service</button>
-          <button class="equipment-danger-btn" type="button" onclick="deleteEquipmentItem('${escapeHtml(item.id)}')">Delete</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function setEquipmentFilter(category) {
-  currentEquipmentFilter = category || 'All';
-  renderEquipmentManager();
-}
-
-function toggleEquipmentCard(id) {
-  const card = document.getElementById(`equipment-card-${id}`);
-  if (card) card.classList.toggle('expanded');
-}
-
-function clearEquipmentForm() {
-  ['equipment-edit-id','equipment-photo-data','equipment-name','equipment-brand','equipment-model','equipment-installed','equipment-purchase','equipment-maintenance-days','equipment-serial','equipment-manual','equipment-parts','equipment-notes'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const cat = document.getElementById('equipment-category');
-  if (cat) cat.value = 'Miscellaneous';
-  const file = document.getElementById('equipment-photo-input');
-  if (file) file.value = '';
-}
-
-function editEquipmentItem(id) {
-  const item = getEquipmentItems().find(i => String(i.id) === String(id));
-  if (!item) return;
-  const set = (id, value) => { const el = document.getElementById(id); if (el) el.value = value || ''; };
-  set('equipment-edit-id', item.id);
-  set('equipment-photo-data', item.photoData);
-  set('equipment-name', item.name);
-  set('equipment-category', item.category || 'Miscellaneous');
-  set('equipment-brand', item.brand);
-  set('equipment-model', item.model);
-  set('equipment-installed', item.installed);
-  set('equipment-purchase', item.purchaseDate || item.purchased);
-  set('equipment-maintenance-days', item.maintenanceDays);
-  set('equipment-serial', item.serial);
-  set('equipment-manual', item.manual);
-  set('equipment-parts', item.parts);
-  set('equipment-notes', item.notes);
-  try { document.getElementById('equipment-form-card')?.scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e) {}
-}
-
-function saveEquipmentItem() {
-  const val = id => document.getElementById(id)?.value?.trim?.() || '';
-  const name = val('equipment-name');
-  if (!name) return showToast?.('⚠️ Add an equipment name first');
-  const id = val('equipment-edit-id') || `eq-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
-  const items = getEquipmentItems().filter(i => String(i.id) !== String(id));
-  const item = {
-    id,
-    name,
-    category: val('equipment-category') || 'Miscellaneous',
-    brand: val('equipment-brand'),
-    model: val('equipment-model'),
-    installed: val('equipment-installed'),
-    purchaseDate: val('equipment-purchase'),
-    maintenanceDays: parseInt(val('equipment-maintenance-days') || '0', 10) || '',
-    serial: val('equipment-serial'),
-    manual: val('equipment-manual'),
-    parts: val('equipment-parts'),
-    photoData: val('equipment-photo-data'),
-    notes: val('equipment-notes'),
-    status: 'active',
-    updatedAt: new Date().toISOString(),
-    createdAt: getEquipmentItems().find(i => String(i.id) === String(id))?.createdAt || new Date().toISOString()
-  };
-  items.unshift(item);
-  setEquipmentItems(items);
-  clearEquipmentForm();
-  renderEquipmentManager();
-  showToast?.('✅ Equipment saved');
-}
-
-function deleteEquipmentItem(id) {
-  if (!confirm('Delete this equipment item?')) return;
-  setEquipmentItems(getEquipmentItems().filter(i => String(i.id) !== String(id)));
-  renderEquipmentManager();
-  showToast?.('Deleted equipment');
-}
-
-function logEquipmentService(id) {
-  const items = getEquipmentItems();
-  const item = items.find(i => String(i.id) === String(id));
-  if (!item) return;
-  item.lastServiceIso = new Date().toISOString();
-  item.updatedAt = item.lastServiceIso;
-  setEquipmentItems(items);
-  try {
-    const actions = getActionEntries();
-    actions.unshift({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-      title: `Serviced ${item.name}`,
-      category: 'equipment',
-      notes: item.maintenanceDays ? `Maintenance interval: every ${item.maintenanceDays} days.` : 'Equipment service logged from Equipment Manager.',
-      date: new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
-      isoDate: item.lastServiceIso
-    });
-    setActionEntries(actions.slice(0, 80));
-  } catch(e) {}
-  renderEquipmentManager();
-  try { renderActionHistory?.(); } catch(e) {}
-  showToast?.('🔧 Equipment service logged');
-}
-
-function handleEquipmentPhotoUpload(event) {
-  const file = event?.target?.files?.[0];
-  if (!file) return;
-  const done = dataUrl => {
-    const el = document.getElementById('equipment-photo-data');
-    if (el) el.value = dataUrl || '';
-    showToast?.('📷 Equipment photo attached');
-  };
-  try {
-    if (typeof resizeInventoryImage === 'function') {
-      resizeInventoryImage(file).then(done).catch(() => showToast?.('⚠️ Could not attach photo'));
-      return;
-    }
-  } catch(e) {}
-  const reader = new FileReader();
-  reader.onload = () => done(String(reader.result || ''));
-  reader.onerror = () => showToast?.('⚠️ Could not attach photo');
-  reader.readAsDataURL(file);
-}
-
-function aiFillEquipmentItem() {
-  const nameEl = document.getElementById('equipment-name');
-  const name = String(nameEl?.value || '').toLowerCase();
-  if (!name) return showToast?.('Add a name first');
-  const setIfEmpty = (id, value) => { const el = document.getElementById(id); if (el && !el.value) el.value = value; };
-  if (/skimmer/.test(name)) { setIfEmpty('equipment-category','Skimmer'); setIfEmpty('equipment-maintenance-days','7'); setIfEmpty('equipment-parts','Pump, impeller, airline, collection cup O-ring'); }
-  else if (/mp40|powerhead|flow|dmp/.test(name)) { setIfEmpty('equipment-category','Powerheads / Flow'); setIfEmpty('equipment-maintenance-days','60'); setIfEmpty('equipment-parts','Wet side, impeller/rotor, bushings'); }
-  else if (/return|mdp/.test(name)) { setIfEmpty('equipment-category','Return Pumps'); setIfEmpty('equipment-maintenance-days','90'); setIfEmpty('equipment-parts','Impeller, O-rings, controller'); }
-  else if (/heater|hygger/.test(name)) { setIfEmpty('equipment-category','Heating'); setIfEmpty('equipment-maintenance-days','30'); setIfEmpty('equipment-parts','Controller/probe check; replace heater if unreliable'); }
-  else if (/uv/.test(name)) { setIfEmpty('equipment-category','UV'); setIfEmpty('equipment-maintenance-days','90'); setIfEmpty('equipment-parts','UV bulb, quartz sleeve, O-rings'); }
-  else if (/rodi|tds|di/.test(name)) { setIfEmpty('equipment-category','RODI / Mixing'); setIfEmpty('equipment-maintenance-days','30'); setIfEmpty('equipment-parts','Sediment filter, carbon blocks, DI resin, membrane'); }
-  else if (/light|radion|a8/.test(name)) { setIfEmpty('equipment-category','Lighting'); setIfEmpty('equipment-maintenance-days','90'); setIfEmpty('equipment-parts','Fan, power supply, mounting hardware'); }
-  else if (/ato|top off/.test(name)) { setIfEmpty('equipment-category','ATO'); setIfEmpty('equipment-maintenance-days','30'); setIfEmpty('equipment-parts','Sensor, pump, tubing'); }
-  setIfEmpty('equipment-notes','AI-filled starter details. Verify brand/model, dates, interval, and parts.');
-  showToast?.('✨ Equipment fields filled');
 }
