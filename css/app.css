@@ -3580,3 +3580,106 @@ html.theme-dark .apex-mode-card,html.theme-dark .apex-info-card,html.theme-dark 
 html.theme-dark .apex-mode-card.active{background:rgba(8,27,42,.96);border-color:rgba(112,184,212,.48);}
 html.theme-dark .apex-info-card.caution{background:rgba(44,37,18,.72);border-color:rgba(255,183,3,.28);}
 @media(min-width:430px){.apex-mode-grid{grid-template-columns:1fr 1fr;}}
+
+/* v4.0.2 Apex Live Data Bridge */
+.apex-bridge-panel { margin-top: 14px; }
+.apex-bridge-card {
+  border: 1px solid rgba(0,180,216,0.20);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.74);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.apex-bridge-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.apex-bridge-head strong {
+  display: block;
+  color: var(--text-dark);
+  font-size: 15px;
+  font-weight: 900;
+}
+.apex-bridge-head span {
+  display: block;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.apex-bridge-head em {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  color: var(--text-mid);
+  background: rgba(0,180,216,0.10);
+  border-radius: 999px;
+  padding: 6px 9px;
+}
+.apex-bridge-probes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.apex-bridge-probes span {
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,180,216,0.18);
+  border-radius: 14px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.apex-bridge-probes strong {
+  display: block;
+  color: var(--text-dark);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+}
+.apex-bridge-probes small {
+  display: block;
+  color: var(--text-light);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 5px;
+}
+.apex-bridge-card textarea {
+  width: 100%;
+  min-height: 150px;
+  border: 2px solid rgba(0,180,216,0.22);
+  border-radius: 14px;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-dark);
+  background: rgba(255,255,255,0.92);
+  outline: none;
+  resize: vertical;
+}
+.bridge-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+html.theme-dark .apex-bridge-card,
+html.theme-dark .apex-bridge-probes span,
+html.theme-dark .apex-bridge-card textarea {
+  background: rgba(8,27,42,0.92);
+  border-color: rgba(155,216,240,0.20);
+  color: var(--text-dark);
+}
+html.theme-dark .apex-bridge-head em { background: rgba(155,216,240,0.12); color: var(--text-mid); }
+@media (min-width: 420px) {
+  .bridge-actions { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 380px) {
+  .apex-bridge-probes { grid-template-columns: repeat(2, 1fr); }
+}
