@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260628-v3-8-0-reef-timeline">
+<link rel="stylesheet" href="css/app.css?v=20260628-v3-9-0-timeline-intelligence">
 </head>
 <body>
 
@@ -706,10 +706,16 @@
             <option value="maintenance">Maintenance</option>
             <option value="equipment">Equipment</option>
             <option value="livestock">Livestock</option>
+            <option value="fish">Fish</option>
+            <option value="coral">Coral</option>
             <option value="completed">Completed tasks</option>
           </select>
           <span class="reef-timeline-count" id="reef-timeline-count">—</span>
         </div>
+        <div class="reef-timeline-intelligence" id="reef-timeline-intelligence">
+          <div class="timeline-intel-head"><div><strong>Timeline Intelligence</strong><span>Loading reef history summary…</span></div></div>
+        </div>
+        <div class="reef-timeline-milestones" id="reef-timeline-milestones"></div>
         <details class="reef-timeline-add-photo">
           <summary>📷 Add full-tank photo</summary>
           <div class="tank-history-form">
@@ -1015,7 +1021,7 @@
 <script src="diagnostics.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="app.js?v=20260627-v3-7-0-equipment-intelligence"></script>
 <script src="reef-brain.js?v=20260627-v3-7-0-equipment-intelligence"></script>
-<script src="reef-timeline.js?v=20260628-v3-8-0-reef-timeline"></script>
+<script src="reef-timeline.js?v=20260628-v3-9-0-timeline-intelligence"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
