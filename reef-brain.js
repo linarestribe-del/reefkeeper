@@ -1,10 +1,10 @@
-// Reef Keeper v3.6.0 Daily Reef Assistant
+// Reef Keeper v3.7.0 Equipment Intelligence
 // A shared intelligence layer that turns local tank data into one consistent snapshot
 // for Home, Ask AI, Days-Off Planner, reports, and future smart reminders.
 (function(){
   'use strict';
 
-  const VERSION = '3.6.0';
+  const VERSION = '3.7.0';
   const ONE_DAY = 86400000;
 
   function parseJson(key, fallback){
@@ -142,6 +142,63 @@
     return lines.slice(0, 5);
   }
 
+
+  function equipmentActions(){ return sortNewest([...getActions(), ...getCompleted()]); }
+  function equipmentNormalize(text){ return String(text || '').toLowerCase().replace(/×/g,'x').replace(/[^a-z0-9]+/g,' ').trim(); }
+  function equipmentTerms(item){
+    const text = equipmentNormalize([item.name,item.category,item.brand,item.model,item.notes].filter(Boolean).join(' '));
+    const terms = new Set(text.split(/\s+/).filter(w => w.length >= 3));
+    if (/skimmer|simplicity|240/.test(text)) ['skimmer','simplicity','240'].forEach(t=>terms.add(t));
+    if (/mp40|powerhead|flow|dmp20/.test(text)) ['mp40','powerhead','flow','dmp20'].forEach(t=>terms.add(t));
+    if (/return|mdp|pump/.test(text)) ['return','pump','mdp'].forEach(t=>terms.add(t));
+    if (/heater|hygger/.test(text)) ['heater','hygger','temperature'].forEach(t=>terms.add(t));
+    if (/uv|sterilizer|icecap/.test(text)) ['uv','sterilizer','icecap'].forEach(t=>terms.add(t));
+    if (/gfo|reactor|carbon|rox/.test(text)) ['gfo','reactor','carbon','rox'].forEach(t=>terms.add(t));
+    if (/ato|useek/.test(text)) ['ato','top','off','sensor','useek'].forEach(t=>terms.add(t));
+    if (/rodi|tds|resin|filter/.test(text)) ['rodi','tds','resin','filter'].forEach(t=>terms.add(t));
+    if (/apex|controller|probe/.test(text)) ['apex','controller','probe'].forEach(t=>terms.add(t));
+    if (/light|a8se/.test(text)) ['light','a8se','lens','fan'].forEach(t=>terms.add(t));
+    return Array.from(terms);
+  }
+  function equipmentLastService(item){
+    if (item.lastServiceAt) return { iso:item.lastServiceAt, source:'equipment log' };
+    const terms = equipmentTerms(item);
+    const serviceRx = /service|serviced|clean|cleaned|inspect|inspected|replace|replaced|changed|calibrate|calibrated|media|fleece|bulb|impeller|sensor|probe|tds|heater|skimmer|gfo|carbon|uv|ato|mp40|powerhead|return|rodi/i;
+    let best = null;
+    for (const action of equipmentActions()) {
+      const hay = equipmentNormalize(`${action.title || ''} ${action.category || ''} ${action.notes || ''}`);
+      if (!serviceRx.test(hay)) continue;
+      const hits = terms.filter(t => t.length >= 3 && hay.includes(t)).length;
+      if (!hits) continue;
+      const iso = action.isoDate || action.completedAt || action.createdAt || action.date;
+      if (!dateMs(iso)) continue;
+      const score = hits + (/equipment|service|clean|inspect|replace|changed/.test(hay) ? 1 : 0);
+      if (!best || score > best.score || (score === best.score && dateMs(iso) > dateMs(best.iso))) best = { iso, source:'action history', score };
+    }
+    if (best) return best;
+    return { iso:item.installedDate || item.purchaseDate || item.createdAt || '', source:item.installedDate || item.purchaseDate ? 'install date' : 'default date' };
+  }
+  function equipmentIntel(item){
+    const interval = number(item.maintenanceDays || item.intervalDays || 0) || 0;
+    const last = equipmentLastService(item);
+    const age = daysAgo(last.iso);
+    if (!interval) return { name:item.name, category:item.category || 'Equipment', level:'watch', label:'Set interval', detail:'No interval set', lastService:daysLabel(last.iso), recommendation:'Add a maintenance interval.' };
+    if (age === null) return { name:item.name, category:item.category || 'Equipment', level:'watch', label:'Needs baseline', detail:'No service date', lastService:'Not logged', recommendation:'Log service to start tracking.' };
+    const remaining = interval - age;
+    if (remaining < 0) return { name:item.name, category:item.category || 'Equipment', level:'due', label:'Overdue', detail:`${Math.abs(remaining)} days overdue`, lastService:daysLabel(last.iso), recommendation:'Service during the next maintenance session.' };
+    if (remaining <= Math.max(3, Math.ceil(interval * 0.18))) return { name:item.name, category:item.category || 'Equipment', level:'soon', label:'Due soon', detail:`Due in ${remaining} day${remaining === 1 ? '' : 's'}`, lastService:daysLabel(last.iso), recommendation:'Plan this for your next days-off block.' };
+    return { name:item.name, category:item.category || 'Equipment', level:'good', label:'On track', detail:`Due in ${remaining} day${remaining === 1 ? '' : 's'}`, lastService:daysLabel(last.iso), recommendation:'No service needed right now.' };
+  }
+  function buildEquipmentIntelligence(equipment){
+    const items = asArray(equipment).filter(i => !/retired|removed|inactive/i.test(String(i.status || ''))).map(equipmentIntel);
+    const due = items.filter(i => i.level === 'due');
+    const soon = items.filter(i => i.level === 'soon');
+    const watch = items.filter(i => i.level === 'watch');
+    const priority = [...due, ...soon, ...watch, ...items.filter(i => i.level === 'good')].slice(0, 8);
+    const summary = due.length ? `${due.length} overdue` : soon.length ? `${soon.length} due soon` : 'All tracked gear on schedule';
+    return { summary, dueCount:due.length, soonCount:soon.length, watchCount:watch.length, total:items.length, priority, items };
+  }
+
   function buildInventorySummary(inventory, equipment){
     const active = inventory.filter(i => !/lost|resolved|historical|removed/i.test(String(i.status || '')));
     const fish = active.filter(i => String(i.type || '').toLowerCase() === 'fish').length;
@@ -158,6 +215,8 @@
     snapshot.today.slice(0, 5).forEach(item => lines.push(`Today: ${item.title}${item.detail ? ` — ${item.detail}` : ''}.`));
     snapshot.watching.slice(0, 6).forEach(item => lines.push(`Watching: ${item.title}${item.detail ? ` — ${item.detail}` : ''}.`));
     lines.push(`Inventory summary: ${snapshot.inventory.fish} fish, ${snapshot.inventory.coral} coral/anemone, ${snapshot.inventory.equipment} gear items.`);
+    if (snapshot.equipmentIntelligence) lines.push(`Equipment intelligence: ${snapshot.equipmentIntelligence.summary}; ${snapshot.equipmentIntelligence.total} tracked gear items.`);
+    (snapshot.equipmentIntelligence?.priority || []).slice(0, 4).forEach(item => lines.push(`Equipment: ${item.name} — ${item.label}, ${item.detail}; last service ${item.lastService}.`));
     return lines.map(x => compact(x, 240));
   }
 
@@ -180,6 +239,7 @@
     if (values.no3 !== null && values.no3 > 15) add('Nitrate is still above preferred range', `${values.no3} ppm. Confirm trend before changing multiple things.`, 'params');
 
     inputs.dueTasks.slice(0, 2).forEach(task => add(task.title || 'Maintenance due', task.detail || task.when || 'Due soon.', 'maintenance'));
+    (inputs.equipmentIntelligence?.priority || []).filter(item => item.level === 'due' || item.level === 'soon').slice(0, 2).forEach(item => add(`${item.name} ${item.label.toLowerCase()}`, item.detail, 'maintenance'));
     inputs.reminders.slice(0, 2).forEach(reminder => add(`${reminder.emoji || '⏰'} ${reminder.title || 'Reminder'}`, reminder.when || reminder.repeat || 'Active reminder.', 'maintenance'));
 
     if (!inputs.latestPhoto) add('Take a full-tank photo', 'This starts the Reef Timeline and gives AI Vision a baseline.', 'vision');
@@ -219,6 +279,7 @@
     const scoring = scoreFromValues(values, { latestLog, dueTasks, latestPhoto });
     const status = statusFromScore(scoring.score);
     const inventory = buildInventorySummary(inventoryItems, equipmentItems);
+    const equipmentIntelligence = buildEquipmentIntelligence(equipmentItems);
     const lastTest = { label: daysLabel(latestLog?.isoDate || latestLog?.date), days: daysAgo(latestLog?.isoDate || latestLog?.date), log: latestLog };
     const today = buildToday({ dueTasks, reminders });
     const watching = buildWatching(values, scoring, { dueTasks, latestPhoto });
@@ -236,10 +297,11 @@
       counts: { logs: logs.length, actions: actions.length, completed: completed.length, reminders: reminders.length, visualHistory: visualHistory.length },
       latestPhoto,
       dueTasks: dueTasks.slice(0, 10),
+      equipmentIntelligence,
       recentActions: actions.slice(0, 8),
       recentCompleted: completed.slice(0, 8)
     };
-    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto });
+    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto, equipmentIntelligence });
     snapshot.aiContextLines = buildAiContextLines(snapshot);
     return snapshot;
   }
