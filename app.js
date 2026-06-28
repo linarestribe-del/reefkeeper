@@ -3135,16 +3135,19 @@ function renderTankDashboard(){
   const watchLine = watch.length ? watch.slice(0,3).map(i => `${i.name} (${i.status})`).join(', ') : 'No livestock flagged as stressed/watch.';
   const next = !latest ? 'Log parameters, then add a full-tank photo.' : watch.length ? 'Open Livestock Inventory and add/update photos for watch items.' : 'Add a monthly full-tank photo to build visual history.';
   const reasonLines = [];
-  if (brain?.watching?.length) brain.watching.slice(0, 3).forEach(item => reasonLines.push(`${item.title}${item.detail ? ` — ${item.detail}` : ''}`));
+  if (brain?.scoreExplanation?.positives?.length) brain.scoreExplanation.positives.slice(0, 3).forEach(item => reasonLines.push(`✓ ${item}`));
+  if (brain?.scoreExplanation?.penalties?.length) brain.scoreExplanation.penalties.slice(0, 3).forEach(item => reasonLines.push(`⚠ ${item.title}${item.detail ? ` — ${item.detail}` : ''}`));
+  if (!reasonLines.length && brain?.watching?.length) brain.watching.slice(0, 3).forEach(item => reasonLines.push(`${item.title}${item.detail ? ` — ${item.detail}` : ''}`));
   if (!reasonLines.length && watch.length) reasonLines.push(`Livestock watch list: ${watchLine}`);
   if (!reasonLines.length && latest) reasonLines.push(`Latest parameters: ${trendLine}`);
   if (!reasonLines.length) reasonLines.push('Add recent tests, maintenance, and photo history to improve score confidence.');
+  const confidenceLine = brain?.confidence ? `${brain.confidence.score}% ${brain.confidence.label}${brain.confidence.missing?.length ? ` — needs ${brain.confidence.missing.slice(0,2).join(', ')}` : ''}` : 'Add more current data to improve confidence.';
   el.innerHTML = `
     <div class="tank-dashboard-list">
+      <div class="tank-dashboard-row"><strong>Score:</strong> ${escapeHtml(score)} / 100 · ${escapeHtml(statusLabel)}</div>
+      <div class="tank-dashboard-row"><strong>Confidence:</strong> ${escapeHtml(confidenceLine)}</div>
       <div class="tank-dashboard-row"><strong>Latest:</strong> ${escapeHtml(trendLine)}</div>
-      <div class="tank-dashboard-row"><strong>Watch:</strong> ${escapeHtml(watchLine)}</div>
-      <div class="tank-dashboard-row"><strong>Vision:</strong> ${escapeHtml(photoLine)}</div>
-      <div class="tank-dashboard-row"><strong>Why not 100?</strong> ${escapeHtml(reasonLines[0])}</div>
+      <div class="tank-dashboard-row"><strong>Why:</strong> ${escapeHtml(reasonLines[0])}</div>
       <div class="tank-dashboard-row"><strong>Next:</strong> ${escapeHtml(next)}</div>
     </div>
     <div class="tank-dashboard-actions"><button class="dashboard-btn" type="button" onclick="showWorkspace('vision')">Open Reef Timeline</button><button class="dashboard-btn secondary" type="button" onclick="openLongTermTool('tankhistory')">Add Full-Tank Photo</button></div>`;

@@ -3711,3 +3711,26 @@ html.theme-dark .apex-bridge-head em { background: rgba(155,216,240,0.12); color
 .apex-bridge-outlets span { font-size:12px; font-weight:800; color:var(--text-mid); line-height:1.35; }
 html.theme-dark .home-telemetry-chip, html.theme-dark .home-telemetry-wide, html.theme-dark .home-telemetry-empty, html.theme-dark .apex-bridge-status-grid div, html.theme-dark .apex-bridge-empty, html.theme-dark .apex-bridge-outlets { background:rgba(8,27,42,.86); border-color:rgba(155,216,240,.20); }
 @media(max-width:430px){ .home-telemetry-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .apex-bridge-status-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* v4.0.5 Live Reef Brain */
+.home-brain-explain{margin:10px 0 14px;border:1px solid rgba(0,180,216,.16);border-radius:18px;background:rgba(255,255,255,.58);padding:12px;display:grid;gap:10px;}
+.home-brain-explain-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.home-brain-explain-head strong{display:block;font-size:13px;font-weight:900;color:var(--text-dark);}
+.home-brain-explain-head span{display:block;font-size:12px;line-height:1.35;font-weight:800;color:var(--text-light);margin-top:2px;}
+.home-brain-explain-head button{border:0;border-radius:999px;background:rgba(0,180,216,.14);color:var(--text-mid);font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;padding:8px 12px;cursor:pointer;white-space:nowrap;}
+.home-brain-factors{display:flex;flex-wrap:wrap;gap:7px;}
+.brain-factor{border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900;line-height:1.1;border:1px solid rgba(0,180,216,.14);background:rgba(255,255,255,.62);color:var(--text-mid);}
+.brain-factor.good{background:rgba(82,183,136,.16);color:#24724c;border-color:rgba(82,183,136,.22);}
+.brain-factor.watch{background:rgba(255,183,3,.18);color:#9a6500;border-color:rgba(255,183,3,.26);}
+.home-confidence-card{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:16px;background:linear-gradient(135deg,rgba(0,180,216,.14),rgba(144,224,239,.24));padding:11px 12px;border:1px solid rgba(0,180,216,.16);}
+.home-confidence-card span{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);}
+.home-confidence-card strong{display:block;font-size:22px;font-weight:900;color:var(--text-dark);line-height:1.05;margin-top:2px;}
+.home-confidence-card small{font-size:11px;line-height:1.3;font-weight:800;color:var(--text-mid);text-align:right;max-width:58%;}
+.home-telemetry-chip.interpreted{min-height:94px;justify-content:flex-start;}
+.home-telemetry-chip.interpreted em{display:block;font-style:normal;font-size:10px;line-height:1.25;font-weight:800;color:var(--text-light);margin-top:6px;}
+.home-telemetry-chip.interpreted.excellent strong,.home-telemetry-chip.interpreted.normal strong{color:#2d6a4f;}
+.home-telemetry-chip.interpreted.watch strong{color:#e85d04;}
+html.theme-dark .home-brain-explain,html.theme-dark .brain-factor,html.theme-dark .home-confidence-card{background:rgba(8,27,42,.86);border-color:rgba(155,216,240,.20);}
+html.theme-dark .brain-factor.good{background:rgba(82,183,136,.14);color:#9de0bd;}
+html.theme-dark .brain-factor.watch{background:rgba(255,183,3,.13);color:#ffd166;}
+@media(max-width:430px){.home-confidence-card{align-items:flex-start;flex-direction:column}.home-confidence-card small{text-align:left;max-width:100%;}}

@@ -74,6 +74,19 @@
             <strong id="home-last-test-value">—</strong>
           </button>
         </div>
+        <div class="home-brain-explain" id="home-brain-explain">
+          <div class="home-brain-explain-head">
+            <div><strong>Why this score?</strong><span id="home-score-summary">Reef Brain is checking the latest data.</span></div>
+            <button type="button" onclick="openHomeReefStatus()">Details</button>
+          </div>
+          <div class="home-brain-factors" id="home-brain-factors">
+            <span class="muted">Loading score factors…</span>
+          </div>
+          <div class="home-confidence-card" id="home-confidence-card">
+            <div><span>Reef Brain Confidence</span><strong id="home-confidence-value">—</strong></div>
+            <small id="home-confidence-detail">Confidence shows how current the underlying data is.</small>
+          </div>
+        </div>
         <div class="home-daily-assistant" id="home-daily-assistant">
           <div class="home-daily-head">
             <span>🤖 Daily Reef Assistant</span>
@@ -1574,7 +1587,8 @@ function rkHomeRenderDailyAssistant(snapshot) {
     listEl.innerHTML = '<div class="home-intel-line muted">No daily brief yet.</div>';
     return;
   }
-  summaryEl.textContent = daily.headline || 'Here are today’s priorities.';
+  const confidence = snapshot?.confidence?.score;
+  summaryEl.textContent = `${daily.headline || 'Here are today’s priorities.'}${Number.isFinite(confidence) ? ` Reef Brain confidence: ${confidence}%.` : ''}`;
   const bullets = Array.isArray(daily.bullets) ? daily.bullets : [];
   listEl.innerHTML = bullets.length ? bullets.map(item => {
     const action = String(item.action || '').replace(/[^a-z-]/g, '');
@@ -1624,14 +1638,53 @@ function renderHomeTelemetry() {
   const p = snap.probes || {};
   const outlets = Array.isArray(snap.outlets) ? snap.outlets : [];
   const alarms = Array.isArray(snap.alarms) ? snap.alarms : [];
-  if (subtitle) subtitle.textContent = `${rkHomeTelemetryAge(snap.capturedAt || snap.receivedAt)} · ${outlets.length} outlet${outlets.length === 1 ? '' : 's'} · ${alarms.length ? alarms.length + ' alarm' + (alarms.length === 1 ? '' : 's') : 'No alarms'}`;
+  const brain = window.ReefKeeperBrain?.getSnapshot?.() || null;
+  const telemetryInsight = brain?.telemetryInsight || null;
+  if (subtitle) subtitle.textContent = `${rkHomeTelemetryAge(snap.capturedAt || snap.receivedAt)} · ${telemetryInsight?.summary || `${outlets.length} outlet${outlets.length === 1 ? '' : 's'} · ${alarms.length ? alarms.length + ' alarm' + (alarms.length === 1 ? '' : 's') : 'No alarms'}`}`;
+  const insightItems = Array.isArray(telemetryInsight?.items) ? telemetryInsight.items : [];
+  const fallbackItems = [
+    { label:'Temperature', value:p.temp, unit:'°F', status:'Imported', detail:'Bridge value received.' },
+    { label:'pH', value:p.ph, unit:'', status:'Imported', detail:'Bridge value received.' },
+    { label:'ORP', value:p.orp, unit:'mV', status:'Imported', detail:'Bridge value received.' },
+    { label:'Salinity', value:p.salinity, unit:p.salinity == null ? 'optional' : 'ppt/cond', status:'Imported', detail:p.salinity == null ? 'Optional probe not present.' : 'Bridge value received.' }
+  ].filter(i => i.value !== null && i.value !== undefined && i.value !== '');
+  const tiles = (insightItems.length ? insightItems : fallbackItems).slice(0,4);
   const outletLine = outlets.slice(0, 2).map(o => `${o.name}: ${o.state}`).join(' · ') || 'No outlet states';
-  grid.innerHTML = `
-    <div class="home-telemetry-chip"><span>Temp</span><strong>${rkHomeTelemetryValue(p.temp)}</strong><small>°F</small></div>
-    <div class="home-telemetry-chip"><span>pH</span><strong>${rkHomeTelemetryValue(p.ph)}</strong><small>probe</small></div>
-    <div class="home-telemetry-chip"><span>ORP</span><strong>${rkHomeTelemetryValue(p.orp)}</strong><small>mV</small></div>
-    <div class="home-telemetry-chip"><span>Salinity</span><strong>${rkHomeTelemetryValue(p.salinity)}</strong><small>${p.salinity == null ? 'optional' : 'ppt/cond'}</small></div>
+  grid.innerHTML = `${tiles.map(item => `<div class="home-telemetry-chip interpreted ${String(item.status || '').toLowerCase()}"><span>${escapeHtml(item.label)}</span><strong>${rkHomeTelemetryValue(item.value)}</strong><small>${escapeHtml([item.unit, rkHomeTelemetryStatusLabel(item)].filter(Boolean).join(' · '))}</small><em>${escapeHtml(item.detail || '')}</em></div>`).join('')}
     <div class="home-telemetry-wide"><strong>Outlet status</strong><span>${escapeHtml(outletLine)}</span></div>`;
+}
+
+
+function rkHomeRenderBrainExplanation(snapshot) {
+  const summaryEl = document.getElementById('home-score-summary');
+  const factorsEl = document.getElementById('home-brain-factors');
+  const confidenceValueEl = document.getElementById('home-confidence-value');
+  const confidenceDetailEl = document.getElementById('home-confidence-detail');
+  const explanation = snapshot?.scoreExplanation || {};
+  if (summaryEl) summaryEl.textContent = explanation.summary || 'Score explanation will improve as more data is logged.';
+  if (factorsEl) {
+    const positives = Array.isArray(explanation.positives) ? explanation.positives.slice(0,3).map(x => ({ type:'good', text:x })) : [];
+    const penalties = Array.isArray(explanation.penalties) ? explanation.penalties.slice(0,3).map(x => ({ type:'watch', text:`${x.title}: ${x.detail}` })) : [];
+    const factors = [...positives, ...penalties].slice(0,5);
+    factorsEl.innerHTML = factors.length
+      ? factors.map(f => `<span class="brain-factor ${f.type}">${f.type === 'good' ? '✓' : '⚠'} ${escapeHtml(f.text)}</span>`).join('')
+      : '<span class="brain-factor good">✓ No major warnings</span>';
+  }
+  const confidence = snapshot?.confidence || null;
+  if (confidenceValueEl) confidenceValueEl.textContent = confidence ? `${confidence.score}%` : '—';
+  if (confidenceDetailEl) {
+    if (!confidence) confidenceDetailEl.textContent = 'Confidence shows how current the underlying data is.';
+    else if (confidence.missing && confidence.missing.length) confidenceDetailEl.textContent = `Needs: ${confidence.missing.slice(0,3).join(', ')}.`;
+    else confidenceDetailEl.textContent = 'Telemetry, testing, maintenance, and timeline data are current.';
+  }
+}
+
+function rkHomeTelemetryStatusLabel(item) {
+  const status = String(item?.status || '').toLowerCase();
+  if (status === 'excellent') return 'Excellent';
+  if (status === 'normal') return 'Normal';
+  if (status === 'watch') return 'Watch';
+  return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Imported';
 }
 
 function renderHomeIntelligence() {
@@ -1649,6 +1702,7 @@ function renderHomeIntelligence() {
   const watchingEl = document.getElementById('home-intel-watching');
 
   if (scoreEl) scoreEl.textContent = snapshot.score;
+  rkHomeRenderBrainExplanation(snapshot);
   if (statusLabelEl) statusLabelEl.textContent = `${snapshot.status.emoji} Reef Status`;
   if (statusValueEl) statusValueEl.textContent = snapshot.status.label;
   if (lastTestValueEl) lastTestValueEl.textContent = snapshot.lastTest.label;
