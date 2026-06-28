@@ -1,5 +1,36 @@
 # Reef Keeper Changelog
 
+## v4.0.5 — Live Reef Brain
+
+### Goal
+Move Reef Keeper from showing live values to interpreting them with Reef Brain.
+
+### Changed
+- `reef-brain.js`
+  - Upgrades Reef Brain to v4.0.5.
+  - Adds Reef Brain confidence scoring based on recent parameters, telemetry, photos, maintenance, and history depth.
+  - Adds live telemetry interpretation for temperature, pH, ORP, salinity, and active Apex alarms.
+  - Adds confidence and telemetry interpretation to AI context and Daily Reef Assistant output.
+- `index.html`
+  - Adds Home score explanation panel: Why this score?, positive factors, watch factors, and confidence.
+  - Updates Daily Reef Assistant summary to include Reef Brain confidence.
+  - Updates Home Live Telemetry to show interpreted probe status instead of raw values only.
+- `app.js`
+  - Updates AI Tank Dashboard to reuse Reef Brain score explanation and confidence.
+- `css/app.css`
+  - Adds styling for confidence cards, score factors, and interpreted telemetry tiles.
+
+### Test Checklist
+- [ ] Home loads.
+- [ ] Tank Score still shows one score only.
+- [ ] Home shows Why this score? and confidence.
+- [ ] Load Apex sample telemetry.
+- [ ] Home Live Telemetry shows interpreted probe tiles.
+- [ ] AI Tank Dashboard shows confidence and score reasons.
+- [ ] Ask AI still works and receives Reef Brain context.
+- [ ] Reef Timeline still shows telemetry events.
+- [ ] Dark mode remains readable.
+
 ## v4.0.4 — Live Telemetry
 
 ### Goal

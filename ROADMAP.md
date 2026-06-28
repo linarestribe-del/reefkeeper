@@ -70,3 +70,12 @@
 4.  Merge
 5.  Update CHANGELOG.md
 6.  Update ROADMAP.md
+
+
+## Current Release Notes
+
+### v4.0.5 – Live Reef Brain
+- Reef Brain confidence score
+- Explainable tank score
+- Interpreted telemetry
+- Daily brief uses confidence

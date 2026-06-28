@@ -1,10 +1,10 @@
-// Reef Keeper v4.0.2 Apex Live Data Bridge
+// Reef Keeper v4.0.5 Live Reef Brain
 // A shared intelligence layer that turns local tank data into one consistent snapshot
 // for Home, Ask AI, Days-Off Planner, reports, and future smart reminders.
 (function(){
   'use strict';
 
-  const VERSION = '4.0.2';
+  const VERSION = '4.0.5';
   const ONE_DAY = 86400000;
   const SNAPSHOT_CACHE_MS = 1500;
   let snapshotCache = null;
@@ -175,18 +175,64 @@
       if (t.points >= 2 && t.status === 'in range' && t.stable) positives.push(`${t.label} is stable`);
       if (t.key === 'po4' && t.points >= 2 && t.direction === 'falling') positives.push('Phosphate is trending down');
     });
+    if (inputs?.apexBridge) positives.push('Live telemetry is current');
     if (inputs?.dueTasks?.length === 0) positives.push('No major maintenance queue');
     if (inputs?.latestPhoto) positives.push('Reef Timeline has a recent visual record');
     const mainPenalty = penalties[0];
     const summary = mainPenalty
       ? `Score is mainly limited by ${mainPenalty.title.toLowerCase()} (${mainPenalty.detail}).`
       : 'Score is supported by stable logs and no major warnings.';
+    const cleanPositives = [...new Set(positives)].slice(0, 5);
     return {
       summary,
-      positives: [...new Set(positives)].slice(0, 4),
-      penalties: penalties.slice(0, 5),
-      explainLines: [summary, ...[...new Set(positives)].slice(0, 3).map(p => `Positive: ${p}.`)]
+      positives: cleanPositives,
+      penalties: penalties.slice(0, 6),
+      explainLines: [summary, ...cleanPositives.slice(0, 4).map(p => `Positive: ${p}.`), ...penalties.slice(0, 3).map(p => `Watch: ${p.title} — ${p.detail}.`)]
     };
+  }
+
+  function buildDataConfidence(inputs){
+    const checks = [];
+    const add = (key, label, ok, detail, weight = 20) => checks.push({ key, label, ok:Boolean(ok), detail:compact(detail || '', 120), weight });
+    const logAge = daysAgo(inputs.latestLog?.isoDate || inputs.latestLog?.date);
+    const telemetryAge = daysAgo(inputs.apexBridge?.capturedAt || inputs.apexBridge?.receivedAt);
+    const photoAge = inputs.latestPhoto ? daysAgo(inputs.latestPhoto.createdAt || inputs.latestPhoto.isoDate || inputs.latestPhoto.date) : null;
+    add('params','Recent water test', logAge !== null && logAge <= 7, logAge === null ? 'No parameter log found.' : `Last test: ${daysLabel(inputs.latestLog?.isoDate || inputs.latestLog?.date)} ago.`, 28);
+    add('telemetry','Live telemetry', telemetryAge !== null && telemetryAge <= 1, telemetryAge === null ? 'No Apex/bridge telemetry yet.' : `Last telemetry: ${daysLabel(inputs.apexBridge?.capturedAt || inputs.apexBridge?.receivedAt)} ago.`, 24);
+    add('vision','Recent reef photo', photoAge !== null && photoAge <= 14, photoAge === null ? 'No full-tank photo saved.' : `Last photo: ${daysLabel(inputs.latestPhoto.createdAt || inputs.latestPhoto.isoDate || inputs.latestPhoto.date)} ago.`, 20);
+    add('maintenance','Maintenance context', asArray(inputs.dueTasks).length <= 3, `${asArray(inputs.dueTasks).length} due/soon maintenance item${asArray(inputs.dueTasks).length === 1 ? '' : 's'}.`, 16);
+    add('history','History depth', (inputs.counts?.logs || 0) >= 2 || (inputs.counts?.actions || 0) >= 2, `${inputs.counts?.logs || 0} logs · ${inputs.counts?.actions || 0} actions.`, 12);
+    const total = checks.reduce((sum,c)=>sum+c.weight,0) || 1;
+    const earned = checks.reduce((sum,c)=>sum+(c.ok ? c.weight : 0),0);
+    const score = Math.max(10, Math.min(100, Math.round((earned / total) * 100)));
+    const missing = checks.filter(c => !c.ok).map(c => c.label);
+    const label = score >= 85 ? 'High' : score >= 60 ? 'Medium' : 'Low';
+    return { score, label, checks, missing };
+  }
+
+  function telemetryInterpretation(apexBridge){
+    if (!apexBridge) return { status:'Waiting', summary:'No telemetry imported yet.', items:[] };
+    const p = apexBridge.probes || {};
+    const alarms = asArray(apexBridge.alarms);
+    const items = [];
+    const add = (key, label, value, unit, status, detail) => items.push({ key, label, value, unit, status, detail:compact(detail, 120) });
+    const temp = number(p.temp);
+    const ph = number(p.ph);
+    const orp = number(p.orp);
+    const sal = number(p.salinity);
+    if (temp !== null) {
+      const status = temp < 76.5 || temp > 80.5 ? 'watch' : 'excellent';
+      add('temp','Temperature', temp.toFixed(1), '°F', status, status === 'excellent' ? 'In safe reef range.' : 'Outside preferred guardrail. Verify heater/chiller status.');
+    }
+    if (ph !== null) {
+      const status = ph < 7.9 || ph > 8.6 ? 'watch' : 'normal';
+      add('ph','pH', ph.toFixed(2), '', status, status === 'normal' ? 'Within expected reef range.' : 'Outside preferred guardrail. Watch trend before reacting.');
+    }
+    if (orp !== null) add('orp','ORP', Math.round(orp), 'mV', orp >= 300 && orp <= 450 ? 'normal' : 'watch', orp >= 300 && orp <= 450 ? 'Typical reef range.' : 'Review trend and recent maintenance.');
+    if (sal !== null) add('salinity','Salinity', sal.toFixed(sal > 10 ? 1 : 3), sal > 10 ? 'ppt' : 'SG', 'info', 'Telemetry salinity/cond reading imported.');
+    const status = alarms.length ? 'Alarm' : 'Online';
+    const summary = alarms.length ? `${alarms.length} Apex alarm${alarms.length === 1 ? '' : 's'} active.` : `Telemetry received with ${items.length} probe value${items.length === 1 ? '' : 's'}.`;
+    return { status, summary, items, alarms };
   }
 
   function scoreFromValues(values, inputs){
@@ -351,6 +397,8 @@
     }
     (snapshot.equipmentIntelligence?.priority || []).slice(0, 4).forEach(item => lines.push(`Equipment: ${item.name} — ${item.label}, ${item.detail}; last service ${item.lastService}.`));
     if (snapshot.scoreExplanation?.summary) lines.push(`Score explanation: ${snapshot.scoreExplanation.summary}`);
+    if (snapshot.confidence) lines.push(`Reef Brain confidence: ${snapshot.confidence.score}% (${snapshot.confidence.label}). Missing: ${snapshot.confidence.missing?.length ? snapshot.confidence.missing.join(', ') : 'none'}.`);
+    if (snapshot.telemetryInsight?.summary) lines.push(`Live telemetry interpretation: ${snapshot.telemetryInsight.summary}`);
     (snapshot.trendInsights || []).slice(0, 5).forEach(item => lines.push(`Trend insight: ${item.title} — ${item.detail}.`));
     return lines.map(x => compact(x, 260));
   }
@@ -423,6 +471,7 @@
       estimateMinutes: estimate,
       urgentCount,
       scoreSummary: explanation.summary || '',
+      confidence: inputs.confidence || null,
       bullets: sorted
     };
   }
@@ -443,11 +492,14 @@
     const trends = buildTrendAnalysis(logs);
     const trendInsights = buildTrendInsights(trends);
     const scoring = scoreFromValues(values, { latestLog, dueTasks, latestPhoto, apexBridge });
-    const scoreExplanation = buildScoreExplanation(scoring, trends, { latestLog, dueTasks, latestPhoto });
+    const scoreExplanation = buildScoreExplanation(scoring, trends, { latestLog, dueTasks, latestPhoto, apexBridge });
     const status = statusFromScore(scoring.score);
     const inventory = buildInventorySummary(inventoryItems, equipmentItems);
     const equipmentIntelligence = buildEquipmentIntelligence(equipmentItems);
     const lastTest = { label: daysLabel(latestLog?.isoDate || latestLog?.date), days: daysAgo(latestLog?.isoDate || latestLog?.date), log: latestLog };
+    const counts = { logs: logs.length, actions: actions.length, completed: completed.length, reminders: reminders.length, visualHistory: visualHistory.length };
+    const confidence = buildDataConfidence({ latestLog, latestPhoto, dueTasks, apexBridge, counts });
+    const telemetryInsight = telemetryInterpretation(apexBridge);
     const today = buildToday({ dueTasks, reminders });
     const watching = buildWatching(values, scoring, { dueTasks, latestPhoto, apexBridge });
     const snapshot = {
@@ -464,7 +516,9 @@
       today,
       watching,
       inventory,
-      counts: { logs: logs.length, actions: actions.length, completed: completed.length, reminders: reminders.length, visualHistory: visualHistory.length },
+      counts,
+      confidence,
+      telemetryInsight,
       latestPhoto,
       dueTasks: dueTasks.slice(0, 10),
       equipmentIntelligence,
@@ -472,7 +526,7 @@
       recentActions: actions.slice(0, 8),
       recentCompleted: completed.slice(0, 8)
     };
-    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto, equipmentIntelligence, trends, scoreExplanation, apexBridge });
+    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto, equipmentIntelligence, trends, scoreExplanation, apexBridge, confidence });
     snapshot.aiContextLines = buildAiContextLines(snapshot);
     return snapshot;
   }
