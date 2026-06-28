@@ -1,5 +1,61 @@
 # Reef Keeper Changelog
 
+## v3.9.2 — Polish & Performance
+
+### Goal
+Stabilize the intelligence layer before beginning v4.0 Apex Integration.
+
+### Changed
+- `reef-brain.js`
+  - Updates Reef Brain to v3.9.2.
+  - Adds short-lived snapshot caching to reduce repeated localStorage reads and duplicate score calculations during page renders.
+  - Adds `getReefBrainScore()` compatibility helper so legacy dashboard code uses the same single Reef Brain score.
+  - Keeps `refresh()` available as a forced fresh snapshot for manual refresh actions.
+- `index.html`
+  - Updates cache-busting strings for v3.9.2 assets.
+- `CHANGELOG.md`
+  - Adds this release entry.
+
+### Test Checklist
+- [ ] Home loads with one score only.
+- [ ] Daily Reef Assistant still renders.
+- [ ] Reef Status, AI Monitoring, and Last Test still route correctly.
+- [ ] My Tank opens and counts render.
+- [ ] Equipment Manager opens and equipment intelligence renders.
+- [ ] Reef Timeline opens, searches, and filters.
+- [ ] AI Vision still saves analysis/history.
+- [ ] Ask AI still includes tank context.
+- [ ] Days-Off Plan still generates and respects Reef Brain context.
+- [ ] Dark mode remains readable.
+
+## v3.9.2 — Polish & Performance
+
+### Goal
+Stabilize the intelligence layer before beginning v4.0 Apex Integration.
+
+### Changed
+- `reef-brain.js`
+  - Updates Reef Brain to v3.9.2.
+  - Adds short-lived snapshot caching to reduce repeated localStorage reads and duplicate score calculations during page renders.
+  - Adds `getReefBrainScore()` compatibility helper so legacy dashboard code uses the same single Reef Brain score.
+  - Keeps `refresh()` available as a forced fresh snapshot for manual refresh actions.
+- `index.html`
+  - Updates cache-busting strings for v3.9.2 assets.
+- `CHANGELOG.md`
+  - Adds this release entry.
+
+### Test Checklist
+- [ ] Home loads with one score only.
+- [ ] Daily Reef Assistant still renders.
+- [ ] Reef Status, AI Monitoring, and Last Test still route correctly.
+- [ ] My Tank opens and counts render.
+- [ ] Equipment Manager opens and equipment intelligence renders.
+- [ ] Reef Timeline opens, searches, and filters.
+- [ ] AI Vision still saves analysis/history.
+- [ ] Ask AI still includes tank context.
+- [ ] Days-Off Plan still generates and respects Reef Brain context.
+- [ ] Dark mode remains readable.
+
 ## v3.9.1 — Reef Brain Intelligence
 
 ### Goal
