@@ -1,8 +1,8 @@
-// Reef Keeper v3.9.0 Timeline Intelligence
+// Reef Keeper v4.0.4 Timeline Intelligence + Apex telemetry events
 // Turns the unified timeline into an interpreted reef journal with trends, milestones, and focus summaries.
 (function(){
   'use strict';
-  const VERSION = '3.9.0';
+  const VERSION = '4.0.4';
   const VISUAL_KEY = 'reef_tank_visual_history_v13';
   const ONE_DAY = 86400000;
 
@@ -189,6 +189,25 @@
       });
     });
 
+    parseArray('reef_apex_bridge_history_v1').forEach((snap, i) => {
+      const p = snap.probes || {};
+      const pieces = [];
+      if (p.temp !== null && p.temp !== undefined) pieces.push(`Temp ${p.temp}°F`);
+      if (p.ph !== null && p.ph !== undefined) pieces.push(`pH ${p.ph}`);
+      if (p.orp !== null && p.orp !== undefined) pieces.push(`ORP ${p.orp}`);
+      if (p.salinity !== null && p.salinity !== undefined) pieces.push(`Salinity ${p.salinity}`);
+      const outlets = asArray(snap.outlets);
+      if (outlets.length) pieces.push(`${outlets.length} outlet${outlets.length === 1 ? '' : 's'}`);
+      const alarms = asArray(snap.alarms);
+      events.push({
+        id:eventId('apex-telemetry', snap, i), type:'apex', subtype:'telemetry', icon:'📡', label:'Apex',
+        title: snap.source && String(snap.source).includes('sample') ? 'Sample Apex telemetry loaded' : 'Apex telemetry imported',
+        text: pieces.join(' · ') || snap.summary || 'Read-only Apex telemetry payload imported.',
+        intelligence: alarms.length ? `Apex alarm marker: ${alarms.join('; ')}` : 'Live telemetry is now available to Reef Brain.',
+        date:snap.receivedAt || snap.capturedAt, action:'apex'
+      });
+    });
+
     const seen = new Set();
     return events.filter(ev => {
       if (!ev || !timeOf(ev.date)) return false;
@@ -239,6 +258,7 @@
     if (ev.action === 'reminders') return `showWorkspace('reminders')`;
     if (ev.action === 'vision') return `showWorkspace('vision')`;
     if (ev.action === 'equipment') return `openLongTermTool('equipment')`;
+    if (ev.action === 'apex') return `openApexIntegration()`;
     if (ev.action === 'fish') return `openLivestockCatalog('fish')`;
     if (ev.action === 'coral') return `openLivestockCatalog('coral')`;
     return '';

@@ -107,6 +107,19 @@
         </div>
       </div>
 
+      <div class="card home-telemetry-card" id="home-telemetry-card">
+        <div class="home-telemetry-head">
+          <div>
+            <div class="card-title">📡 Live Telemetry</div>
+            <div class="home-telemetry-subtitle" id="home-telemetry-subtitle">Waiting for Apex bridge data.</div>
+          </div>
+          <button class="home-telemetry-action" type="button" onclick="openApexIntegration()">Apex</button>
+        </div>
+        <div class="home-telemetry-grid" id="home-telemetry-grid">
+          <div class="home-telemetry-empty">Import a sample or bridge payload from More → Apex Integration.</div>
+        </div>
+      </div>
+
       <!-- Latest params snapshot -->
       <div id="home-params-grid" class="status-grid">
         <div class="status-chip warn">
@@ -264,7 +277,7 @@
         <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('report')"><span class="workspace-list-icon">📄</span><span class="workspace-list-main"><strong>Reports</strong><span>Monthly reef report, livestock summary, timeline, and exports.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Fusion profile and local bridge telemetry test.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Fusion profile and local bridge telemetry testing.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('library')"><span class="workspace-list-icon">📚</span><span class="workspace-list-main"><strong>Reef Library</strong><span>Protocols, manuals, ICP files, and reference documents.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
@@ -573,7 +586,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.0.3 Apex Telemetry Test</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.0.2 Apex Live Data Bridge</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -1029,10 +1042,10 @@
 <script src="days-off-plan.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="diagnostics.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="app.js?v=20260628-v3-9-2-polish-performance"></script>
-<script src="reef-brain.js?v=20260628-v4-0-3-apex-telemetry-test"></script>
-<script src="reef-timeline.js?v=20260628-v4-0-3-apex-telemetry-test"></script>
-<script src="apex-connect.js?v=20260628-v4-0-3-apex-telemetry-test"></script>
-<script src="apex-bridge.js?v=20260628-v4-0-3-apex-telemetry-test"></script>
+<script src="reef-brain.js?v=20260628-v4-0-4-live-telemetry"></script>
+<script src="reef-timeline.js?v=20260628-v3-9-2-polish-performance"></script>
+<script src="apex-connect.js?v=20260628-v4-0-4-live-telemetry"></script>
+<script src="apex-bridge.js?v=20260628-v4-0-4-live-telemetry"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -1574,6 +1587,53 @@ function refreshDailyReefBrief() {
   catch(e) { console.warn(e); showToast('Could not refresh brief'); }
 }
 
+function rkHomeTelemetrySnapshot() {
+  try { return window.ReefKeeperApexBridge?.getSnapshot?.() || JSON.parse(localStorage.getItem('reef_apex_bridge_snapshot_v1') || 'null'); }
+  catch(e) { return null; }
+}
+
+function rkHomeTelemetryAge(value) {
+  const t = new Date(value || 0).getTime();
+  if (!Number.isFinite(t) || !t) return 'No data yet';
+  const mins = Math.max(0, Math.floor((Date.now() - t) / 60000));
+  if (mins < 1) return 'Updated just now';
+  if (mins < 60) return `Updated ${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Updated ${hrs} hr ago`;
+  const days = Math.floor(hrs / 24);
+  return `Updated ${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+function rkHomeTelemetryValue(value, fallback = '—') {
+  return value === null || value === undefined || value === '' ? fallback : escapeHtml(value);
+}
+
+function renderHomeTelemetry() {
+  const card = document.getElementById('home-telemetry-card');
+  const grid = document.getElementById('home-telemetry-grid');
+  const subtitle = document.getElementById('home-telemetry-subtitle');
+  if (!card || !grid) return;
+  const snap = rkHomeTelemetrySnapshot();
+  if (!snap) {
+    card.classList.add('empty');
+    if (subtitle) subtitle.textContent = 'Waiting for Apex bridge data.';
+    grid.innerHTML = '<div class="home-telemetry-empty">Import a sample or bridge payload from More → Apex Integration.</div>';
+    return;
+  }
+  card.classList.remove('empty');
+  const p = snap.probes || {};
+  const outlets = Array.isArray(snap.outlets) ? snap.outlets : [];
+  const alarms = Array.isArray(snap.alarms) ? snap.alarms : [];
+  if (subtitle) subtitle.textContent = `${rkHomeTelemetryAge(snap.capturedAt || snap.receivedAt)} · ${outlets.length} outlet${outlets.length === 1 ? '' : 's'} · ${alarms.length ? alarms.length + ' alarm' + (alarms.length === 1 ? '' : 's') : 'No alarms'}`;
+  const outletLine = outlets.slice(0, 2).map(o => `${o.name}: ${o.state}`).join(' · ') || 'No outlet states';
+  grid.innerHTML = `
+    <div class="home-telemetry-chip"><span>Temp</span><strong>${rkHomeTelemetryValue(p.temp)}</strong><small>°F</small></div>
+    <div class="home-telemetry-chip"><span>pH</span><strong>${rkHomeTelemetryValue(p.ph)}</strong><small>probe</small></div>
+    <div class="home-telemetry-chip"><span>ORP</span><strong>${rkHomeTelemetryValue(p.orp)}</strong><small>mV</small></div>
+    <div class="home-telemetry-chip"><span>Salinity</span><strong>${rkHomeTelemetryValue(p.salinity)}</strong><small>${p.salinity == null ? 'optional' : 'ppt/cond'}</small></div>
+    <div class="home-telemetry-wide"><strong>Outlet status</strong><span>${escapeHtml(outletLine)}</span></div>`;
+}
+
 function renderHomeIntelligence() {
   const card = document.getElementById('home-intelligence-card');
   if (!card) return;
@@ -1604,6 +1664,7 @@ function renderHomeIntelligence() {
     watchingEl.innerHTML = snapshot.watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
   }
   rkHomeRenderDailyAssistant(snapshot);
+  renderHomeTelemetry();
 }
 
 function renderHomeIntelligenceFallback() {
@@ -1652,6 +1713,7 @@ function renderHomeIntelligenceFallback() {
   const monitoringCount = watchLines.length;
   if (monitoringValueEl) monitoringValueEl.textContent = monitoringCount ? `${monitoringCount} Item${monitoringCount === 1 ? '' : 's'}` : 'Nothing New';
   if (watchingEl) watchingEl.innerHTML = watchLines.slice(0, 4).join('');
+  renderHomeTelemetry();
   rkHomeRenderDailyAssistant({ dailyAssistant: {
     headline: score >= 84 ? 'Your reef looks stable today.' : 'Your reef needs attention today.',
     bullets: [
@@ -1662,7 +1724,7 @@ function renderHomeIntelligenceFallback() {
 }
 
 (function installHomeIntelligenceHooks(){
-  const run = () => { try { renderHomeIntelligence(); } catch(e) { console.warn('Home intelligence render failed', e); } };
+  const run = () => { try { renderHomeIntelligence(); renderHomeTelemetry(); } catch(e) { console.warn('Home intelligence render failed', e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(run, 250));
   else setTimeout(run, 250);
   const oldShowWorkspace = window.showWorkspace;
@@ -1686,6 +1748,7 @@ function renderHomeIntelligenceFallback() {
     window.showPage = wrapped;
   }
   window.renderHomeIntelligence = renderHomeIntelligence;
+  window.renderHomeTelemetry = renderHomeTelemetry;
 })();
 
 function startVisionPrompt(prompt, preferCamera) {

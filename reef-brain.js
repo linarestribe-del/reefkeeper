@@ -218,6 +218,15 @@
 
     const latestAge = daysAgo(inputs.latestLog?.isoDate || inputs.latestLog?.date);
     if (latestAge !== null && latestAge > 7) add(6, 'Parameter log is old', `${latestAge} days`);
+    const apex = inputs.apexBridge || null;
+    if (apex) {
+      const p = apex.probes || {};
+      const temp = number(p.temp);
+      const ph = number(p.ph);
+      if (temp !== null && (temp < 76.5 || temp > 80.5)) add(6, 'Apex temperature outside guardrail', `${temp}°F`);
+      if (ph !== null && (ph < 7.9 || ph > 8.6)) add(4, 'Apex pH outside guardrail', `${ph}`);
+      if (Array.isArray(apex.alarms) && apex.alarms.length) add(8, 'Apex alarm active', `${apex.alarms.length} alarm${apex.alarms.length === 1 ? '' : 's'}`);
+    }
     if (inputs.dueTasks.length > 3) add(4, 'Maintenance queue building', `${inputs.dueTasks.length} due items`);
     if (!inputs.latestPhoto) add(4, 'Full-tank photo missing', 'Start Reef Timeline');
 
@@ -235,6 +244,14 @@
     const items = scoring.penalties.map(p => ({ title:p.title, detail:p.detail, severity:p.points >= 8 ? 'high' : 'watch' }));
     const latestPhotoAge = daysLabel(inputs.latestPhoto?.createdAt || inputs.latestPhoto?.isoDate || inputs.latestPhoto?.date);
     if (inputs.latestPhoto) items.push({ title:'Latest reef photo', detail:latestPhotoAge, severity:'info' });
+    if (inputs.apexBridge) {
+      const p = inputs.apexBridge.probes || {};
+      const live = [];
+      if (p.temp !== null && p.temp !== undefined) live.push(`Temp ${p.temp}°F`);
+      if (p.ph !== null && p.ph !== undefined) live.push(`pH ${p.ph}`);
+      if (p.orp !== null && p.orp !== undefined) live.push(`ORP ${p.orp}`);
+      items.push({ title:'Apex telemetry received', detail:live.join(' · ') || 'Bridge payload imported', severity:'info' });
+    }
     if (inputs.dueTasks.length) items.push({ title:'Maintenance coming due', detail:`${inputs.dueTasks.length} item${inputs.dueTasks.length === 1 ? '' : 's'}`, severity:'watch' });
     return items.slice(0, 8);
   }
@@ -367,6 +384,15 @@
     if (no3Trend && no3Trend.status !== 'in range') add('Nitrate is outside target', `${no3Trend.detail}. Confirm trend before changing multiple things.`, 'params', 68);
     else if (values.no3 !== null && values.no3 > 15) add('Nitrate is still above preferred range', `${values.no3} ppm. Confirm trend before changing multiple things.`, 'params', 62);
 
+    if (inputs.apexBridge) {
+      const p = inputs.apexBridge.probes || {};
+      const live = [];
+      if (p.temp !== null && p.temp !== undefined) live.push(`Temp ${p.temp}°F`);
+      if (p.ph !== null && p.ph !== undefined) live.push(`pH ${p.ph}`);
+      if (p.orp !== null && p.orp !== undefined) live.push(`ORP ${p.orp}`);
+      add('Review live Apex telemetry', live.join(' · ') || 'Bridge telemetry imported.', 'monitoring', inputs.apexBridge.alarms?.length ? 92 : 46);
+    }
+
     inputs.dueTasks.slice(0, 2).forEach(task => add(task.title || 'Maintenance due', task.detail || task.when || 'Due soon.', 'maintenance', 78));
     (inputs.equipmentIntelligence?.priority || []).filter(item => item.level === 'due' || item.level === 'soon').slice(0, 2).forEach(item => add(`${item.name} ${item.label.toLowerCase()}`, item.detail, 'maintenance', item.level === 'due' ? 88 : 74));
     inputs.reminders.slice(0, 2).forEach(reminder => add(`${reminder.emoji || '⏰'} ${reminder.title || 'Reminder'}`, reminder.when || reminder.repeat || 'Active reminder.', 'maintenance', 65));
@@ -416,14 +442,14 @@
     const values = latestLogValues(latestLog || {});
     const trends = buildTrendAnalysis(logs);
     const trendInsights = buildTrendInsights(trends);
-    const scoring = scoreFromValues(values, { latestLog, dueTasks, latestPhoto });
+    const scoring = scoreFromValues(values, { latestLog, dueTasks, latestPhoto, apexBridge });
     const scoreExplanation = buildScoreExplanation(scoring, trends, { latestLog, dueTasks, latestPhoto });
     const status = statusFromScore(scoring.score);
     const inventory = buildInventorySummary(inventoryItems, equipmentItems);
     const equipmentIntelligence = buildEquipmentIntelligence(equipmentItems);
     const lastTest = { label: daysLabel(latestLog?.isoDate || latestLog?.date), days: daysAgo(latestLog?.isoDate || latestLog?.date), log: latestLog };
     const today = buildToday({ dueTasks, reminders });
-    const watching = buildWatching(values, scoring, { dueTasks, latestPhoto });
+    const watching = buildWatching(values, scoring, { dueTasks, latestPhoto, apexBridge });
     const snapshot = {
       version: VERSION,
       createdAt: new Date().toISOString(),
@@ -446,7 +472,7 @@
       recentActions: actions.slice(0, 8),
       recentCompleted: completed.slice(0, 8)
     };
-    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto, equipmentIntelligence, trends, scoreExplanation });
+    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto, equipmentIntelligence, trends, scoreExplanation, apexBridge });
     snapshot.aiContextLines = buildAiContextLines(snapshot);
     return snapshot;
   }
