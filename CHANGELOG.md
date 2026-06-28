@@ -1,33 +1,37 @@
 # Reef Keeper Changelog
 
-## v4.0.3 — Apex Telemetry Test
+## v4.0.4 — Live Telemetry
 
 ### Goal
-Make the Apex telemetry test section visible and testable from the real Apex Integration screen.
+Make the Apex/Bridge telemetry test actually feed Reef Keeper instead of only storing a configuration profile.
 
 ### Changed
-- `index.html`
-  - Updates cache-busting script/style versions to v4.0.3.
-  - Updates the displayed version label to Apex Telemetry Test.
-- `apex-connect.js`
-  - Embeds the telemetry test panel directly in the Apex Integration render path.
-  - Calls the bridge renderer after each Apex settings render so the panel is not lost when the page re-renders.
-  - Updates Apex copy from v4.0.2 bridge scaffold to v4.0.3 telemetry test.
 - `apex-bridge.js`
-  - Renames the panel to Telemetry Test.
-  - Renames the import button to Import Telemetry.
-  - Keeps sample payload loading, manual JSON import, local telemetry storage, and Reef Brain refresh.
+  - Upgrades the bridge to v4.0.4.
+  - Importing telemetry now saves the latest snapshot and history.
+  - Load Sample now imports sample telemetry immediately.
+  - Adds bridge status, probe count, outlet count, alarm count, and outlet summary.
+  - Refreshes Home, Reef Brain, and Reef Timeline after import.
+- `index.html`
+  - Adds a Home → Live Telemetry card.
+  - Shows temperature, pH, ORP, salinity, outlet summary, and last update age.
+- `reef-brain.js`
+  - Consumes Apex bridge telemetry in Reef Brain.
+  - Adds live telemetry to AI context, AI Watching, Daily Reef Assistant, and score guardrails.
+- `reef-timeline.js`
+  - Adds Apex telemetry imports as Timeline events.
+- `css/app.css`
+  - Adds styling for Home live telemetry and Apex bridge status.
 
 ### Test Checklist
 - [ ] More → Apex Integration opens.
-- [ ] Telemetry Test card is visible below the Fusion/Local setup controls.
-- [ ] Load Sample fills the JSON payload box.
-- [ ] Import Telemetry saves the sample.
-- [ ] Probe tiles display temperature, pH, ORP, and salinity after import.
-- [ ] Refresh the app and confirm the latest telemetry remains visible.
-- [ ] Fusion and Local / Bridge mode switching still works.
-- [ ] Home, Reef Brain, Ask AI, and Timeline still load normally.
-- [ ] Dark mode is readable.
+- [ ] Telemetry Test card appears.
+- [ ] Load Sample immediately shows probe values.
+- [ ] Import Telemetry accepts valid JSON and rejects invalid JSON.
+- [ ] Home → Live Telemetry shows imported values.
+- [ ] Reef Timeline shows Apex telemetry events.
+- [ ] Ask AI has latest telemetry context.
+- [ ] Dark mode remains readable.
 
 ## v4.0.2 — Apex Live Data Bridge
 

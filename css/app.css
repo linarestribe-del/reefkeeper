@@ -3683,3 +3683,31 @@ html.theme-dark .apex-bridge-head em { background: rgba(155,216,240,0.12); color
 @media (max-width: 380px) {
   .apex-bridge-probes { grid-template-columns: repeat(2, 1fr); }
 }
+
+
+/* v4.0.4 Live Telemetry */
+.home-telemetry-card { margin-top: 0; }
+.home-telemetry-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.home-telemetry-subtitle { font-size:12px; line-height:1.35; font-weight:800; color:var(--text-light); margin-top:-6px; }
+.home-telemetry-action { border:0; border-radius:999px; padding:8px 12px; background:rgba(0,180,216,.14); color:var(--text-mid); font-family:'Nunito',sans-serif; font-weight:900; cursor:pointer; }
+.home-telemetry-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.home-telemetry-chip { border:1px solid rgba(0,180,216,.16); border-radius:16px; background:rgba(255,255,255,.68); padding:10px 8px; min-height:70px; display:flex; flex-direction:column; justify-content:center; }
+.home-telemetry-chip span { font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.07em; color:var(--text-light); }
+.home-telemetry-chip strong { font-size:18px; line-height:1; font-weight:900; color:var(--text-dark); margin-top:4px; }
+.home-telemetry-chip small { font-size:10px; font-weight:800; color:var(--text-mid); margin-top:3px; }
+.home-telemetry-wide { grid-column:1/-1; border:1px solid rgba(0,180,216,.16); border-radius:16px; background:rgba(255,255,255,.58); padding:10px 12px; display:grid; gap:3px; }
+.home-telemetry-wide strong { font-size:12px; font-weight:900; color:var(--text-dark); }
+.home-telemetry-wide span, .home-telemetry-empty { font-size:12px; line-height:1.35; font-weight:800; color:var(--text-light); }
+.home-telemetry-empty { grid-column:1/-1; border:1px dashed rgba(0,180,216,.30); border-radius:16px; background:rgba(255,255,255,.52); padding:14px; }
+.apex-bridge-status-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:10px 0; }
+.apex-bridge-status-grid div { background:rgba(255,255,255,.72); border:1px solid rgba(0,180,216,.14); border-radius:14px; padding:9px 8px; display:grid; gap:2px; }
+.apex-bridge-status-grid strong { font-size:13px; font-weight:900; color:var(--text-dark); line-height:1.1; }
+.apex-bridge-status-grid small { font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:var(--text-light); }
+.apex-bridge-empty { border:1px dashed rgba(0,180,216,.28); background:rgba(255,255,255,.56); border-radius:16px; padding:12px; display:grid; gap:4px; margin:10px 0; }
+.apex-bridge-empty strong { color:var(--text-dark); font-weight:900; }
+.apex-bridge-empty span { color:var(--text-light); font-weight:800; font-size:12px; }
+.apex-bridge-outlets { border:1px solid rgba(0,180,216,.14); background:rgba(255,255,255,.58); border-radius:16px; padding:10px; margin:8px 0 2px; display:grid; gap:3px; }
+.apex-bridge-outlets strong { font-size:12px; font-weight:900; color:var(--text-dark); }
+.apex-bridge-outlets span { font-size:12px; font-weight:800; color:var(--text-mid); line-height:1.35; }
+html.theme-dark .home-telemetry-chip, html.theme-dark .home-telemetry-wide, html.theme-dark .home-telemetry-empty, html.theme-dark .apex-bridge-status-grid div, html.theme-dark .apex-bridge-empty, html.theme-dark .apex-bridge-outlets { background:rgba(8,27,42,.86); border-color:rgba(155,216,240,.20); }
+@media(max-width:430px){ .home-telemetry-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .apex-bridge-status-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
