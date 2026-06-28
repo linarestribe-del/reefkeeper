@@ -1,5 +1,21 @@
 # Reef Keeper Changelog
 
+## v3.8.1 — Timeline Date Header Visibility Fix
+
+### Goal
+Make Reef Timeline date group labels readable on light reef backgrounds.
+
+### Changed
+- `css/app.css`
+  - Changes timeline day headers like “Today” from white overlay text to a rounded readable label.
+  - Adds a matching dark-mode style.
+
+### Test Checklist
+- [ ] My Tank → Reef Timeline opens normally.
+- [ ] “Today” and other date labels are clearly visible.
+- [ ] Timeline cards still look correct.
+- [ ] Dark mode date labels remain readable.
+
 ## v3.8.0 — Reef Timeline
 
 ### Goal
