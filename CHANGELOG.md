@@ -1,5 +1,49 @@
 # Reef Keeper Changelog
 
+## v3.8.1 — Timeline Date Header Visibility Fix
+
+### Goal
+Make Reef Timeline date group labels readable on light reef backgrounds.
+
+### Changed
+- `css/app.css`
+  - Changes timeline day headers like “Today” from white overlay text to a rounded readable label.
+  - Adds a matching dark-mode style.
+
+### Test Checklist
+- [ ] My Tank → Reef Timeline opens normally.
+- [ ] “Today” and other date labels are clearly visible.
+- [ ] Timeline cards still look correct.
+- [ ] Dark mode date labels remain readable.
+
+## v3.8.0 — Reef Timeline
+
+### Goal
+Create one chronological reef memory feed from the app data you already log.
+
+### Changed
+- `index.html`
+  - Renames Visual Tank History to Reef Timeline.
+  - Adds timeline search and event filters.
+  - Changes My Tank → Reef Timeline to open the timeline instead of AI Vision.
+  - Keeps full-tank photo upload inside the timeline as an expandable action.
+- `reef-timeline.js`
+  - New unified timeline module.
+  - Pulls events from parameter logs, maintenance/action history, completed tasks, AI Vision/full-tank photos, livestock entries, livestock photo analyses, and equipment service records.
+  - Replaces the Home “What Changed Recently” list with the newest timeline events.
+- `css/app.css`
+  - Adds styling for timeline controls, grouped date headers, event type accents, and the expandable full-tank photo form.
+
+### Test Checklist
+- [ ] Home loads normally.
+- [ ] What Changed Recently shows timeline events.
+- [ ] My Tank → Reef Timeline opens the timeline.
+- [ ] Timeline search filters entries.
+- [ ] Timeline event type filter works.
+- [ ] Add full-tank photo still saves.
+- [ ] AI Vision save to full-tank history still appears in the timeline.
+- [ ] Dark mode remains readable.
+
 ## v3.7.0 — Equipment Intelligence
 
 ### Goal

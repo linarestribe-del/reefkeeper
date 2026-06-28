@@ -3532,3 +3532,80 @@ html.theme-dark .equipment-intel-banner.good{background:rgba(82,183,136,.12);}
   .equipment-intel-summary{align-items:flex-start;flex-direction:column;}
   .equipment-intel-summary span{text-align:left;}
 }
+
+/* ============ REEF TIMELINE v3.8 ============ */
+.reef-timeline-controls{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  margin:12px 0;
+}
+.reef-timeline-count{
+  display:inline-flex;
+  width:fit-content;
+  align-items:center;
+  border-radius:999px;
+  padding:7px 11px;
+  font-size:12px;
+  font-weight:900;
+  color:var(--text-mid);
+  background:rgba(255,255,255,.72);
+  border:1px solid rgba(0,180,216,.18);
+}
+.reef-timeline-add-photo{
+  margin:10px 0 14px;
+  border:1px solid rgba(0,180,216,.18);
+  border-radius:16px;
+  background:rgba(255,255,255,.62);
+  overflow:hidden;
+}
+.reef-timeline-add-photo summary{
+  cursor:pointer;
+  list-style:none;
+  padding:12px 14px;
+  font-weight:900;
+  color:var(--text-dark);
+}
+.reef-timeline-add-photo summary::-webkit-details-marker{display:none;}
+.reef-timeline-add-photo .tank-history-form{padding:0 12px 12px;}
+.reef-timeline-day{
+  display:inline-flex;
+  align-items:center;
+  width:fit-content;
+  margin:16px 2px 8px;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--text-dark);
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(0,180,216,.18);
+  box-shadow:0 4px 14px rgba(0,119,182,.14);
+  text-shadow:none;
+}
+.reef-timeline-entry{
+  cursor:pointer;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.reef-timeline-entry:active{transform:scale(.985);}
+.reef-timeline-main{min-width:0;}
+.reef-timeline-entry.type-params{border-left:4px solid rgba(0,180,216,.6);}
+.reef-timeline-entry.type-photo{border-left:4px solid rgba(199,125,255,.62);}
+.reef-timeline-entry.type-maintenance,.reef-timeline-entry.type-completed{border-left:4px solid rgba(82,183,136,.62);}
+.reef-timeline-entry.type-equipment{border-left:4px solid rgba(255,183,3,.70);}
+.reef-timeline-entry.type-livestock{border-left:4px solid rgba(255,107,53,.65);}
+
+html.theme-dark .reef-timeline-day{
+  background:rgba(8,27,42,.88);
+  border-color:rgba(155,216,240,.20);
+  color:var(--text-dark);
+}
+
+html.theme-dark .reef-timeline-count,
+html.theme-dark .reef-timeline-add-photo{
+  background:rgba(8,27,42,.88);
+  border-color:rgba(155,216,240,.20);
+  color:var(--text-dark);
+}

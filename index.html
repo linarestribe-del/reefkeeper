@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260627-v3-7-0-equipment-intelligence">
+<link rel="stylesheet" href="css/app.css?v=20260628-v3-8-0-reef-timeline">
 </head>
 <body>
 
@@ -222,7 +222,7 @@
 
         <div class="workspace-list-card mytank-secondary-list">
           <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">🎯</span><span class="workspace-list-main"><strong>Targets & scoring</strong><span>Customize your parameter thresholds and dashboard scoring.</span></span><span class="workspace-chevron">›</span></button>
-          <button class="workspace-list-row" type="button" onclick="showWorkspace('vision')"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Reef Timeline</strong><span>Analyze coral, fish, equipment, and full-tank progress photos.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="openLongTermTool('tankhistory')"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Reef Timeline</strong><span>Chronological reef history from photos, tests, livestock, equipment, and maintenance.</span></span><span class="workspace-chevron">›</span></button>
           <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">🗓️</span><span class="workspace-list-main"><strong>Maintenance Planner</strong><span>Days-Off Plan, reminders, overdue tasks, and completed history.</span></span><span class="workspace-chevron">›</span></button>
         </div>
 
@@ -688,7 +688,7 @@
 <div class="tool-overlay" id="tool-tankhistory-overlay" onclick="handleToolOverlayClick(event, 'tankhistory')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-tankhistory-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-tankhistory-title" type="button" onclick="scrollToolToTop('tankhistory')">Visual Tank History</button>
+      <button class="tool-panel-title" id="tool-tankhistory-title" type="button" onclick="scrollToolToTop('tankhistory')">Reef Timeline</button>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="tool-top-btn" onclick="scrollToolToTop('tankhistory')" aria-label="Scroll tank history to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('tankhistory')" aria-label="Close tank history">×</button>
@@ -696,14 +696,30 @@
     </div>
     <div class="tool-panel-body" id="tool-tankhistory-body">
       <div class="long-term-panel">
-        <div class="long-term-intro">Save a monthly full-tank shot. Reef Keeper can use these as a visual journal for algae, coral spread, aquascape changes, and recovery history.</div>
-        <div class="tank-history-form">
-          <input class="inventory-input" id="tank-history-title" placeholder="Title, e.g., June full tank shot">
-          <textarea class="inventory-notes" id="tank-history-notes" placeholder="Optional note: algae, coral response, equipment changes..." rows="3"></textarea>
-          <label class="inventory-photo-btn" for="tank-history-file">📷 Add Full-Tank Photo</label>
-          <input class="inventory-photo-input" id="tank-history-file" type="file" accept="image/*" onchange="saveTankHistoryPhoto(event)">
+        <div class="long-term-intro">One chronological reef memory feed from photos, water tests, maintenance, livestock, equipment, completed tasks, and AI Vision notes.</div>
+        <div class="reef-timeline-controls">
+          <input class="inventory-input" id="reef-timeline-search" placeholder="Search timeline…" oninput="ReefKeeperTimeline && ReefKeeperTimeline.render()">
+          <select class="long-term-select" id="reef-timeline-filter" onchange="ReefKeeperTimeline && ReefKeeperTimeline.render()">
+            <option value="all">All events</option>
+            <option value="photo">Photos / AI Vision</option>
+            <option value="params">Parameters</option>
+            <option value="maintenance">Maintenance</option>
+            <option value="equipment">Equipment</option>
+            <option value="livestock">Livestock</option>
+            <option value="completed">Completed tasks</option>
+          </select>
+          <span class="reef-timeline-count" id="reef-timeline-count">—</span>
         </div>
-        <div id="tank-history-list" class="tank-history-list"></div>
+        <details class="reef-timeline-add-photo">
+          <summary>📷 Add full-tank photo</summary>
+          <div class="tank-history-form">
+            <input class="inventory-input" id="tank-history-title" placeholder="Title, e.g., June full tank shot">
+            <textarea class="inventory-notes" id="tank-history-notes" placeholder="Optional note: algae, coral response, equipment changes..." rows="3"></textarea>
+            <label class="inventory-photo-btn" for="tank-history-file">Choose Photo</label>
+            <input class="inventory-photo-input" id="tank-history-file" type="file" accept="image/*" onchange="saveTankHistoryPhoto(event)">
+          </div>
+        </details>
+        <div id="tank-history-list" class="tank-history-list reef-timeline-list"></div>
       </div>
     </div>
   </div>
@@ -999,6 +1015,7 @@
 <script src="diagnostics.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="app.js?v=20260627-v3-7-0-equipment-intelligence"></script>
 <script src="reef-brain.js?v=20260627-v3-7-0-equipment-intelligence"></script>
+<script src="reef-timeline.js?v=20260628-v3-8-0-reef-timeline"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
