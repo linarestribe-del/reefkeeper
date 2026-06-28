@@ -1,5 +1,29 @@
 # Reef Keeper Changelog
 
+## v3.5.0 — Reef Brain Foundation
+
+### Goal
+Create one shared intelligence layer that summarizes the reef once, then lets Home, Ask AI, Days-Off Planner, reports, and future features use the same source of truth.
+
+### Changed
+- `reef-brain.js`
+  - Added the Reef Brain snapshot service.
+  - Reads parameter logs, reminders, maintenance due dates, inventory, equipment, visual history, completed work, and recent actions.
+  - Produces a shared score, reef status, today list, watch list, last-test age, inventory summary, and AI context lines.
+  - Injects Reef Brain context into Ask AI and Days-Off Planner context when those functions are available.
+- `index.html`
+  - Loads the new Reef Brain module.
+  - Home dashboard now renders from `ReefKeeperBrain.getSnapshot()` instead of duplicating separate scoring/watch logic.
+  - Keeps a fallback renderer if the module fails to load.
+
+### Test Checklist
+- [ ] Home loads and shows Reef Status, AI Monitoring, Last Test, Today, and AI Watching.
+- [ ] Reef Status and AI Monitoring still scroll/highlight correctly.
+- [ ] + Water Test and + Maintenance still route to different log forms.
+- [ ] Ask AI still sends messages normally.
+- [ ] Days-Off Plan still generates.
+- [ ] My Tank, AI Vision, and More still open normally.
+
 ## v3.4.2 — Home Action Routing Fix
 
 ### Changed
