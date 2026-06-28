@@ -1,5 +1,29 @@
 # Reef Keeper Changelog
 
+## v3.9.1 — Reef Brain Intelligence
+
+### Goal
+Make Reef Brain explain the tank score, detect parameter trends, and produce smarter daily priorities from existing tank data.
+
+### Changed
+- `reef-brain.js`
+  - Adds parameter trend analysis for phosphate, alkalinity, nitrate, calcium, magnesium, pH, and salinity.
+  - Adds score explanation output so the app can explain why the score moved.
+  - Improves Daily Reef Assistant priorities using trends, maintenance due items, equipment due items, reminders, and Reef Timeline photo age.
+  - Adds estimated priority time and urgent priority count to the Reef Brain snapshot.
+  - Adds trend insights and score explanations to Ask AI / Days-Off context.
+- `index.html`
+  - Updates Reef Brain cache-busting version.
+
+### Test Checklist
+- [ ] Home loads normally.
+- [ ] Tank score still appears once.
+- [ ] Daily Reef Assistant shows useful priorities.
+- [ ] Ask AI still works.
+- [ ] Days-Off Plan still generates.
+- [ ] My Tank, AI Vision, and Reef Timeline still open.
+
+
 ## v3.9.0 — Timeline Intelligence
 
 ### Goal
