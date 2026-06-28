@@ -3609,3 +3609,139 @@ html.theme-dark .reef-timeline-add-photo{
   border-color:rgba(155,216,240,.20);
   color:var(--text-dark);
 }
+
+/* ============ REEF TIMELINE v3.9 Intelligence ============ */
+.reef-timeline-intelligence{
+  margin:12px 0 10px;
+  border:1px solid rgba(0,180,216,.18);
+  border-radius:18px;
+  background:rgba(255,255,255,.72);
+  box-shadow:0 8px 22px rgba(0,119,182,.12);
+  padding:12px;
+}
+.timeline-intel-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.timeline-intel-head strong{
+  display:block;
+  color:var(--text-dark);
+  font-size:14px;
+  font-weight:900;
+}
+.timeline-intel-head span{
+  display:block;
+  color:var(--text-light);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+  margin-top:2px;
+}
+.timeline-intel-head button{
+  border:none;
+  border-radius:999px;
+  background:linear-gradient(135deg,var(--ocean-deep),var(--ocean-mid));
+  color:white;
+  font-family:'Nunito',sans-serif;
+  font-size:12px;
+  font-weight:900;
+  padding:8px 11px;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,119,182,.20);
+}
+.timeline-intel-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.timeline-intel-card{
+  border:1px solid rgba(0,180,216,.14);
+  border-radius:14px;
+  background:rgba(255,255,255,.66);
+  padding:10px 11px;
+}
+.timeline-intel-card b{
+  display:block;
+  color:var(--text-dark);
+  font-size:13px;
+  font-weight:900;
+  margin-bottom:3px;
+}
+.timeline-intel-card span{
+  display:block;
+  color:var(--text-mid);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+}
+.reef-timeline-milestones{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:10px 0 12px;
+}
+.timeline-milestone{
+  display:flex;
+  gap:8px;
+  align-items:flex-start;
+  border:1px solid rgba(0,180,216,.14);
+  border-radius:14px;
+  background:rgba(255,255,255,.62);
+  padding:10px;
+}
+.timeline-milestone>span{
+  font-size:20px;
+  line-height:1;
+}
+.timeline-milestone strong{
+  display:block;
+  color:var(--text-dark);
+  font-size:12px;
+  font-weight:900;
+}
+.timeline-milestone small{
+  display:block;
+  color:var(--text-light);
+  font-size:11px;
+  font-weight:800;
+  line-height:1.25;
+  margin-top:2px;
+}
+.timeline-intelligence-note{
+  margin-top:7px;
+  padding:8px 10px;
+  border-radius:12px;
+  background:rgba(0,180,216,.09);
+  border:1px solid rgba(0,180,216,.13);
+  color:var(--text-mid);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+}
+.recent-change-note{
+  color:var(--text-light);
+  font-size:11px;
+  font-weight:800;
+  line-height:1.25;
+  margin-top:2px;
+}
+.reef-timeline-entry.subtype-fish{border-left-color:rgba(0,119,182,.60);}
+.reef-timeline-entry.subtype-coral{border-left-color:rgba(255,107,53,.68);}
+.reef-timeline-entry.subtype-water-change{border-left-color:rgba(0,180,216,.62);}
+html.theme-dark .reef-timeline-intelligence,
+html.theme-dark .timeline-intel-card,
+html.theme-dark .timeline-milestone{
+  background:rgba(8,27,42,.88);
+  border-color:rgba(155,216,240,.20);
+}
+html.theme-dark .timeline-intelligence-note{
+  background:rgba(155,216,240,.08);
+  border-color:rgba(155,216,240,.18);
+  color:var(--text-mid);
+}
+@media(max-width:390px){
+  .reef-timeline-milestones{grid-template-columns:1fr;}
+}
