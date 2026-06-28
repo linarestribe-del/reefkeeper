@@ -1,10 +1,10 @@
-// Reef Keeper v3.5.0 Reef Brain
+// Reef Keeper v3.6.0 Daily Reef Assistant
 // A shared intelligence layer that turns local tank data into one consistent snapshot
 // for Home, Ask AI, Days-Off Planner, reports, and future smart reminders.
 (function(){
   'use strict';
 
-  const VERSION = '3.5.0';
+  const VERSION = '3.6.0';
   const ONE_DAY = 86400000;
 
   function parseJson(key, fallback){
@@ -153,10 +153,55 @@
     const lines = [];
     lines.push(`Reef Brain score: ${snapshot.score}/100 (${snapshot.status.label}).`);
     lines.push(`Last parameter log: ${snapshot.lastTest.label}.`);
+    if (snapshot.dailyAssistant?.headline) lines.push(`Daily Reef Assistant: ${snapshot.dailyAssistant.headline}`);
+    (snapshot.dailyAssistant?.bullets || []).slice(0, 5).forEach(item => lines.push(`Daily brief: ${item.text}${item.detail ? ` — ${item.detail}` : ''}.`));
     snapshot.today.slice(0, 5).forEach(item => lines.push(`Today: ${item.title}${item.detail ? ` — ${item.detail}` : ''}.`));
     snapshot.watching.slice(0, 6).forEach(item => lines.push(`Watching: ${item.title}${item.detail ? ` — ${item.detail}` : ''}.`));
     lines.push(`Inventory summary: ${snapshot.inventory.fish} fish, ${snapshot.inventory.coral} coral/anemone, ${snapshot.inventory.equipment} gear items.`);
     return lines.map(x => compact(x, 240));
+  }
+
+
+  function buildDailyAssistant(values, scoring, inputs){
+    const score = scoring.score;
+    const lastTestDays = daysAgo(inputs.latestLog?.isoDate || inputs.latestLog?.date);
+    const latestPhotoDays = inputs.latestPhoto ? daysAgo(inputs.latestPhoto.createdAt || inputs.latestPhoto.isoDate || inputs.latestPhoto.date) : null;
+    const bullets = [];
+    const add = (text, detail = '', action = '') => {
+      if (!text || bullets.some(b => b.text === text)) return;
+      bullets.push({ text: compact(text, 120), detail: compact(detail, 140), action });
+    };
+
+    if (lastTestDays === null || lastTestDays > 7) add('Log a fresh water test', lastTestDays === null ? 'No recent parameter log found.' : `Last test was ${lastTestDays} days ago.`, 'water-test');
+    else if (lastTestDays >= 3) add('Consider a quick Alk / PO₄ check', `Last test was ${lastTestDays} days ago.`, 'water-test');
+
+    if (values.po4 !== null && values.po4 > 0.12) add('Keep watching phosphate', `${values.po4} ppm. Lower slowly; avoid aggressive stripping.`, 'params');
+    if (values.alk !== null && (values.alk > 9.7 || values.alk < 7.8)) add('Prioritize alkalinity stability', `${values.alk} dKH. Retest before major dosing changes.`, 'params');
+    if (values.no3 !== null && values.no3 > 15) add('Nitrate is still above preferred range', `${values.no3} ppm. Confirm trend before changing multiple things.`, 'params');
+
+    inputs.dueTasks.slice(0, 2).forEach(task => add(task.title || 'Maintenance due', task.detail || task.when || 'Due soon.', 'maintenance'));
+    inputs.reminders.slice(0, 2).forEach(reminder => add(`${reminder.emoji || '⏰'} ${reminder.title || 'Reminder'}`, reminder.when || reminder.repeat || 'Active reminder.', 'maintenance'));
+
+    if (!inputs.latestPhoto) add('Take a full-tank photo', 'This starts the Reef Timeline and gives AI Vision a baseline.', 'vision');
+    else if (latestPhotoDays !== null && latestPhotoDays >= 14) add('Update the Reef Timeline photo', `Last full-tank photo was ${latestPhotoDays} days ago.`, 'vision');
+
+    if (!bullets.length) add('Nothing urgent today', 'Log anything you do so the Reef Brain can keep the plan current.', 'maintenance');
+
+    const headline = score >= 92
+      ? 'Your reef looks strong today.'
+      : score >= 84
+        ? 'Your reef looks stable today.'
+        : score >= 74
+          ? 'Your reef is in watch mode today.'
+          : 'Your reef needs attention today.';
+
+    const primaryAction = bullets[0]?.action || (score < 84 ? 'params' : 'maintenance');
+    return {
+      headline,
+      updatedAt: new Date().toISOString(),
+      primaryAction,
+      bullets: bullets.slice(0, 5)
+    };
   }
 
   function getSnapshot(){
@@ -175,6 +220,8 @@
     const status = statusFromScore(scoring.score);
     const inventory = buildInventorySummary(inventoryItems, equipmentItems);
     const lastTest = { label: daysLabel(latestLog?.isoDate || latestLog?.date), days: daysAgo(latestLog?.isoDate || latestLog?.date), log: latestLog };
+    const today = buildToday({ dueTasks, reminders });
+    const watching = buildWatching(values, scoring, { dueTasks, latestPhoto });
     const snapshot = {
       version: VERSION,
       createdAt: new Date().toISOString(),
@@ -183,8 +230,8 @@
       values,
       penalties: scoring.penalties,
       lastTest,
-      today: buildToday({ dueTasks, reminders }),
-      watching: buildWatching(values, scoring, { dueTasks, latestPhoto }),
+      today,
+      watching,
       inventory,
       counts: { logs: logs.length, actions: actions.length, completed: completed.length, reminders: reminders.length, visualHistory: visualHistory.length },
       latestPhoto,
@@ -192,6 +239,7 @@
       recentActions: actions.slice(0, 8),
       recentCompleted: completed.slice(0, 8)
     };
+    snapshot.dailyAssistant = buildDailyAssistant(values, scoring, { latestLog, dueTasks, reminders, latestPhoto });
     snapshot.aiContextLines = buildAiContextLines(snapshot);
     return snapshot;
   }

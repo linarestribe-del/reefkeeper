@@ -3149,7 +3149,7 @@ html.theme-dark .mytank-summary-strip strong { color: #ecfbff; }
   .mytank-summary-strip b { font-size: 15px; }
 }
 
-/* v3.4.0 Home Dashboard Intelligence */
+/* v3.4.0 Home Dashboard Intelligence + v3.6.0 Daily Reef Assistant */
 .home-intelligence-card {
   background: rgba(255,255,255,0.90);
   border: 1px solid rgba(255,255,255,0.92);
@@ -3374,4 +3374,82 @@ html.theme-dark .home-score-pill { box-shadow: 0 10px 26px rgba(0,0,0,.28); }
   0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0,180,216,.35); }
   42% { transform: scale(1.015); box-shadow: 0 0 0 12px rgba(0,180,216,.10); }
   100% { transform: scale(1); box-shadow: inherit; }
+}
+
+/* v3.6.0 Daily Reef Assistant */
+.home-daily-assistant {
+  background: rgba(255,255,255,.70);
+  border: 1px solid rgba(0,180,216,.16);
+  border-radius: 18px;
+  padding: 12px;
+  margin: 0 0 12px;
+}
+.home-daily-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.home-daily-head span {
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-light);
+}
+.home-daily-head button {
+  border: 1px solid rgba(0,180,216,.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,.82);
+  color: var(--text-mid);
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.home-daily-summary {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--text-dark);
+  line-height: 1.25;
+  margin-bottom: 9px;
+}
+.home-daily-list {
+  display: grid;
+  gap: 7px;
+}
+.home-daily-item {
+  width: 100%;
+  border: 1px solid rgba(0,180,216,.14);
+  border-radius: 14px;
+  background: rgba(255,255,255,.72);
+  padding: 9px 10px;
+  text-align: left;
+  font-family: 'Nunito', sans-serif;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+.home-daily-item span {
+  display: block;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.22;
+}
+.home-daily-item small {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-light);
+  line-height: 1.25;
+}
+.home-daily-item:active,
+.home-daily-head button:active { transform: scale(.98); }
+html.theme-dark .home-daily-assistant,
+html.theme-dark .home-daily-item,
+html.theme-dark .home-daily-head button {
+  background: rgba(8,27,42,.90);
+  border-color: rgba(155,216,240,.20);
 }

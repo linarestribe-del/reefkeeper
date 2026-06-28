@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260627-v3-5-0-reef-brain">
+<link rel="stylesheet" href="css/app.css?v=20260627-v3-6-0-daily-reef-assistant">
 </head>
 <body>
 
@@ -74,6 +74,17 @@
             <strong id="home-last-test-value">—</strong>
           </button>
         </div>
+        <div class="home-daily-assistant" id="home-daily-assistant">
+          <div class="home-daily-head">
+            <span>🤖 Daily Reef Assistant</span>
+            <button type="button" onclick="refreshDailyReefBrief()">Refresh</button>
+          </div>
+          <div class="home-daily-summary" id="home-daily-summary">Checking today’s reef priorities…</div>
+          <div class="home-daily-list" id="home-daily-list">
+            <div class="home-intel-line muted">Loading brief…</div>
+          </div>
+        </div>
+
         <div class="home-intel-grid">
           <div class="home-intel-panel">
             <div class="home-intel-label">Today</div>
@@ -981,13 +992,13 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260627-v3-5-0-reef-brain"></script>
-<script src="state.js?v=20260627-v3-5-0-reef-brain"></script>
-<script src="reef-ai-context.js?v=20260627-v3-5-0-reef-brain"></script>
-<script src="days-off-plan.js?v=20260627-v3-5-0-reef-brain"></script>
-<script src="diagnostics.js?v=20260627-v3-5-0-reef-brain"></script>
-<script src="app.js?v=20260627-v3-5-0-reef-brain"></script>
-<script src="reef-brain.js?v=20260627-v3-5-0-reef-brain"></script>
+<script src="storage.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
+<script src="state.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
+<script src="reef-ai-context.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
+<script src="days-off-plan.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
+<script src="diagnostics.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
+<script src="app.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
+<script src="reef-brain.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -1230,6 +1241,37 @@ function rkHomeOpenLatestPhoto() {
   try { openLongTermTool('tankhistory'); } catch(e) { showWorkspace('vision'); }
 }
 
+function rkHomeDailyAction(action) {
+  if (action === 'water-test' || action === 'params') return openWaterTestLog();
+  if (action === 'maintenance') return openMaintenanceLog();
+  if (action === 'vision') return showWorkspace('vision');
+  return openHomeMonitoring();
+}
+
+function rkHomeRenderDailyAssistant(snapshot) {
+  const box = document.getElementById('home-daily-assistant');
+  const summaryEl = document.getElementById('home-daily-summary');
+  const listEl = document.getElementById('home-daily-list');
+  if (!box || !summaryEl || !listEl) return;
+  const daily = snapshot?.dailyAssistant || null;
+  if (!daily) {
+    summaryEl.textContent = 'Daily brief will appear after the Reef Brain finishes loading.';
+    listEl.innerHTML = '<div class="home-intel-line muted">No daily brief yet.</div>';
+    return;
+  }
+  summaryEl.textContent = daily.headline || 'Here are today’s priorities.';
+  const bullets = Array.isArray(daily.bullets) ? daily.bullets : [];
+  listEl.innerHTML = bullets.length ? bullets.map(item => {
+    const action = String(item.action || '').replace(/[^a-z-]/g, '');
+    return `<button class="home-daily-item" type="button" onclick="rkHomeDailyAction('${action}')"><span>${escapeHtml(item.text || 'Reef task')}</span>${item.detail ? `<small>${escapeHtml(item.detail)}</small>` : ''}</button>`;
+  }).join('') : '<div class="home-intel-line muted">Nothing urgent today.</div>';
+}
+
+function refreshDailyReefBrief() {
+  try { renderHomeIntelligence(); showToast('🤖 Daily Reef Brief refreshed'); }
+  catch(e) { console.warn(e); showToast('Could not refresh brief'); }
+}
+
 function renderHomeIntelligence() {
   const card = document.getElementById('home-intelligence-card');
   if (!card) return;
@@ -1259,6 +1301,7 @@ function renderHomeIntelligence() {
   if (watchingEl) {
     watchingEl.innerHTML = snapshot.watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
   }
+  rkHomeRenderDailyAssistant(snapshot);
 }
 
 function renderHomeIntelligenceFallback() {
@@ -1307,6 +1350,13 @@ function renderHomeIntelligenceFallback() {
   const monitoringCount = watchLines.length;
   if (monitoringValueEl) monitoringValueEl.textContent = monitoringCount ? `${monitoringCount} Item${monitoringCount === 1 ? '' : 's'}` : 'Nothing New';
   if (watchingEl) watchingEl.innerHTML = watchLines.slice(0, 4).join('');
+  rkHomeRenderDailyAssistant({ dailyAssistant: {
+    headline: score >= 84 ? 'Your reef looks stable today.' : 'Your reef needs attention today.',
+    bullets: [
+      { text: latestAge === 'No log' ? 'Log a fresh water test' : 'Review today’s reef priorities', detail: latestAge === 'No log' ? 'No recent parameter log found.' : `Last parameter log: ${latestAge}.`, action: 'water-test' },
+      { text: watchLines.length ? 'Review AI Watching items' : 'Nothing urgent today', detail: watchLines.length ? `${watchLines.length} item${watchLines.length === 1 ? '' : 's'} to monitor.` : 'Use Quick Actions to log work as you go.', action: watchLines.length ? 'params' : 'maintenance' }
+    ]
+  }});
 }
 
 (function installHomeIntelligenceHooks(){
