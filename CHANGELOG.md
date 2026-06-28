@@ -1,5 +1,39 @@
 # Reef Keeper Changelog
 
+## v3.4.2 — Home Action Routing Fix
+
+### Changed
+- `index.html`
+  - Reef Status now scrolls to/highlights the AI Tank Dashboard instead of doing nothing visible.
+  - AI Monitoring now scrolls to/highlights the AI Watching panel.
+  - `+ Water Test` now opens Log Parameters and focuses the first water-test field.
+  - `+ Maintenance` now opens the Maintenance / Action History form and focuses the action field.
+- `css/app.css`
+  - Added a brief focus pulse so shortcut destinations are obvious.
+
+### Test Checklist
+- [ ] Home → Reef Status visibly jumps/highlights the dashboard section.
+- [ ] Home → AI Monitoring visibly jumps/highlights the AI Watching section.
+- [ ] Home → + Water Test opens the parameter form.
+- [ ] Home → + Maintenance opens the maintenance/action form.
+- [ ] My Tank, AI Vision, Ask AI, and More still open normally.
+
+## v3.4.1 — Home Status Chips
+
+### Changed
+- Replaced the awkward Home dashboard summary sentence with three compact status chips.
+- Updated Home greeting to “Welcome back 👋”.
+- Reduced the app header height slightly to give the dashboard more room.
+- Made Last Test chip open the parameter log.
+
+### Test Checklist
+- [ ] Home says “Welcome back 👋”.
+- [ ] Home shows Reef Status, AI Monitoring, and Last Test chips.
+- [ ] No awkward sentence appears under Today’s Reef Brief.
+- [ ] Last Test chip opens logging/parameters.
+- [ ] Dark mode still looks readable.
+
+
 ## v3.4.0 — Home Dashboard Intelligence
 
 ### Changed
