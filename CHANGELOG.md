@@ -1,5 +1,34 @@
 # Reef Keeper Changelog
 
+## v4.0.3 — Apex Telemetry Test
+
+### Goal
+Make the Apex telemetry test section visible and testable from the real Apex Integration screen.
+
+### Changed
+- `index.html`
+  - Updates cache-busting script/style versions to v4.0.3.
+  - Updates the displayed version label to Apex Telemetry Test.
+- `apex-connect.js`
+  - Embeds the telemetry test panel directly in the Apex Integration render path.
+  - Calls the bridge renderer after each Apex settings render so the panel is not lost when the page re-renders.
+  - Updates Apex copy from v4.0.2 bridge scaffold to v4.0.3 telemetry test.
+- `apex-bridge.js`
+  - Renames the panel to Telemetry Test.
+  - Renames the import button to Import Telemetry.
+  - Keeps sample payload loading, manual JSON import, local telemetry storage, and Reef Brain refresh.
+
+### Test Checklist
+- [ ] More → Apex Integration opens.
+- [ ] Telemetry Test card is visible below the Fusion/Local setup controls.
+- [ ] Load Sample fills the JSON payload box.
+- [ ] Import Telemetry saves the sample.
+- [ ] Probe tiles display temperature, pH, ORP, and salinity after import.
+- [ ] Refresh the app and confirm the latest telemetry remains visible.
+- [ ] Fusion and Local / Bridge mode switching still works.
+- [ ] Home, Reef Brain, Ask AI, and Timeline still load normally.
+- [ ] Dark mode is readable.
+
 ## v4.0.2 — Apex Live Data Bridge
 
 ### Goal

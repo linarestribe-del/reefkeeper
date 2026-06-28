@@ -1,10 +1,10 @@
-// Reef Keeper v4.0.2 Apex Live Data Bridge
+// Reef Keeper v4.0.3 Apex Telemetry Test
 // Read-only bridge scaffold: accepts normalized Apex telemetry from a local bridge/manual paste,
 // stores the latest snapshot locally, and makes it available to Reef Brain.
 (function(){
   'use strict';
 
-  const VERSION = '4.0.2';
+  const VERSION = '4.0.3';
   const SNAPSHOT_KEY = 'reef_apex_bridge_snapshot_v1';
   const HISTORY_KEY = 'reef_apex_bridge_history_v1';
   const MAX_HISTORY = 120;
@@ -134,15 +134,15 @@
       </div>` : '';
     root.innerHTML = `
       <div class="apex-bridge-card">
-        <div class="apex-bridge-head"><div><strong>Live Data Bridge</strong><span>${escapeHtml(summary.detail)}</span></div><em>${escapeHtml(summary.age)}</em></div>
+        <div class="apex-bridge-head"><div><strong>Telemetry Test</strong><span>${escapeHtml(summary.detail)}</span></div><em>${escapeHtml(summary.age)}</em></div>
         ${probeHtml}
-        <label class="apex-field full"><span>Bridge JSON payload</span><textarea id="apex-bridge-payload" rows="7" placeholder='{"probes":{"temp":78.2,"ph":8.31,"orp":412},"outlets":[{"name":"Return","state":"ON"}]}'></textarea></label>
+        <label class="apex-field full"><span>Paste Apex / bridge JSON payload</span><textarea id="apex-bridge-payload" rows="7" placeholder='{"probes":{"temp":78.2,"ph":8.31,"orp":412},"outlets":[{"name":"Return","state":"ON"}]}'></textarea></label>
         <div class="apex-actions bridge-actions">
-          <button class="long-term-btn" type="button" onclick="ReefKeeperApexBridge.importFromTextarea()">Import Bridge Payload</button>
+          <button class="long-term-btn" type="button" onclick="ReefKeeperApexBridge.importFromTextarea()">Import Telemetry</button>
           <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApexBridge.loadSample()">Load Sample</button>
           <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApexBridge.clearSnapshot()">Clear</button>
         </div>
-        <div class="apex-note">v4.0.2 stores read-only Apex telemetry locally and feeds it to Reef Brain. This is the bridge schema/testing step; automated background sync will require a local bridge service later.</div>
+        <div class="apex-note">v4.0.3 lets you manually test Apex-style telemetry. Load the sample or paste a bridge payload, then import it to feed Reef Brain and future timeline/live dashboard features.</div>
       </div>`;
   }
 

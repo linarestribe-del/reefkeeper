@@ -1,9 +1,9 @@
-// Reef Keeper v4.0.2 Apex Live Data Bridge
-// Phase 1b: support Fusion-aware setup and local bridge planning without implying Fusion can be tested from the browser.
+// Reef Keeper v4.0.3 Apex Telemetry Test
+// Phase 1c: Fusion-aware setup plus a visible manual telemetry test panel.
 (function(){
   'use strict';
 
-  const VERSION = '4.0.2';
+  const VERSION = '4.0.3';
   const SETTINGS_KEY = 'reef_apex_settings_v1';
   const STATUS_KEY = 'reef_apex_last_status_v1';
 
@@ -111,7 +111,7 @@
       <div data-apex-mode-panel="fusion">
         <div class="apex-info-card">
           <strong>Fusion mode</strong>
-          <p>Reef Keeper will not ask for or test your Apex Fusion password. v4.0.2 records that you use Fusion and lets you test read-only bridge telemetry.</p>
+          <p>Reef Keeper will not ask for or test your Apex Fusion password. v4.0.3 records that you use Fusion and lets you test read-only bridge telemetry below.</p>
         </div>
         <div class="apex-form-grid single">
           <label class="apex-field"><span>Fusion account label / email (optional)</span><input id="apex-fusion-email" type="text" autocomplete="email" placeholder="Used only as a label on this device" value="${escapeHtml(settings.fusionEmail)}"></label>
@@ -134,14 +134,17 @@
         </div>
       </div>
 
+      <div id="apex-bridge-panel" class="apex-bridge-panel"></div>
+
       <div id="apex-status-box" class="apex-status-box"></div>
       <div class="apex-actions">
         <button class="long-term-btn" type="button" onclick="ReefKeeperApex.saveFromForm()">Save Apex Profile</button>
         <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApex.testConnection()">Check Setup</button>
       </div>
-      <div class="apex-note">v4.0.2 adds a read-only bridge payload path. Fusion mode remains a safe profile; live telemetry should come through a local bridge or official cloud API path, not direct browser Fusion credentials.</div>`;
+      <div class="apex-note">v4.0.3 adds a visible telemetry test path. Fusion mode remains a safe profile; live telemetry should come through a local bridge or official cloud API path, not direct browser Fusion credentials.</div>`;
     setModeVisibility(mode);
     setStatusMessage(status);
+    try { window.ReefKeeperApexBridge?.renderBridgePanel?.(); } catch(e) {}
   }
   function changeMode(mode){ setModeVisibility(mode); }
   function saveFromForm(options = {}){
