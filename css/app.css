@@ -3453,3 +3453,82 @@ html.theme-dark .home-daily-head button {
   background: rgba(8,27,42,.90);
   border-color: rgba(155,216,240,.20);
 }
+
+/* v3.7 Equipment Intelligence */
+.equipment-intel-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:rgba(255,255,255,.82);
+  border:1px solid rgba(0,180,216,.18);
+  border-radius:16px;
+  padding:12px 14px;
+  margin:0 0 12px;
+  box-shadow:var(--shadow);
+}
+.equipment-intel-summary strong{
+  font-size:14px;
+  font-weight:900;
+  color:var(--text-dark);
+}
+.equipment-intel-summary span{
+  font-size:12px;
+  font-weight:900;
+  color:var(--text-light);
+  text-align:right;
+}
+.equipment-intel-card .equipment-card-head{cursor:pointer;}
+.equipment-intel-banner{
+  border-radius:14px;
+  padding:10px 12px;
+  margin:0 0 10px;
+  border:1px solid rgba(0,119,182,.10);
+  background:rgba(0,180,216,.08);
+}
+.equipment-intel-banner strong{
+  display:block;
+  font-size:14px;
+  font-weight:900;
+  color:var(--text-dark);
+  margin-bottom:2px;
+}
+.equipment-intel-banner span{
+  display:block;
+  font-size:12px;
+  font-weight:800;
+  line-height:1.35;
+  color:var(--text-light);
+}
+.equipment-status.due,.equipment-intel-banner.due{
+  background:rgba(255,77,109,.12);
+  border-color:rgba(255,77,109,.25);
+  color:#d62828;
+}
+.equipment-status.soon,.equipment-intel-banner.soon{
+  background:rgba(255,183,3,.16);
+  border-color:rgba(255,183,3,.28);
+  color:#b36b00;
+}
+.equipment-status.good,.equipment-intel-banner.good{
+  background:rgba(82,183,136,.14);
+  border-color:rgba(82,183,136,.26);
+  color:#2d6a4f;
+}
+.equipment-status.watch,.equipment-intel-banner.watch{
+  background:rgba(0,180,216,.10);
+  border-color:rgba(0,180,216,.22);
+  color:var(--text-mid);
+}
+html.theme-dark .equipment-intel-summary,
+html.theme-dark .equipment-intel-banner{
+  background:rgba(8,27,42,.88);
+  border-color:rgba(155,216,240,.20);
+}
+html.theme-dark .equipment-intel-banner.due{background:rgba(255,77,109,.14);}
+html.theme-dark .equipment-intel-banner.soon{background:rgba(255,183,3,.12);}
+html.theme-dark .equipment-intel-banner.good{background:rgba(82,183,136,.12);}
+@media(max-width:420px){
+  .equipment-intel-summary{align-items:flex-start;flex-direction:column;}
+  .equipment-intel-summary span{text-align:left;}
+}

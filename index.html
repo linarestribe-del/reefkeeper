@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260627-v3-6-0-daily-reef-assistant">
+<link rel="stylesheet" href="css/app.css?v=20260627-v3-7-0-equipment-intelligence">
 </head>
 <body>
 
@@ -997,8 +997,8 @@
 <script src="reef-ai-context.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="days-off-plan.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="diagnostics.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
-<script src="app.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
-<script src="reef-brain.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
+<script src="app.js?v=20260627-v3-7-0-equipment-intelligence"></script>
+<script src="reef-brain.js?v=20260627-v3-7-0-equipment-intelligence"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -1193,6 +1193,271 @@ function ensureMyTankEquipmentListVisible() {
       </div>
     </div>`).join('');
 }
+
+
+// ── v3.7 Equipment Intelligence ────────────────────────────────────────────
+const RK_EQUIPMENT_STORAGE_KEY = 'reef_equipment_inventory_v1';
+let rkEquipmentFilter = 'All';
+
+function rkEquipmentParseArray(key) {
+  try { const value = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(value) ? value : []; } catch(e) { return []; }
+}
+
+function rkEquipmentIso(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+}
+
+function rkEquipmentDaysAgo(value) {
+  const iso = rkEquipmentIso(value);
+  if (!iso) return null;
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000));
+}
+
+function rkEquipmentAddDays(value, days) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + Number(days || 0));
+  return d.toISOString();
+}
+
+function rkEquipmentDateLabel(value) {
+  const iso = rkEquipmentIso(value);
+  if (!iso) return 'Not logged';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+
+function rkEquipmentShortAge(value) {
+  const days = rkEquipmentDaysAgo(value);
+  if (days === null) return 'Not logged';
+  if (days === 0) return 'Today';
+  if (days === 1) return '1 day ago';
+  return `${days} days ago`;
+}
+
+function rkEquipmentNormalize(text) {
+  return String(text || '').toLowerCase().replace(/×/g, 'x').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function rkEquipmentTerms(item) {
+  const raw = [item.name, item.category, item.brand, item.model, item.notes].filter(Boolean).join(' ');
+  const text = rkEquipmentNormalize(raw);
+  const terms = new Set(text.split(/\s+/).filter(w => w.length >= 3));
+  if (/skimmer|simplicity|240/.test(text)) ['skimmer','simplicity','240'].forEach(t => terms.add(t));
+  if (/mp40|powerhead|flow|dmp20/.test(text)) ['mp40','powerhead','flow','dmp20'].forEach(t => terms.add(t));
+  if (/return|mdp|pump/.test(text)) ['return','pump','mdp'].forEach(t => terms.add(t));
+  if (/heater|hygger/.test(text)) ['heater','hygger','temperature'].forEach(t => terms.add(t));
+  if (/uv|sterilizer|icecap/.test(text)) ['uv','sterilizer','icecap'].forEach(t => terms.add(t));
+  if (/gfo|reactor|carbon|rox/.test(text)) ['gfo','reactor','carbon','rox'].forEach(t => terms.add(t));
+  if (/ato|useek/.test(text)) ['ato','top','off','sensor','useek'].forEach(t => terms.add(t));
+  if (/rodi|tds|di|resin/.test(text)) ['rodi','tds','resin','filter'].forEach(t => terms.add(t));
+  if (/apex|controller|probe/.test(text)) ['apex','controller','probe'].forEach(t => terms.add(t));
+  if (/light|a8se/.test(text)) ['light','a8se','lens','fan'].forEach(t => terms.add(t));
+  return Array.from(terms);
+}
+
+function rkEquipmentActions() {
+  const combined = [];
+  try { if (typeof getActionEntries === 'function') combined.push(...(getActionEntries() || [])); } catch(e) {}
+  combined.push(...rkEquipmentParseArray('reef_actions'));
+  combined.push(...rkEquipmentParseArray('reef_completed_history'));
+  const seen = new Set();
+  return combined.filter(a => {
+    if (!a) return false;
+    const id = a.id || `${a.title || ''}-${a.isoDate || a.date || ''}-${a.notes || ''}`;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  }).sort((a,b) => new Date(b.isoDate || b.completedAt || b.date || 0) - new Date(a.isoDate || a.completedAt || a.date || 0));
+}
+
+function rkEquipmentLastServiceFromHistory(item) {
+  const terms = rkEquipmentTerms(item);
+  const serviceRx = /service|serviced|clean|cleaned|inspect|inspected|replace|replaced|changed|calibrate|calibrated|media|fleece|bulb|pump|impeller|sensor|probe|tds|heater|skimmer|gfo|carbon|uv|ato|mp40|powerhead|return|rodi/i;
+  const actions = rkEquipmentActions();
+  let best = null;
+  for (const action of actions) {
+    const hay = rkEquipmentNormalize(`${action.title || ''} ${action.category || ''} ${action.notes || ''}`);
+    if (!serviceRx.test(hay)) continue;
+    const hits = terms.filter(t => t.length >= 3 && hay.includes(t)).length;
+    if (hits < 1) continue;
+    const iso = rkEquipmentIso(action.isoDate || action.completedAt || action.createdAt || action.date);
+    if (!iso) continue;
+    const score = hits + (/equipment|service|clean|inspect|replace|changed/.test(hay) ? 1 : 0);
+    if (!best || score > best.score || (score === best.score && new Date(iso) > new Date(best.iso))) {
+      best = { iso, score, action };
+    }
+  }
+  return best;
+}
+
+function rkEquipmentIntelligence(item) {
+  const interval = Number(item.maintenanceDays || item.intervalDays || 0);
+  const history = rkEquipmentLastServiceFromHistory(item);
+  const reference = item.lastServiceAt || history?.iso || item.installedDate || item.purchaseDate || item.createdAt;
+  const age = rkEquipmentDaysAgo(reference);
+  const lastServiceLabel = item.lastServiceAt || history?.iso ? rkEquipmentShortAge(item.lastServiceAt || history?.iso) : rkEquipmentShortAge(reference);
+  const source = item.lastServiceAt ? 'Equipment log' : history?.iso ? 'Action history' : (item.installedDate || item.purchaseDate || item.createdAt) ? 'Install/default date' : 'Not logged';
+
+  if (!interval) {
+    return {
+      level:'watch', label:'Set interval', lastServiceLabel, nextDueLabel:'No interval', remaining:null, age,
+      recommendation:'Add a maintenance interval so Reef Keeper can predict service timing.', source
+    };
+  }
+  if (age === null) {
+    return {
+      level:'watch', label:'Needs baseline', lastServiceLabel:'Not logged', nextDueLabel:'Unknown', remaining:null, age:null,
+      recommendation:'Log the last service date or tap Log Service to start tracking.', source:'Not logged'
+    };
+  }
+  const remaining = interval - age;
+  const nextIso = rkEquipmentAddDays(reference, interval);
+  if (remaining < 0) {
+    return {
+      level:'due', label:'Overdue', lastServiceLabel, nextDueLabel:`${Math.abs(remaining)} days overdue`, remaining, age,
+      recommendation:'Service this item during the next maintenance session, then tap Log Service.', source, nextIso
+    };
+  }
+  if (remaining <= Math.max(3, Math.ceil(interval * 0.18))) {
+    return {
+      level:'soon', label:'Due soon', lastServiceLabel, nextDueLabel:`Due in ${remaining} day${remaining === 1 ? '' : 's'}`, remaining, age,
+      recommendation:'Plan this for the current or next days-off block.', source, nextIso
+    };
+  }
+  return {
+    level:'good', label:'On track', lastServiceLabel, nextDueLabel:`Due in ${remaining} day${remaining === 1 ? '' : 's'}`, remaining, age,
+    recommendation:'No immediate service needed. Keep monitoring for noise, flow changes, leaks, or salt creep.', source, nextIso
+  };
+}
+
+function rkEquipmentItems() {
+  let items = [];
+  try { if (typeof getEquipmentItems === 'function') items = getEquipmentItems() || []; } catch(e) {}
+  if (!Array.isArray(items) || !items.length) {
+    try { items = JSON.parse(localStorage.getItem(RK_EQUIPMENT_STORAGE_KEY) || '[]'); } catch(e) { items = []; }
+  }
+  if (!Array.isArray(items) || !items.length) items = getDefaultMyTankEquipmentItems();
+  return items;
+}
+
+function rkSetEquipmentItems(items) {
+  try { if (typeof setEquipmentItems === 'function') return setEquipmentItems(items); } catch(e) {}
+  try { localStorage.setItem(RK_EQUIPMENT_STORAGE_KEY, JSON.stringify(Array.isArray(items) ? items : [])); } catch(e) {}
+  try { window.ReefKeeperStorage?.mirrorKeyToDb?.(RK_EQUIPMENT_STORAGE_KEY, 'data.equipment'); } catch(e) {}
+}
+
+function rkEquipmentCategories(items = rkEquipmentItems()) {
+  return ['All', ...Array.from(new Set(items.map(i => i.category || 'Miscellaneous'))).sort()];
+}
+
+function renderEquipmentManager() {
+  const list = document.getElementById('equipment-list');
+  const filters = document.getElementById('equipment-filter-row');
+  if (!list) return;
+  let items = rkEquipmentItems().filter(i => !/retired|removed|inactive/i.test(String(i.status || '')));
+  if (!items.length) items = getDefaultMyTankEquipmentItems();
+  const cats = rkEquipmentCategories(items);
+  if (!cats.includes(rkEquipmentFilter)) rkEquipmentFilter = 'All';
+  if (filters) {
+    filters.innerHTML = cats.map(cat => `<button class="equipment-filter-btn${cat === rkEquipmentFilter ? ' active' : ''}" type="button" onclick="setEquipmentFilter('${String(cat).replace(/'/g, "\\'")}')">${escapeHtml(cat)}</button>`).join('');
+  }
+  const shown = rkEquipmentFilter === 'All' ? items : items.filter(i => (i.category || 'Miscellaneous') === rkEquipmentFilter);
+  if (!shown.length) { list.innerHTML = '<div class="equipment-empty">No equipment saved in this category yet.</div>'; return; }
+
+  const dueCount = items.map(rkEquipmentIntelligence).filter(x => x.level === 'due').length;
+  const soonCount = items.map(rkEquipmentIntelligence).filter(x => x.level === 'soon').length;
+  const summary = `<div class="equipment-intel-summary"><strong>Equipment Intelligence</strong><span>${dueCount ? `${dueCount} overdue` : 'Nothing overdue'} · ${soonCount ? `${soonCount} due soon` : 'no urgent service'}</span></div>`;
+  list.innerHTML = summary + shown.map(item => {
+    const intel = rkEquipmentIntelligence(item);
+    const title = [item.brand, item.model].filter(Boolean).join(' ') || item.name || 'No model saved';
+    const safeId = String(item.id || '').replace(/[^a-zA-Z0-9_-]/g,'');
+    return `<div class="equipment-card expanded equipment-intel-card" id="equipment-card-${safeId}">
+      <div class="equipment-card-head" onclick="toggleEquipmentCard && toggleEquipmentCard('${String(item.id || '').replace(/'/g, "\\'")}')">
+        <div>
+          <div class="equipment-card-title">${escapeHtml(item.name || 'Unnamed equipment')}</div>
+          <div class="equipment-card-meta">${escapeHtml(item.category || 'Equipment')} · ${escapeHtml(title)}</div>
+        </div>
+        <div class="equipment-status ${intel.level}">${escapeHtml(intel.label)}</div>
+      </div>
+      <div class="equipment-card-body" style="display:block;">
+        ${item.photoDataUrl ? `<img class="equipment-photo" src="${escapeHtml(item.photoDataUrl)}" alt="${escapeHtml(item.name || 'Equipment')} photo">` : ''}
+        <div class="equipment-intel-banner ${intel.level}">
+          <strong>${escapeHtml(intel.nextDueLabel)}</strong>
+          <span>${escapeHtml(intel.recommendation)}</span>
+        </div>
+        <div class="equipment-detail-grid">
+          <div class="equipment-detail"><div class="equipment-detail-label">Last service</div><div class="equipment-detail-value">${escapeHtml(intel.lastServiceLabel)}</div></div>
+          <div class="equipment-detail"><div class="equipment-detail-label">Interval</div><div class="equipment-detail-value">${escapeHtml(item.maintenanceDays ? `Every ${item.maintenanceDays} days` : 'Not set')}</div></div>
+          <div class="equipment-detail"><div class="equipment-detail-label">Source</div><div class="equipment-detail-value">${escapeHtml(intel.source)}</div></div>
+          <div class="equipment-detail"><div class="equipment-detail-label">Status</div><div class="equipment-detail-value">${escapeHtml(String(item.status || 'active'))}</div></div>
+        </div>
+        ${item.notes ? `<div class="equipment-detail"><div class="equipment-detail-label">Notes</div><div class="equipment-detail-value">${escapeHtml(item.notes)}</div></div>` : ''}
+        <div class="equipment-card-actions">
+          <button class="equipment-primary-btn" type="button" onclick="recordEquipmentService('${String(item.id || '').replace(/'/g, "\\'")}')">Log Service</button>
+          <button class="equipment-secondary-btn" type="button" onclick="editEquipmentItem && editEquipmentItem('${String(item.id || '').replace(/'/g, "\\'")}')">Edit</button>
+          <button class="equipment-secondary-btn" type="button" onclick="askAiAboutEquipment('${String(item.id || '').replace(/'/g, "\\'")}')">Ask AI</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.ensureMyTankEquipmentListVisible = function() { renderEquipmentManager(); };
+
+function setEquipmentFilter(category) {
+  rkEquipmentFilter = category || 'All';
+  renderEquipmentManager();
+}
+
+function recordEquipmentService(id) {
+  const items = rkEquipmentItems();
+  const item = items.find(i => String(i.id) === String(id));
+  if (!item) return;
+  item.lastServiceAt = new Date().toISOString();
+  item.updatedAt = new Date().toISOString();
+  rkSetEquipmentItems(items);
+  try {
+    const actions = typeof getActionEntries === 'function' ? getActionEntries() : rkEquipmentParseArray('reef_actions');
+    actions.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+      title: `Serviced ${item.name}`,
+      category: 'equipment',
+      notes: `${item.category || 'Equipment'} · ${item.maintenanceDays ? `interval ${item.maintenanceDays} days` : 'interval not set'}`,
+      date: new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
+      isoDate: new Date().toISOString()
+    });
+    if (typeof setActionEntries === 'function') setActionEntries(actions.slice(0, 80));
+    else localStorage.setItem('reef_actions', JSON.stringify(actions.slice(0, 80)));
+    try { window.ReefKeeperMaintenance?.recordAction?.(`Serviced ${item.name}`, 'equipment'); } catch(e) {}
+  } catch(e) {}
+  renderEquipmentManager();
+  try { renderHomeIntelligence(); renderMyTankHub(); } catch(e) {}
+  showToast('✅ Service logged');
+}
+
+function askAiAboutEquipment(id) {
+  const item = rkEquipmentItems().find(i => String(i.id) === String(id));
+  if (!item) return;
+  const intel = rkEquipmentIntelligence(item);
+  try { closeLongTermTool('equipment'); } catch(e) {}
+  showWorkspace?.('chat');
+  const input = document.getElementById('chat-input');
+  if (input) {
+    input.value = `Review this equipment item and tell me what maintenance I should do next: ${item.name}. Category: ${item.category || ''}. Brand/model: ${[item.brand,item.model].filter(Boolean).join(' ')}. Interval: ${item.maintenanceDays || 'not set'} days. Last service: ${intel.lastServiceLabel}. Current status: ${intel.label}; ${intel.nextDueLabel}. Notes: ${item.notes || 'none'}.`;
+    input.focus();
+    try { autoResize(input); } catch(e) {}
+  }
+}
+
+window.ReefKeeperEquipmentIntel = {
+  getItems: rkEquipmentItems,
+  getIntelligence: rkEquipmentIntelligence,
+  render: renderEquipmentManager,
+  service: recordEquipmentService
+};
 
 
 function rkHomeParseArray(key) {
