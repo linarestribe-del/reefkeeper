@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260627-v3-4-1-home-status-chips">
+<link rel="stylesheet" href="css/app.css?v=20260627-v3-5-0-reef-brain">
 </head>
 <body>
 
@@ -981,12 +981,13 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="storage.js?v=20260627-v3-4-2-home-actions"></script>
-<script src="state.js?v=20260627-v3-4-2-home-actions"></script>
-<script src="reef-ai-context.js?v=20260627-v3-4-2-home-actions"></script>
-<script src="days-off-plan.js?v=20260627-v3-4-2-home-actions"></script>
-<script src="diagnostics.js?v=20260627-v3-4-2-home-actions"></script>
-<script src="app.js?v=20260627-v3-4-2-home-actions"></script>
+<script src="storage.js?v=20260627-v3-5-0-reef-brain"></script>
+<script src="state.js?v=20260627-v3-5-0-reef-brain"></script>
+<script src="reef-ai-context.js?v=20260627-v3-5-0-reef-brain"></script>
+<script src="days-off-plan.js?v=20260627-v3-5-0-reef-brain"></script>
+<script src="diagnostics.js?v=20260627-v3-5-0-reef-brain"></script>
+<script src="app.js?v=20260627-v3-5-0-reef-brain"></script>
+<script src="reef-brain.js?v=20260627-v3-5-0-reef-brain"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -1200,6 +1201,9 @@ function rkHomeLatestLog() {
 }
 
 function rkHomeScoreFromLog(log) {
+  // Backward-compatible fallback. The Home dashboard now uses ReefKeeperBrain when available.
+  const brainScore = window.ReefKeeperBrain?.getSnapshot?.()?.score;
+  if (Number.isFinite(brainScore)) return brainScore;
   const values = {
     po4: rkHomeNumber(log?.po4 ?? 0.65),
     alk: rkHomeNumber(log?.alk ?? 10.0),
@@ -1229,6 +1233,35 @@ function rkHomeOpenLatestPhoto() {
 function renderHomeIntelligence() {
   const card = document.getElementById('home-intelligence-card');
   if (!card) return;
+  const snapshot = window.ReefKeeperBrain?.getSnapshot?.();
+  if (!snapshot) return renderHomeIntelligenceFallback();
+
+  const scoreEl = document.getElementById('home-intel-score');
+  const statusLabelEl = document.getElementById('home-status-label');
+  const statusValueEl = document.getElementById('home-status-value');
+  const monitoringValueEl = document.getElementById('home-monitoring-value');
+  const lastTestValueEl = document.getElementById('home-last-test-value');
+  const todayEl = document.getElementById('home-intel-today');
+  const watchingEl = document.getElementById('home-intel-watching');
+
+  if (scoreEl) scoreEl.textContent = snapshot.score;
+  if (statusLabelEl) statusLabelEl.textContent = `${snapshot.status.emoji} Reef Status`;
+  if (statusValueEl) statusValueEl.textContent = snapshot.status.label;
+  if (lastTestValueEl) lastTestValueEl.textContent = snapshot.lastTest.label;
+  if (monitoringValueEl) {
+    const count = snapshot.watching.length;
+    monitoringValueEl.textContent = count ? `${count} Item${count === 1 ? '' : 's'}` : 'Nothing New';
+  }
+
+  if (todayEl) {
+    todayEl.innerHTML = snapshot.today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+  if (watchingEl) {
+    watchingEl.innerHTML = snapshot.watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+}
+
+function renderHomeIntelligenceFallback() {
   const latest = rkHomeLatestLog();
   const score = rkHomeScoreFromLog(latest || {});
   const scoreEl = document.getElementById('home-intel-score');
