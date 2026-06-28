@@ -1,11 +1,15 @@
-// Reef Keeper v3.9.1 Reef Brain Intelligence
+// Reef Keeper v3.9.2 Polish & Performance
 // A shared intelligence layer that turns local tank data into one consistent snapshot
 // for Home, Ask AI, Days-Off Planner, reports, and future smart reminders.
 (function(){
   'use strict';
 
-  const VERSION = '3.9.1';
+  const VERSION = '3.9.2';
   const ONE_DAY = 86400000;
+  const SNAPSHOT_CACHE_MS = 1500;
+  let snapshotCache = null;
+
+  function invalidate(){ snapshotCache = null; }
 
   function parseJson(key, fallback){
     try {
@@ -383,7 +387,7 @@
     };
   }
 
-  function getSnapshot(){
+  function buildSnapshot(){
     const logs = getLogs();
     const latestLog = logs[0] || null;
     const actions = getActions();
@@ -431,6 +435,19 @@
     return snapshot;
   }
 
+  function getSnapshot(options = {}){
+    const now = Date.now();
+    if (!options.force && snapshotCache && now - snapshotCache.at < SNAPSHOT_CACHE_MS) return snapshotCache.value;
+    const value = buildSnapshot();
+    snapshotCache = { at: now, value };
+    return value;
+  }
+
+  function getScore(){
+    const s = getSnapshot();
+    return { score:s.score, label:s.status.label, status:s.status, explanation:s.scoreExplanation };
+  }
+
   function getPlainTextSummary(){
     const s = getSnapshot();
     return ['REEF BRAIN SNAPSHOT:', ...s.aiContextLines].join('\n');
@@ -463,13 +480,23 @@
   function install(){
     wrapPlanContext();
     wrapAskOpenAI();
+    // Keep legacy score helpers aligned with the single Reef Brain score.
+    try { window.getReefBrainScore = getScore; } catch(e) {}
+    try {
+      window.tankDashboardScore = function(){
+        const s = getScore();
+        return { score:s.score, level:s.label, source:'reef-brain' };
+      };
+    } catch(e) {}
   }
 
   window.ReefKeeperBrain = {
     version: VERSION,
     getSnapshot,
     getPlainTextSummary,
-    refresh: getSnapshot,
+    refresh: () => getSnapshot({ force:true }),
+    invalidate,
+    getScore,
     daysLabel,
     buildTrendAnalysis,
     buildScoreExplanation,
