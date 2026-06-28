@@ -1,5 +1,38 @@
 # Reef Keeper Changelog
 
+## v4.0.0 — Apex Connect
+
+### Goal
+Begin Apex Integration with a safe read-only connection profile before importing live telemetry.
+
+### Changed
+- `index.html`
+  - Adds Apex Integration settings card.
+  - Adds Apex Connection shortcut under More.
+  - Updates app version label to v4.0.0 Apex Connect.
+  - Loads `apex-connect.js`.
+- `apex-connect.js`
+  - Adds local Apex connection profile storage.
+  - Adds Save Apex Settings and Test Connection actions.
+  - Tests the local Apex `/cgi-bin/status.json` endpoint when reachable from the browser.
+  - Stores last connection-test status for Reef Brain/Apex follow-up work.
+- `css/app.css`
+  - Adds Apex settings, status, action, and dark-mode styles.
+- `CHANGELOG.md`
+  - Adds this release entry.
+
+### Test Checklist
+- [ ] More → Apex Connection opens Settings and scrolls to Apex Integration.
+- [ ] Settings → Apex Integration appears.
+- [ ] Save Apex Settings stores URL/username/token options.
+- [ ] Test Connection shows Connected if the Apex responds.
+- [ ] Test Connection shows a useful warning if local-network/CORS blocks the browser request.
+- [ ] Home still loads.
+- [ ] My Tank still opens.
+- [ ] Reef Timeline still opens.
+- [ ] Ask AI still works.
+- [ ] Dark mode remains readable.
+
 ## v3.9.2 — Polish & Performance
 
 ### Goal
