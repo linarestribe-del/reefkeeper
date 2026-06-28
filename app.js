@@ -3141,7 +3141,6 @@ function renderTankDashboard(){
   if (!reasonLines.length) reasonLines.push('Add recent tests, maintenance, and photo history to improve score confidence.');
   el.innerHTML = `
     <div class="tank-dashboard-list">
-      <div class="tank-dashboard-row"><strong>Score detail:</strong> The main Reef Brain score is ${escapeHtml(score)}/100 — ${escapeHtml(statusLabel)}.</div>
       <div class="tank-dashboard-row"><strong>Latest:</strong> ${escapeHtml(trendLine)}</div>
       <div class="tank-dashboard-row"><strong>Watch:</strong> ${escapeHtml(watchLine)}</div>
       <div class="tank-dashboard-row"><strong>Vision:</strong> ${escapeHtml(photoLine)}</div>
