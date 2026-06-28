@@ -1,10 +1,10 @@
-// Reef Keeper v3.9.2 Polish & Performance
+// Reef Keeper v4.0.2 Apex Live Data Bridge
 // A shared intelligence layer that turns local tank data into one consistent snapshot
 // for Home, Ask AI, Days-Off Planner, reports, and future smart reminders.
 (function(){
   'use strict';
 
-  const VERSION = '3.9.2';
+  const VERSION = '4.0.2';
   const ONE_DAY = 86400000;
   const SNAPSHOT_CACHE_MS = 1500;
   let snapshotCache = null;
@@ -72,6 +72,12 @@
   function getMaintenanceDue(){
     try { return asArray(window.ReefKeeperMaintenance?.getDueTasks?.({ windowDays: 14 })); } catch(e) { return []; }
   }
+
+  function getApexBridgeSnapshot(){
+    try { return window.ReefKeeperApexBridge?.getSnapshot?.() || parseJson('reef_apex_bridge_snapshot_v1', null); }
+    catch(e) { return null; }
+  }
+
 
   function latestLogValues(log){
     return {
@@ -318,6 +324,14 @@
     snapshot.watching.slice(0, 6).forEach(item => lines.push(`Watching: ${item.title}${item.detail ? ` — ${item.detail}` : ''}.`));
     lines.push(`Inventory summary: ${snapshot.inventory.fish} fish, ${snapshot.inventory.coral} coral/anemone, ${snapshot.inventory.equipment} gear items.`);
     if (snapshot.equipmentIntelligence) lines.push(`Equipment intelligence: ${snapshot.equipmentIntelligence.summary}; ${snapshot.equipmentIntelligence.total} tracked gear items.`);
+    if (snapshot.apexBridge) {
+      const p = snapshot.apexBridge.probes || {};
+      lines.push(`Apex bridge: latest telemetry ${daysLabel(snapshot.apexBridge.capturedAt || snapshot.apexBridge.receivedAt)} from ${snapshot.apexBridge.source || 'bridge'}.`);
+      if (p.temp !== null && p.temp !== undefined) lines.push(`Apex temp: ${p.temp}°F.`);
+      if (p.ph !== null && p.ph !== undefined) lines.push(`Apex pH: ${p.ph}.`);
+      if (p.orp !== null && p.orp !== undefined) lines.push(`Apex ORP: ${p.orp}.`);
+      if (snapshot.apexBridge.alarms?.length) lines.push(`Apex alarms: ${snapshot.apexBridge.alarms.join('; ')}.`);
+    }
     (snapshot.equipmentIntelligence?.priority || []).slice(0, 4).forEach(item => lines.push(`Equipment: ${item.name} — ${item.label}, ${item.detail}; last service ${item.lastService}.`));
     if (snapshot.scoreExplanation?.summary) lines.push(`Score explanation: ${snapshot.scoreExplanation.summary}`);
     (snapshot.trendInsights || []).slice(0, 5).forEach(item => lines.push(`Trend insight: ${item.title} — ${item.detail}.`));
@@ -398,6 +412,7 @@
     const dueTasks = getMaintenanceDue();
     const inventoryItems = getInventory();
     const equipmentItems = getEquipment();
+    const apexBridge = getApexBridgeSnapshot();
     const values = latestLogValues(latestLog || {});
     const trends = buildTrendAnalysis(logs);
     const trendInsights = buildTrendInsights(trends);
@@ -427,6 +442,7 @@
       latestPhoto,
       dueTasks: dueTasks.slice(0, 10),
       equipmentIntelligence,
+      apexBridge,
       recentActions: actions.slice(0, 8),
       recentCompleted: completed.slice(0, 8)
     };

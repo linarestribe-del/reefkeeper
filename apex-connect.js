@@ -1,9 +1,9 @@
-// Reef Keeper v4.0.1 Apex Integration Cleanup
+// Reef Keeper v4.0.2 Apex Live Data Bridge
 // Phase 1b: support Fusion-aware setup and local bridge planning without implying Fusion can be tested from the browser.
 (function(){
   'use strict';
 
-  const VERSION = '4.0.1';
+  const VERSION = '4.0.2';
   const SETTINGS_KEY = 'reef_apex_settings_v1';
   const STATUS_KEY = 'reef_apex_last_status_v1';
 
@@ -111,7 +111,7 @@
       <div data-apex-mode-panel="fusion">
         <div class="apex-info-card">
           <strong>Fusion mode</strong>
-          <p>Reef Keeper will not ask for or test your Apex Fusion password. v4.0.1 records that you use Fusion and prepares the app for a read-only local bridge later.</p>
+          <p>Reef Keeper will not ask for or test your Apex Fusion password. v4.0.2 records that you use Fusion and lets you test read-only bridge telemetry.</p>
         </div>
         <div class="apex-form-grid single">
           <label class="apex-field"><span>Fusion account label / email (optional)</span><input id="apex-fusion-email" type="text" autocomplete="email" placeholder="Used only as a label on this device" value="${escapeHtml(settings.fusionEmail)}"></label>
@@ -139,7 +139,7 @@
         <button class="long-term-btn" type="button" onclick="ReefKeeperApex.saveFromForm()">Save Apex Profile</button>
         <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApex.testConnection()">Check Setup</button>
       </div>
-      <div class="apex-note">v4.0.1 is read-only setup cleanup. Fusion mode is a safe profile and planning setup. Live Apex telemetry will come through a local bridge or official cloud API path, not direct browser Fusion credentials.</div>`;
+      <div class="apex-note">v4.0.2 adds a read-only bridge payload path. Fusion mode remains a safe profile; live telemetry should come through a local bridge or official cloud API path, not direct browser Fusion credentials.</div>`;
     setModeVisibility(mode);
     setStatusMessage(status);
   }
