@@ -1,15 +1,16 @@
-// Reef Keeper v4.1.2 Cloud Telemetry Reader
+// Reef Keeper v4.2.1 Cloud Telemetry Reader
 // Normalizes native Apex LAN /rest/status payloads plus manual bridge payloads into
 // the shared Reef Keeper telemetry snapshot consumed by Reef Brain, Home, and Timeline.
 (function(){
   'use strict';
 
-  const VERSION = '4.2.0';
+  const VERSION = '4.2.1';
   const SNAPSHOT_KEY = 'reef_apex_bridge_snapshot_v1';
   const HISTORY_KEY = 'reef_apex_bridge_history_v1';
   const MAX_HISTORY = 180;
   const CLOUD_SETTINGS_KEY = 'reef_cloud_telemetry_settings_v1';
   const DEFAULT_CLOUD_ENDPOINT = String(window.ReefKeeperTelemetryConfig?.endpoint || window.REEF_KEEPER_TELEMETRY_ENDPOINT || '/api/telemetry').trim() || '/api/telemetry';
+  const HAS_CONFIGURED_CLOUD_ENDPOINT = Boolean(String(window.ReefKeeperTelemetryConfig?.endpoint || window.REEF_KEEPER_TELEMETRY_ENDPOINT || '').trim());
 
   function nowIso(){ return new Date().toISOString(); }
   function readJson(key, fallback){
@@ -190,14 +191,29 @@
   }
 
 
-  function cloudDefaults(){ return { enabled:true, endpoint:DEFAULT_CLOUD_ENDPOINT, readToken:'', updatedAt:null, hub:true }; }
-  function getCloudSettings(){ return { ...cloudDefaults(), ...readJson(CLOUD_SETTINGS_KEY, {}) }; }
+  function cloudDefaults(){ return { enabled:true, endpoint:DEFAULT_CLOUD_ENDPOINT, readToken:'', updatedAt:null, hub:true, configuredEndpoint:HAS_CONFIGURED_CLOUD_ENDPOINT }; }
+  function getCloudSettings(){
+    const saved = readJson(CLOUD_SETTINGS_KEY, {}) || {};
+    const next = { ...cloudDefaults(), ...saved };
+    // v4.2.1: a checked-in telemetry-config.js endpoint is authoritative.
+    // This prevents stale browser localStorage from silently sending previews back to their own /api/telemetry.
+    if (HAS_CONFIGURED_CLOUD_ENDPOINT) next.endpoint = DEFAULT_CLOUD_ENDPOINT;
+    next.endpoint = String(next.endpoint || DEFAULT_CLOUD_ENDPOINT).trim() || DEFAULT_CLOUD_ENDPOINT;
+    next.readToken = String(next.readToken || '').trim();
+    next.enabled = next.enabled !== false;
+    next.configuredEndpoint = HAS_CONFIGURED_CLOUD_ENDPOINT;
+    if (saved.endpoint !== next.endpoint || saved.configuredEndpoint !== next.configuredEndpoint) {
+      try { writeJson(CLOUD_SETTINGS_KEY, next); } catch(e) {}
+    }
+    return next;
+  }
   function saveCloudSettings(settings){
     const next = { ...cloudDefaults(), ...(settings || {}) };
     next.endpoint = String(next.endpoint || DEFAULT_CLOUD_ENDPOINT).trim() || DEFAULT_CLOUD_ENDPOINT;
     next.readToken = String(next.readToken || '').trim();
     next.enabled = Boolean(next.enabled);
     next.updatedAt = nowIso();
+    next.configuredEndpoint = HAS_CONFIGURED_CLOUD_ENDPOINT;
     writeJson(CLOUD_SETTINGS_KEY, next);
     return next;
   }
@@ -383,7 +399,7 @@
           <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApexBridge.clearSnapshot()">Clear</button>
         </div>
         ${renderCloudConnectorCard()}
-        <div class="apex-note">v4.2.0 reads from the stable telemetry hub. Keep the connector pointed at the hub endpoint, not each temporary preview URL.</div>
+        <div class="apex-note">v4.2.1 reads from the stable telemetry hub and ignores stale local preview telemetry settings. Keep the connector pointed at the hub endpoint, not each temporary preview URL.</div>
       </div>`;
   }
 

@@ -1,18 +1,20 @@
-# Roadmap
+# Reef Keeper Roadmap
 
-## Current: v4.1.2 — Cloud Telemetry Reader
+## Current: v4.2.1 Telemetry Hardening
 
-Reef Keeper can now read the latest Apex telemetry snapshot pushed by the local connector and display it on Home.
+Goal: make live Apex telemetry reliable enough to support future Reef Brain, Timeline, and Equipment features.
 
-## Next: v4.1.3 — Connector Login
+Completed in this patch:
 
-- Replace temporary manual `APEX_COOKIE` use with automatic Apex session login.
-- Store connector settings locally on the Mac.
-- Add clearer connector setup instructions.
+- Stable telemetry hub configuration is authoritative.
+- Browser stale preview endpoints no longer override `telemetry-config.js`.
+- Connector can reuse Apex sessions and retry login after 401.
+- Telemetry endpoint is included in the release package.
 
-## Upcoming: v4.2.0 — Live Apex Dashboard
+## Next: v4.2.2 / v4.3.0
 
-- Dedicated live Apex dashboard.
-- Full outlet state display.
-- Leak/alert highlighting.
-- Reef Brain recommendations based on live telemetry history.
+- Configure Vercel KV / Upstash on the stable hub.
+- Add connector status/heartbeat card in the app.
+- Add live equipment dashboard using Apex outlet states.
+- Add automatic timeline events for telemetry snapshots and alarms.
+- Add alert rules for heater, temperature, pH, ORP, leak, and outlet state problems.
