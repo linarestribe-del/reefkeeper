@@ -1,78 +1,76 @@
-# Reef Keeper Apex Connector
+# Reef Keeper Apex Connector v4.2.1
 
-Runs at home, reads the local Apex `/rest/status` endpoint, and pushes normalized telemetry to Reef Keeper Cloud.
+This connector runs on your home Mac. It reads your local Neptune Apex `/rest/status` endpoint and pushes a normalized snapshot to the stable Reef Keeper telemetry hub.
 
-## Vercel setup
+## Recommended one-time test
 
-Create Vercel KV storage for the project, then add these environment variables:
-
-- `KV_REST_API_URL`
-- `KV_REST_API_TOKEN`
-- `REEF_TELEMETRY_WRITE_TOKEN` — make a long random value
-- `REEF_TELEMETRY_READ_TOKEN` — optional; only needed if you want the app to require a read token
-
-Redeploy after adding environment variables.
-
-## Run once from a Mac
+From the connector folder:
 
 ```bash
-APEX_BASE_URL="http://apex.local" \
-APEX_USERNAME="your_apex_username" \
-APEX_PASSWORD="your_apex_password" \
-REEF_KEEPER_URL="https://your-reef-keeper.vercel.app" \
-REEF_KEEPER_TOKEN="same_value_as_REEF_TELEMETRY_WRITE_TOKEN" \
-node connector/apex-connector.mjs --once
-```
-
-## Run continuously
-
-```bash
-APEX_BASE_URL="http://apex.local" \
-APEX_USERNAME="your_apex_username" \
-APEX_PASSWORD="your_apex_password" \
-REEF_KEEPER_URL="https://your-reef-keeper.vercel.app" \
-REEF_KEEPER_TOKEN="same_value_as_REEF_TELEMETRY_WRITE_TOKEN" \
-APEX_POLL_SECONDS=60 \
-node connector/apex-connector.mjs
-```
-
-## If Basic auth does not work
-
-Copy the `connect.sid=...` cookie from a working Apex browser session and run:
-
-```bash
-APEX_BASE_URL="http://apex.local" \
-APEX_COOKIE="connect.sid=YOUR_COOKIE_VALUE" \
-REEF_KEEPER_URL="https://your-reef-keeper.vercel.app" \
-REEF_KEEPER_TOKEN="same_value_as_REEF_TELEMETRY_WRITE_TOKEN" \
-node connector/apex-connector.mjs --once
-```
-
-## Test in Reef Keeper
-
-Go to **More → Apex Integration → Native Apex / Telemetry Test** and tap **Fetch Cloud**.
-
-
-## v4.2.0 Stable Telemetry Hub
-
-Use one permanent telemetry endpoint for the connector, not a temporary branch preview URL.
-
-Recommended:
-
-```bash
-export REEF_KEEPER_TELEMETRY_ENDPOINT="https://YOUR-STABLE-REEFKEEPER-URL.vercel.app/api/telemetry"
-```
-
-Alternative:
-
-```bash
-export REEF_KEEPER_URL="https://YOUR-STABLE-REEFKEEPER-URL.vercel.app"
-```
-
-Then run:
-
-```bash
+export REEF_KEEPER_URL="https://reefkeeper-l4isz0ta2-jorge-s-projects6.vercel.app"
+export APEX_BASE_URL="http://apex.local"
+export APEX_USERNAME="your-apex-username"
+export APEX_PASSWORD="your-apex-password"
 node apex-connector.mjs --once
 ```
 
-All preview branches should read from the same endpoint configured in `telemetry-config.js`.
+If your Apex firmware does not accept automatic login yet, use a temporary cookie:
+
+```bash
+export APEX_COOKIE="connect.sid=YOUR_CURRENT_COOKIE"
+node apex-connector.mjs --once
+```
+
+Good output looks like:
+
+```text
+pushed Apex telemetry: temp=76.6 pH=8.45 ORP=334 outlets=30 alarms=0 durable=true auth=saved-cookie
+```
+
+## Stable hub rule
+
+Use the stable hub URL, not the temporary preview branch URL. The app previews read from the stable hub through `telemetry-config.js`.
+
+You can also target the exact endpoint:
+
+```bash
+export REEF_KEEPER_TELEMETRY_ENDPOINT="https://reefkeeper-l4isz0ta2-jorge-s-projects6.vercel.app/api/telemetry"
+```
+
+## Persistent cloud storage
+
+For reliable telemetry, configure Vercel KV / Upstash variables on the stable hub deployment:
+
+```text
+KV_REST_API_URL
+KV_REST_API_TOKEN
+```
+
+Optional security variables:
+
+```text
+REEF_TELEMETRY_WRITE_TOKEN
+REEF_TELEMETRY_READ_TOKEN
+```
+
+If you set `REEF_TELEMETRY_WRITE_TOKEN`, also set this before running the connector:
+
+```bash
+export REEF_KEEPER_TOKEN="same-write-token"
+```
+
+## Continuous mode
+
+Without `--once`, the connector keeps running and pushes every 60 seconds by default:
+
+```bash
+export APEX_POLL_SECONDS="60"
+node apex-connector.mjs
+```
+
+## Notes
+
+- v4.2.1 reuses and saves Apex session cookies at `~/.reef-keeper/apex-session.json`.
+- It retries Apex login after a 401 when username/password are provided.
+- If automatic login fails, use `APEX_COOKIE` until the next connector login refinement.
+- Use `--verbose` for login diagnostics.
