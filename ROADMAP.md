@@ -35,13 +35,13 @@
 -   Alarm synchronization
 -   Reef Brain integration
 
-### v4.1 -- Reef Copilot
+### v4.1 -- Native Apex Driver / Connector Push / Reef Copilot
 
--   Ask questions about your reef
--   Timeline search
--   Maintenance history
--   Equipment history
--   AI Vision history
+-   Native Apex LAN `/rest/status` parser
+-   Read local probes, outlets, alerts, modules, and leak sensors
+-   Connector Push for anywhere telemetry via Reef Keeper Cloud
+-   Feed Apex telemetry into Reef Brain
+-   Reef Copilot follows after native Apex data is stable
 
 ### v4.2 -- AI Vision Progress
 
@@ -74,8 +74,14 @@
 
 ## Current Release Notes
 
-### v4.0.5 – Live Reef Brain
-- Reef Brain confidence score
-- Explainable tank score
-- Interpreted telemetry
-- Daily brief uses confidence
+### v4.1.1 – Connector Push Foundation
+- Local Apex connector script
+- `/api/telemetry` cloud endpoint
+- Vercel KV durable telemetry option
+- Fetch Cloud Telemetry in Apex Integration
+
+### v4.1.0 – Native Apex Driver
+- Local Apex LAN `/rest/status` support
+- Native probe and outlet parser
+- Apex telemetry import into Reef Brain
+- Bridge/manual JSON fallback remains available
