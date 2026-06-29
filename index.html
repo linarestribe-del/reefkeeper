@@ -290,7 +290,7 @@
         <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('report')"><span class="workspace-list-icon">📄</span><span class="workspace-list-main"><strong>Reports</strong><span>Monthly reef report, livestock summary, timeline, and exports.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Fusion profile and local bridge telemetry testing.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Native Apex LAN telemetry and Fusion profile setup.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('library')"><span class="workspace-list-icon">📚</span><span class="workspace-list-main"><strong>Reef Library</strong><span>Protocols, manuals, ICP files, and reference documents.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
@@ -568,7 +568,7 @@
       <div class="settings-card" id="apex-settings-card">
         <div class="settings-section-title">Apex Integration</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Integration profile</strong><span>Select Apex Fusion or import read-only local bridge telemetry for Reef Brain.</span></div>
+          <div class="settings-copy"><strong>Integration profile</strong><span>Select Apex Fusion or connect to local Apex LAN telemetry for Reef Brain.</span></div>
         </div>
         <div id="apex-settings-panel" class="apex-settings-panel"></div>
       </div>
@@ -599,7 +599,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.0.2 Apex Live Data Bridge</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.1.0 Native Apex Driver</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -1057,8 +1057,8 @@
 <script src="app.js?v=20260628-v3-9-2-polish-performance"></script>
 <script src="reef-brain.js?v=20260628-v4-0-4-live-telemetry"></script>
 <script src="reef-timeline.js?v=20260628-v3-9-2-polish-performance"></script>
-<script src="apex-connect.js?v=20260628-v4-0-4-live-telemetry"></script>
-<script src="apex-bridge.js?v=20260628-v4-0-4-live-telemetry"></script>
+<script src="apex-connect.js?v=20260628-v4-1-0-native-apex-driver"></script>
+<script src="apex-bridge.js?v=20260628-v4-1-0-native-apex-driver"></script>
 <script>
 function showWorkspace(name, btn) {
   const pageName = name;
@@ -1606,6 +1606,14 @@ function rkHomeTelemetrySnapshot() {
   catch(e) { return null; }
 }
 
+function rkHomeRequestCloudTelemetry(force = false) {
+  try {
+    const bridge = window.ReefKeeperApexBridge;
+    if (!bridge || typeof bridge.refreshCloudTelemetryIfNeeded !== 'function') return;
+    bridge.refreshCloudTelemetryIfNeeded({ force, silent:true });
+  } catch(e) { console.warn('Cloud telemetry request failed', e); }
+}
+
 function rkHomeTelemetryAge(value) {
   const t = new Date(value || 0).getTime();
   if (!Number.isFinite(t) || !t) return 'No data yet';
@@ -1627,11 +1635,12 @@ function renderHomeTelemetry() {
   const grid = document.getElementById('home-telemetry-grid');
   const subtitle = document.getElementById('home-telemetry-subtitle');
   if (!card || !grid) return;
+  rkHomeRequestCloudTelemetry(!rkHomeTelemetrySnapshot());
   const snap = rkHomeTelemetrySnapshot();
   if (!snap) {
     card.classList.add('empty');
-    if (subtitle) subtitle.textContent = 'Waiting for Apex bridge data.';
-    grid.innerHTML = '<div class="home-telemetry-empty">Import a sample or bridge payload from More → Apex Integration.</div>';
+    if (subtitle) subtitle.textContent = 'Checking Reef Keeper Cloud for Apex telemetry…';
+    grid.innerHTML = '<div class="home-telemetry-empty">No cloud telemetry loaded yet. Run the connector once, then refresh Home.</div>';
     return;
   }
   card.classList.remove('empty');

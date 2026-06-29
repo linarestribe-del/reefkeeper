@@ -1,10 +1,10 @@
-// Reef Keeper v4.1.0 Native Apex Driver
+// Reef Keeper v4.1.2 Cloud Telemetry Reader
 // Normalizes native Apex LAN /rest/status payloads plus manual bridge payloads into
 // the shared Reef Keeper telemetry snapshot consumed by Reef Brain, Home, and Timeline.
 (function(){
   'use strict';
 
-  const VERSION = '4.1.1';
+  const VERSION = '4.1.2';
   const SNAPSHOT_KEY = 'reef_apex_bridge_snapshot_v1';
   const HISTORY_KEY = 'reef_apex_bridge_history_v1';
   const MAX_HISTORY = 180;
@@ -189,7 +189,7 @@
   }
 
 
-  function cloudDefaults(){ return { enabled:false, endpoint:'/api/telemetry', readToken:'', updatedAt:null }; }
+  function cloudDefaults(){ return { enabled:true, endpoint:'/api/telemetry', readToken:'', updatedAt:null }; }
   function getCloudSettings(){ return { ...cloudDefaults(), ...readJson(CLOUD_SETTINGS_KEY, {}) }; }
   function saveCloudSettings(settings){
     const next = { ...cloudDefaults(), ...(settings || {}) };
@@ -213,8 +213,12 @@
     renderBridgePanel();
     return saved;
   }
+  let cloudFetchInFlight = null;
+  let lastCloudFetchAt = 0;
+
   async function fetchCloudTelemetry(options = {}){
-    const settings = options.settings || getCloudSettings();
+    const settings = { ...cloudDefaults(), ...(options.settings || getCloudSettings()) };
+    const silent = Boolean(options.silent);
     const endpoint = String(settings.endpoint || '/api/telemetry').trim() || '/api/telemetry';
     const headers = { 'Accept':'application/json' };
     if (settings.readToken) headers.Authorization = `Bearer ${settings.readToken}`;
@@ -225,13 +229,34 @@
       const payload = data.snapshot || data.telemetry || data.payload || data;
       if (!payload || !payload.probes && !payload.inputs && !payload.system && !payload.outlets) throw new Error('No telemetry payload found in cloud response.');
       const saved = saveSnapshot(payload);
-      try { showToast('✅ Cloud telemetry imported'); } catch(e) {}
+      if (!silent) { try { showToast('✅ Cloud telemetry imported'); } catch(e) {} }
       return saved;
     } catch(error) {
-      try { showToast('⚠️ Cloud telemetry unavailable'); } catch(e) {}
+      if (!silent) { try { showToast('⚠️ Cloud telemetry unavailable'); } catch(e) {} }
       console.warn('Cloud telemetry fetch failed', error);
       return null;
     }
+  }
+
+  function shouldRefreshCloudTelemetry(){
+    const now = Date.now();
+    const current = getSnapshot();
+    const t = dateMs(current?.receivedAt || current?.capturedAt);
+    if (!current || !t) return true;
+    if (now - t > 90 * 1000) return true;
+    return now - lastCloudFetchAt > 60 * 1000;
+  }
+
+  function refreshCloudTelemetryIfNeeded(options = {}){
+    const settings = { ...cloudDefaults(), ...getCloudSettings(), ...(options.settings || {}) };
+    if (!settings.enabled && !options.force) return Promise.resolve(null);
+    if (!options.force && !shouldRefreshCloudTelemetry()) return Promise.resolve(getSnapshot());
+    if (cloudFetchInFlight) return cloudFetchInFlight;
+    lastCloudFetchAt = Date.now();
+    cloudFetchInFlight = fetchCloudTelemetry({ settings, silent: options.silent !== false })
+      .catch(error => { console.warn('Cloud telemetry refresh failed', error); return null; })
+      .finally(() => { cloudFetchInFlight = null; });
+    return cloudFetchInFlight;
   }
 
   function getSnapshot(){ return readJson(SNAPSHOT_KEY, null); }
@@ -350,7 +375,7 @@
           <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApexBridge.clearSnapshot()">Clear</button>
         </div>
         ${renderCloudConnectorCard()}
-        <div class="apex-note">v4.1.1 adds connector push support. A local connector can read Apex /rest/status at home and push normalized telemetry to Reef Keeper Cloud so the app can fetch it anywhere.</div>
+        <div class="apex-note">v4.1.2 reads the latest cloud telemetry automatically. The local connector pushes Apex /rest/status from home; Reef Keeper fetches that snapshot for Home, Reef Brain, and Timeline.</div>
       </div>`;
   }
 
@@ -416,10 +441,11 @@
       window.ReefKeeperApex.renderApexSettings = wrapped;
     }
     setTimeout(injectPanel, 80);
-    setTimeout(() => { const c = getCloudSettings(); if (c.enabled) fetchCloudTelemetry({ settings:c }); }, 600);
+    setTimeout(() => refreshCloudTelemetryIfNeeded({ force:true, silent:true }), 600);
+    setInterval(() => refreshCloudTelemetryIfNeeded({ silent:true }), 60000);
   }
 
-  window.ReefKeeperApexBridge = { version:VERSION, normalizeSnapshot, normalizeNativeApexStatus, saveSnapshot, getSnapshot, getHistory, clearSnapshot, latestSummary, renderBridgePanel, importFromTextarea, loadSample, loadApexSample, getContextLines, getCloudSettings, saveCloudSettings, saveCloudFromForm, fetchCloudTelemetry, install };
+  window.ReefKeeperApexBridge = { version:VERSION, normalizeSnapshot, normalizeNativeApexStatus, saveSnapshot, getSnapshot, getHistory, clearSnapshot, latestSummary, renderBridgePanel, importFromTextarea, loadSample, loadApexSample, getContextLines, getCloudSettings, saveCloudSettings, saveCloudFromForm, fetchCloudTelemetry, refreshCloudTelemetryIfNeeded, install };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(install, 80));
   else setTimeout(install, 80);
 })();
