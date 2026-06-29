@@ -1,3 +1,9 @@
+## v4.3.2 - Live Probes Mobile Layout Fix
+
+- Fixed Live Probes cards collapsing into single-letter labels on mobile/tablet widths.
+- Raised the desktop breakpoint so the health card and probes do not squeeze side-by-side too early.
+- Increased probe card minimum widths and value spacing.
+
 # Reef Keeper v4.3.0 — Live Reef Dashboard
 
 ## Added

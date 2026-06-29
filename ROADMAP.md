@@ -1,3 +1,7 @@
+## Next after v4.3.2
+
+- Continue refining the Live Equipment dashboard and add drill-down detail for outlet power/current.
+
 # Reef Keeper Roadmap
 
 ## Completed
