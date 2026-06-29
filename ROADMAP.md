@@ -39,3 +39,6 @@
 - Add equipment detail drill-down from live outlet cards.
 - Add durable telemetry history graphs after KV persistence is fully configured.
 - Add automatic timeline entries for Apex state changes and temperature swings.
+
+### v4.3.3
+- Stabilize Live Dashboard responsive layout before adding additional telemetry charts.

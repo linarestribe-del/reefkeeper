@@ -30,3 +30,8 @@
 - Fixed Apex `AUTO/ON` and `AUTO/OFF` state interpretation. `AUTO/ON` now counts as normal/on for expected-running equipment.
 - Treated heaters, fans, dosing pumps, accessories, and safety virtuals as allowed idle/off unless an alarm is active.
 - Improved probe and equipment chip wrapping for mobile screens.
+
+## v4.3.3 Live Probes Stack Fix
+- Fixed Live Probes overflow on mobile/tablet widths.
+- Kept the Tank Health and Live Probes sections stacked so probe cards cannot be squeezed into unreadable slivers.
+- Tightened dashboard containment to prevent horizontal scrolling.
