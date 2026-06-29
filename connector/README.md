@@ -51,3 +51,28 @@ node connector/apex-connector.mjs --once
 ## Test in Reef Keeper
 
 Go to **More → Apex Integration → Native Apex / Telemetry Test** and tap **Fetch Cloud**.
+
+
+## v4.2.0 Stable Telemetry Hub
+
+Use one permanent telemetry endpoint for the connector, not a temporary branch preview URL.
+
+Recommended:
+
+```bash
+export REEF_KEEPER_TELEMETRY_ENDPOINT="https://YOUR-STABLE-REEFKEEPER-URL.vercel.app/api/telemetry"
+```
+
+Alternative:
+
+```bash
+export REEF_KEEPER_URL="https://YOUR-STABLE-REEFKEEPER-URL.vercel.app"
+```
+
+Then run:
+
+```bash
+node apex-connector.mjs --once
+```
+
+All preview branches should read from the same endpoint configured in `telemetry-config.js`.
