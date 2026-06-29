@@ -16,3 +16,11 @@
 ## Notes
 - This release builds on v4.2.1 telemetry hardening.
 - Telemetry history and alert notifications are still planned for later releases.
+
+
+## v4.3.1 - Live Dashboard Layout + Apex AUTO State Fix
+
+- Fixed mobile Live Telemetry layout so the dashboard uses the full card width instead of narrow columns.
+- Fixed Apex `AUTO/ON` and `AUTO/OFF` state interpretation. `AUTO/ON` now counts as normal/on for expected-running equipment.
+- Treated heaters, fans, dosing pumps, accessories, and safety virtuals as allowed idle/off unless an alarm is active.
+- Improved probe and equipment chip wrapping for mobile screens.

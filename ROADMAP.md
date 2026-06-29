@@ -28,3 +28,10 @@
 - Reef Brain explanations based on telemetry changes.
 - AI summaries of equipment and parameter behavior.
 - Automatic timeline insights.
+
+
+## Next after v4.3.1
+
+- Add equipment detail drill-down from live outlet cards.
+- Add durable telemetry history graphs after KV persistence is fully configured.
+- Add automatic timeline entries for Apex state changes and temperature swings.

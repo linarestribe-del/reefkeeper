@@ -1,8 +1,8 @@
-// Reef Keeper v4.3.0 Live Reef Dashboard
+// Reef Keeper v4.3.1 Live Reef Dashboard Layout + Apex AUTO State Fix
 // Builds a controller-style dashboard from normalized Apex telemetry.
 (function(){
   'use strict';
-  const VERSION = '4.3.0';
+  const VERSION = '4.3.1';
   const PREV_KEY = 'reef_apex_live_dashboard_previous_v1';
   const EVENTS_KEY = 'reef_apex_controller_events_v1';
   const MAX_EVENTS = 180;
@@ -43,10 +43,26 @@
     if (/24v|link/.test(hay)) return { group:'Accessory', icon:'🔌', role:'accessory', idleOk:true };
     return { group:'Other', icon:'⚙️', role:'other' };
   }
+  function stateText(o){
+    return String(o?.statusCode || o?.state || '').toUpperCase().replace(/\s+/g, '');
+  }
+  function outletIsOn(o){
+    const s = stateText(o);
+    return Boolean(o?.isOn) || s === 'ON' || s === 'AON' || s === 'AUTO/ON' || s === 'AUTO_ON' || s.includes('/ON');
+  }
+  function outletIsOff(o){
+    const s = stateText(o);
+    return Boolean(o?.isOff) || s === 'OFF' || s === 'AOF' || s === 'AUTO/OFF' || s === 'AUTO_OFF' || s.includes('/OFF');
+  }
   function isOutletHealthy(o, meta){
     if (!o) return false;
-    if (meta.expectedOn) return !!o.isOn;
-    if (meta.role === 'safety') return !o.isOn;
+    const on = outletIsOn(o);
+    const off = outletIsOff(o);
+    // Apex AUTO/ON and ON are normal for equipment that should be running.
+    if (meta.expectedOn) return on;
+    // Heaters, fans, dosing pumps, safety virtuals, and accessories are allowed to be idle/off.
+    if (meta.idleOk) return true;
+    if (meta.role === 'safety') return !on;
     return true;
   }
   function probeStatus(label, value){
@@ -80,7 +96,7 @@
     const outlets = Array.isArray(s.outlets) ? s.outlets : [];
     const criticalOff = outlets.filter(o => {
       const m = classifyOutlet(o);
-      return m.expectedOn && !o.isOn;
+      return m.expectedOn && !outletIsOn(o);
     });
     if (criticalOff.length) { score -= Math.min(35, criticalOff.length * 8); reasons.push(`${criticalOff.length} expected-on outlet${criticalOff.length===1?' is':'s are'} off`); }
     const alarms = Array.isArray(s.alarms) ? s.alarms : [];
@@ -134,11 +150,15 @@
     const style = document.createElement('style');
     style.id = 'rk-live-dashboard-style';
     style.textContent = `
-      .rk-live-wrap{display:grid;gap:12px}.rk-live-health{border-radius:18px;padding:14px;background:rgba(255,255,255,.75);box-shadow:0 10px 30px rgba(12,64,90,.08);border:1px solid rgba(10,130,160,.15)}.theme-dark .rk-live-health{background:rgba(12,24,34,.72);border-color:rgba(120,220,255,.14)}
-      .rk-live-health-top{display:flex;align-items:center;justify-content:space-between;gap:12px}.rk-live-health-title{font-weight:900;font-size:1.05rem}.rk-live-health-score{font-weight:900;font-size:1.5rem}.rk-live-health.good .rk-live-health-score{color:#067a46}.rk-live-health.ok .rk-live-health-score{color:#9a6a00}.rk-live-health.watch .rk-live-health-score{color:#b3261e}.rk-live-health small{display:block;opacity:.72}.rk-live-reason{margin-top:8px;font-size:.9rem;opacity:.85}.rk-live-system{margin-top:8px;font-size:.78rem;opacity:.7;display:flex;gap:8px;flex-wrap:wrap}
-      .rk-probe-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.rk-probe{border-radius:16px;padding:10px;background:rgba(255,255,255,.7);border:1px solid rgba(10,130,160,.12)}.theme-dark .rk-probe{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08)}.rk-probe span{display:block;font-size:.74rem;opacity:.7}.rk-probe strong{display:block;font-size:1.05rem;margin:2px 0}.rk-probe em{font-style:normal;font-size:.72rem;opacity:.72}.rk-probe.good strong{color:#067a46}.rk-probe.watch strong{color:#b3261e}.rk-probe.missing strong{opacity:.5}
-      .rk-equipment-live{display:grid;gap:10px}.rk-eq-group{border-radius:18px;background:rgba(255,255,255,.68);border:1px solid rgba(10,130,160,.12);padding:10px}.theme-dark .rk-eq-group{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.08)}.rk-eq-head{display:flex;justify-content:space-between;align-items:center;font-weight:900;margin-bottom:8px}.rk-eq-count{font-size:.75rem;opacity:.65}.rk-eq-list{display:grid;gap:6px}.rk-eq-item{display:flex;justify-content:space-between;align-items:center;border-radius:12px;padding:8px;background:rgba(0,120,150,.06)}.theme-dark .rk-eq-item{background:rgba(255,255,255,.04)}.rk-eq-name{font-weight:800}.rk-eq-state{font-size:.78rem;font-weight:900}.rk-eq-item.good .rk-eq-state{color:#067a46}.rk-eq-item.idle .rk-eq-state{opacity:.72}.rk-eq-item.watch .rk-eq-state{color:#b3261e}.rk-live-section-title{font-size:.82rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;opacity:.68;margin:2px 0 0}
-      @media(max-width:520px){.rk-probe-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+      .rk-live-dashboard-card .home-telemetry-grid{display:block !important;}
+      .rk-live-wrap{display:block;width:100%;max-width:100%;}
+      .rk-live-top{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;width:100%;}
+      .rk-live-health{border-radius:18px;padding:14px;background:rgba(255,255,255,.78);box-shadow:0 10px 30px rgba(12,64,90,.08);border:1px solid rgba(10,130,160,.15);width:100%;box-sizing:border-box;overflow:hidden}.theme-dark .rk-live-health{background:rgba(12,24,34,.72);border-color:rgba(120,220,255,.14)}
+      .rk-live-health-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.rk-live-health-title{font-weight:900;font-size:1rem;line-height:1.16}.rk-live-health-score{font-weight:900;font-size:1.45rem;line-height:1;text-align:right;white-space:nowrap}.rk-live-health.good .rk-live-health-score{color:#067a46}.rk-live-health.ok .rk-live-health-score{color:#9a6a00}.rk-live-health.watch .rk-live-health-score{color:#b3261e}.rk-live-health small{display:block;opacity:.72}.rk-live-reason{margin-top:8px;font-size:.88rem;line-height:1.35;opacity:.85}.rk-live-system{margin-top:8px;font-size:.76rem;opacity:.7;display:flex;gap:8px;flex-wrap:wrap}
+      .rk-probe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;box-sizing:border-box}.rk-probe{border-radius:16px;padding:10px;background:rgba(255,255,255,.72);border:1px solid rgba(10,130,160,.12);min-width:0;box-sizing:border-box}.theme-dark .rk-probe{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08)}.rk-probe span{display:block;font-size:.72rem;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rk-probe strong{display:block;font-size:1.12rem;margin:2px 0;line-height:1.05;white-space:nowrap}.rk-probe em{font-style:normal;font-size:.72rem;opacity:.72}.rk-probe.good strong{color:#067a46}.rk-probe.watch strong{color:#b3261e}.rk-probe.missing strong{opacity:.5}
+      .rk-equipment-live{display:grid;grid-template-columns:1fr;gap:10px;width:100%;box-sizing:border-box}.rk-eq-group{border-radius:18px;background:rgba(255,255,255,.70);border:1px solid rgba(10,130,160,.12);padding:10px;box-sizing:border-box;overflow:hidden}.theme-dark .rk-eq-group{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.08)}.rk-eq-head{display:flex;justify-content:space-between;align-items:center;font-weight:900;margin-bottom:8px;gap:8px}.rk-eq-head span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk-eq-count{font-size:.75rem;opacity:.65;white-space:nowrap}.rk-eq-list{display:grid;gap:6px}.rk-eq-item{display:flex;justify-content:space-between;align-items:center;border-radius:12px;padding:8px;background:rgba(0,120,150,.06);gap:8px}.theme-dark .rk-eq-item{background:rgba(255,255,255,.04)}.rk-eq-name{font-weight:800;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk-eq-state{font-size:.75rem;font-weight:900;white-space:nowrap}.rk-eq-item.good .rk-eq-state{color:#067a46}.rk-eq-item.auto .rk-eq-state{color:#d07500}.rk-eq-item.idle .rk-eq-state{opacity:.72;color:#4f5b62}.rk-eq-item.watch .rk-eq-state{color:#b3261e}.rk-live-section-title{font-size:.82rem;font-weight:900;text-transform:uppercase;letter-spacing:.06em;opacity:.68;margin:14px 0 8px}
+      @media(min-width:760px){.rk-live-top{grid-template-columns:minmax(260px,.9fr) minmax(0,1.5fr);align-items:stretch}.rk-probe-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.rk-equipment-live{grid-template-columns:repeat(2,minmax(0,1fr));}}
+      @media(max-width:430px){.rk-live-health{padding:12px}.rk-live-health-title{font-size:.98rem}.rk-live-health-score{font-size:1.35rem}.rk-probe{padding:9px}.rk-probe strong{font-size:1.02rem}.rk-eq-group{padding:9px}.rk-eq-state{font-size:.72rem}}
     `;
     document.head.appendChild(style);
   }
@@ -155,7 +175,7 @@
     const p = s.probes || {};
     const groups = groupOutlets(s.outlets || []);
     const alarms = Array.isArray(s.alarms) ? s.alarms : [];
-    if (card) card.classList.remove('empty');
+    if (card) { card.classList.remove('empty'); card.classList.add('rk-live-dashboard-card'); }
     if (subtitle) subtitle.textContent = `${ageLabel(s.receivedAt || s.capturedAt)} · ${h.label} · ${alarms.length ? alarms.length + ' alarm(s)' : 'No alarms'}`;
     const probeTiles = [
       ['temp','Temperature',p.temp,'°F'],['ph','pH',p.ph,''],['orp','ORP',p.orp,'mV'],['salinity','Salinity',p.salinity,'']
@@ -164,11 +184,11 @@
       const good = items.filter(x => x.healthy).length;
       return `<div class="rk-eq-group"><div class="rk-eq-head"><span>${items[0]?.meta?.icon || '⚙️'} ${esc(name)}</span><span class="rk-eq-count">${good}/${items.length} normal</span></div><div class="rk-eq-list">${items.slice(0,8).map(({outlet:o, meta, healthy}) => {
         const state = o.state || o.statusCode || 'unknown';
-        const cls = healthy ? (o.isOn ? 'good' : 'idle') : 'watch';
+        const cls = healthy ? (outletIsOn(o) ? (String(state).toUpperCase().includes('AUTO') ? 'auto' : 'good') : 'idle') : 'watch';
         return `<div class="rk-eq-item ${cls}"><span class="rk-eq-name">${esc(o.name)}</span><span class="rk-eq-state">${esc(state)}</span></div>`;
       }).join('')}</div></div>`;
     }).join('');
-    grid.innerHTML = `<div class="rk-live-wrap"><div class="rk-live-health ${h.cls}"><div class="rk-live-health-top"><div><div class="rk-live-health-title">${h.emoji} Tank Health: ${esc(h.label)}</div><small>${esc(ageLabel(s.receivedAt || s.capturedAt))}</small></div><div class="rk-live-health-score">${h.score}<small>/100</small></div></div><div class="rk-live-reason">${esc(h.reasons[0])}</div><div class="rk-live-system"><span>${esc(s.system?.hostname || 'Apex')}</span>${s.system?.ipaddr ? `<span>${esc(s.system.ipaddr)}</span>` : ''}${s.system?.wifiQuality!=null ? `<span>Wi‑Fi ${esc(s.system.wifiQuality)}%</span>` : ''}</div></div><div class="rk-live-section-title">Live probes</div><div class="rk-probe-grid">${probeTiles}</div><div class="rk-live-section-title">Live equipment</div><div class="rk-equipment-live">${groupHtml || '<div class="home-telemetry-empty">No outlet states in snapshot.</div>'}</div></div>`;
+    grid.innerHTML = `<div class="rk-live-wrap"><div class="rk-live-top"><div class="rk-live-health ${h.cls}"><div class="rk-live-health-top"><div><div class="rk-live-health-title">${h.emoji} Tank Health</div><small>${esc(h.label)} · ${esc(ageLabel(s.receivedAt || s.capturedAt))}</small></div><div class="rk-live-health-score">${h.score}<small>/100</small></div></div><div class="rk-live-reason">${esc(h.reasons[0])}</div><div class="rk-live-system"><span>${esc(s.system?.hostname || 'Apex')}</span>${s.system?.ipaddr ? `<span>${esc(s.system.ipaddr)}</span>` : ''}${s.system?.wifiQuality!=null ? `<span>Wi‑Fi ${esc(s.system.wifiQuality)}%</span>` : ''}</div></div><div><div class="rk-live-section-title">Live probes</div><div class="rk-probe-grid">${probeTiles}</div></div></div><div class="rk-live-section-title">Live equipment</div><div class="rk-equipment-live">${groupHtml || '<div class="home-telemetry-empty">No outlet states in snapshot.</div>'}</div></div>`;
   }
   function install(){
     const old = window.renderHomeTelemetry;
