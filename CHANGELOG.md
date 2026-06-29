@@ -13,3 +13,10 @@
 - Added `/api/telemetry` endpoint for connector push telemetry.
 - Added local Apex connector script.
 - Added cloud connector settings to Apex Integration.
+
+
+## v4.2.0 – Stable Telemetry Hub
+- Added `telemetry-config.js` as the canonical telemetry endpoint config.
+- Updated Cloud Telemetry Reader so preview branches can read from one stable telemetry hub.
+- Updated connector to support `REEF_KEEPER_TELEMETRY_ENDPOINT` directly.
+- Clarified connector setup so it no longer needs to change for every preview deployment.

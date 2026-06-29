@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Reef Keeper Apex Connector v4.1.1
+// Reef Keeper Apex Connector v4.2.0
 // Runs at home, reads the local Apex /rest/status endpoint, and pushes normalized telemetry to Reef Keeper Cloud.
 
 const config = {
@@ -8,6 +8,7 @@ const config = {
   apexPassword: process.env.APEX_PASSWORD || '',
   apexCookie: process.env.APEX_COOKIE || '',
   reefKeeperUrl: clean(process.env.REEF_KEEPER_URL || ''),
+  reefKeeperEndpoint: clean(process.env.REEF_KEEPER_TELEMETRY_ENDPOINT || ''),
   reefKeeperToken: process.env.REEF_KEEPER_TOKEN || '',
   pollSeconds: Math.max(15, Number(process.env.APEX_POLL_SECONDS || 60)),
   once: process.argv.includes('--once')
@@ -97,9 +98,14 @@ async function fetchApexStatus() {
   try { return JSON.parse(text); }
   catch(error) { throw new Error(`Apex did not return JSON. First bytes: ${text.slice(0, 160)}`); }
 }
+function telemetryEndpoint() {
+  if (config.reefKeeperEndpoint) return config.reefKeeperEndpoint;
+  if (config.reefKeeperUrl) return `${config.reefKeeperUrl}/api/telemetry`;
+  return '';
+}
 async function pushTelemetry(snapshot) {
-  if (!config.reefKeeperUrl) throw new Error('Set REEF_KEEPER_URL, for example https://your-app.vercel.app');
-  const url = `${config.reefKeeperUrl}/api/telemetry`;
+  const url = telemetryEndpoint();
+  if (!url) throw new Error('Set REEF_KEEPER_TELEMETRY_ENDPOINT to the stable /api/telemetry URL, or set REEF_KEEPER_URL to the stable app URL.');
   const headers = { 'Content-Type':'application/json' };
   if (config.reefKeeperToken) headers.Authorization = `Bearer ${config.reefKeeperToken}`;
   const response = await fetch(url, { method:'POST', headers, body: JSON.stringify(snapshot) });
@@ -116,7 +122,7 @@ async function tick() {
 }
 function validate() {
   if (!config.apexBaseUrl) throw new Error('APEX_BASE_URL is required.');
-  if (!config.reefKeeperUrl) throw new Error('REEF_KEEPER_URL is required.');
+  if (!telemetryEndpoint()) throw new Error('REEF_KEEPER_TELEMETRY_ENDPOINT or REEF_KEEPER_URL is required.');
   if (!config.apexCookie && (!config.apexUsername || !config.apexPassword)) {
     console.warn('No APEX_USERNAME/APEX_PASSWORD or APEX_COOKIE set. The request may fail if Apex requires login.');
   }

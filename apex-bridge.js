@@ -4,11 +4,12 @@
 (function(){
   'use strict';
 
-  const VERSION = '4.1.2';
+  const VERSION = '4.2.0';
   const SNAPSHOT_KEY = 'reef_apex_bridge_snapshot_v1';
   const HISTORY_KEY = 'reef_apex_bridge_history_v1';
   const MAX_HISTORY = 180;
   const CLOUD_SETTINGS_KEY = 'reef_cloud_telemetry_settings_v1';
+  const DEFAULT_CLOUD_ENDPOINT = String(window.ReefKeeperTelemetryConfig?.endpoint || window.REEF_KEEPER_TELEMETRY_ENDPOINT || '/api/telemetry').trim() || '/api/telemetry';
 
   function nowIso(){ return new Date().toISOString(); }
   function readJson(key, fallback){
@@ -189,21 +190,28 @@
   }
 
 
-  function cloudDefaults(){ return { enabled:true, endpoint:'/api/telemetry', readToken:'', updatedAt:null }; }
+  function cloudDefaults(){ return { enabled:true, endpoint:DEFAULT_CLOUD_ENDPOINT, readToken:'', updatedAt:null, hub:true }; }
   function getCloudSettings(){ return { ...cloudDefaults(), ...readJson(CLOUD_SETTINGS_KEY, {}) }; }
   function saveCloudSettings(settings){
     const next = { ...cloudDefaults(), ...(settings || {}) };
-    next.endpoint = String(next.endpoint || '/api/telemetry').trim() || '/api/telemetry';
+    next.endpoint = String(next.endpoint || DEFAULT_CLOUD_ENDPOINT).trim() || DEFAULT_CLOUD_ENDPOINT;
     next.readToken = String(next.readToken || '').trim();
     next.enabled = Boolean(next.enabled);
     next.updatedAt = nowIso();
     writeJson(CLOUD_SETTINGS_KEY, next);
     return next;
   }
+
+  function resolveCloudEndpoint(value){
+    const endpoint = String(value || DEFAULT_CLOUD_ENDPOINT || '/api/telemetry').trim() || '/api/telemetry';
+    try { return new URL(endpoint, window.location.origin).toString(); }
+    catch(e) { return '/api/telemetry'; }
+  }
+
   function getCloudFormSettings(){
     return {
       enabled: document.getElementById('apex-cloud-enabled')?.checked || false,
-      endpoint: document.getElementById('apex-cloud-endpoint')?.value || '/api/telemetry',
+      endpoint: document.getElementById('apex-cloud-endpoint')?.value || DEFAULT_CLOUD_ENDPOINT,
       readToken: document.getElementById('apex-cloud-read-token')?.value || ''
     };
   }
@@ -219,7 +227,7 @@
   async function fetchCloudTelemetry(options = {}){
     const settings = { ...cloudDefaults(), ...(options.settings || getCloudSettings()) };
     const silent = Boolean(options.silent);
-    const endpoint = String(settings.endpoint || '/api/telemetry').trim() || '/api/telemetry';
+    const endpoint = resolveCloudEndpoint(String(settings.endpoint || DEFAULT_CLOUD_ENDPOINT).trim() || DEFAULT_CLOUD_ENDPOINT);
     const headers = { 'Accept':'application/json' };
     if (settings.readToken) headers.Authorization = `Bearer ${settings.readToken}`;
     try {
@@ -333,9 +341,9 @@
   function renderCloudConnectorCard(){
     const settings = getCloudSettings();
     return `<div class="apex-cloud-card">
-      <div class="apex-bridge-head"><div><strong>Connector Push</strong><span>Use this when you want Reef Keeper to read Apex telemetry away from home.</span></div><em>${settings.enabled ? 'Enabled' : 'Optional'}</em></div>
+      <div class="apex-bridge-head"><div><strong>Stable Telemetry Hub</strong><span>All preview branches read from one canonical endpoint, so the connector does not change every branch.</span></div><em>${settings.enabled ? 'Enabled' : 'Optional'}</em></div>
       <label class="apex-switch-row"><span><strong>Use cloud telemetry endpoint</strong><small>Connector pushes data from home; Reef Keeper fetches it from this endpoint.</small></span><input id="apex-cloud-enabled" type="checkbox" ${settings.enabled ? 'checked' : ''}></label>
-      <label class="apex-field full"><span>Cloud telemetry endpoint</span><input id="apex-cloud-endpoint" type="text" value="${escapeHtml(settings.endpoint)}" placeholder="/api/telemetry"></label>
+      <label class="apex-field full"><span>Cloud telemetry endpoint</span><input id="apex-cloud-endpoint" type="text" value="${escapeHtml(settings.endpoint)}" placeholder="https://your-stable-reefkeeper-url.vercel.app/api/telemetry"></label>
       <label class="apex-field full"><span>Read token (optional)</span><input id="apex-cloud-read-token" type="password" value="${escapeHtml(settings.readToken)}" placeholder="Only needed if configured in Vercel"></label>
       <div class="apex-actions bridge-actions">
         <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApexBridge.saveCloudFromForm()">Save Cloud Settings</button>
@@ -375,7 +383,7 @@
           <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApexBridge.clearSnapshot()">Clear</button>
         </div>
         ${renderCloudConnectorCard()}
-        <div class="apex-note">v4.1.2 reads the latest cloud telemetry automatically. The local connector pushes Apex /rest/status from home; Reef Keeper fetches that snapshot for Home, Reef Brain, and Timeline.</div>
+        <div class="apex-note">v4.2.0 reads from the stable telemetry hub. Keep the connector pointed at the hub endpoint, not each temporary preview URL.</div>
       </div>`;
   }
 
