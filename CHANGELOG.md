@@ -1,21 +1,37 @@
-# Changelog
+## v4.3.2 - Live Probes Mobile Layout Fix
 
-## v4.2.1 — Telemetry Hardening
+- Fixed Live Probes cards collapsing into single-letter labels on mobile/tablet widths.
+- Raised the desktop breakpoint so the health card and probes do not squeeze side-by-side too early.
+- Increased probe card minimum widths and value spacing.
 
-- Added `api/telemetry.js` to the package so the stable hub endpoint is included with the patch.
-- Updated `apex-bridge.js` so `telemetry-config.js` takes priority over stale browser `localStorage` settings.
-- Added a global `REEF_KEEPER_TELEMETRY_ENDPOINT` alias in `telemetry-config.js`.
-- Updated cache-busting in `index.html` to v4.2.1.
-- Improved the Mac Apex connector:
-  - saved Apex session cookie reuse;
-  - best-effort automatic Apex login attempts;
-  - retry after 401;
-  - clearer error messages;
-  - connector heartbeat metadata;
-  - durable-storage status in output.
-- Added connector documentation for stable hub, cookie fallback, continuous mode, and Vercel KV variables.
+# Reef Keeper v4.3.0 — Live Reef Dashboard
 
-## v4.2.0 — Stable Telemetry Hub
+## Added
+- Live controller-style tank health card powered by Apex telemetry.
+- Automatic outlet classification by Apex outlet name/type.
+- Live equipment dashboard grouped by Return, Filtration, Flow, Heating, Cooling, ATO, Reactors, Dosing, Lighting, Safety, Accessory, and Other.
+- Probe status interpretation for temperature, pH, ORP, and salinity.
+- Basic telemetry health scoring with age, alarm, probe, and critical-equipment checks.
+- Local controller event capture for outlet state changes and large temperature changes.
 
-- Added stable telemetry endpoint configuration for preview branches.
-- Updated bridge reader to support a canonical cloud telemetry endpoint.
+## Improved
+- Home Live Telemetry now acts like a dashboard instead of a raw telemetry display.
+- Preview branches continue to read from the stable telemetry hub established in v4.2.x.
+- Equipment handling is no longer dependent on exact hardcoded outlet lists.
+
+## Notes
+- This release builds on v4.2.1 telemetry hardening.
+- Telemetry history and alert notifications are still planned for later releases.
+
+
+## v4.3.1 - Live Dashboard Layout + Apex AUTO State Fix
+
+- Fixed mobile Live Telemetry layout so the dashboard uses the full card width instead of narrow columns.
+- Fixed Apex `AUTO/ON` and `AUTO/OFF` state interpretation. `AUTO/ON` now counts as normal/on for expected-running equipment.
+- Treated heaters, fans, dosing pumps, accessories, and safety virtuals as allowed idle/off unless an alarm is active.
+- Improved probe and equipment chip wrapping for mobile screens.
+
+## v4.3.3 Live Probes Stack Fix
+- Fixed Live Probes overflow on mobile/tablet widths.
+- Kept the Tank Health and Live Probes sections stacked so probe cards cannot be squeezed into unreadable slivers.
+- Tightened dashboard containment to prevent horizontal scrolling.
