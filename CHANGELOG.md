@@ -1,5 +1,79 @@
 # Reef Keeper Changelog
 
+## v4.1.1 — Connector Push Foundation
+
+### Goal
+Allow a small local connector running at home to push Apex telemetry to Reef Keeper Cloud so the app can retrieve telemetry away from home.
+
+### Changed
+- `api/telemetry.js`
+  - Adds a Vercel API endpoint for telemetry POST/GET.
+  - Supports durable storage through Vercel KV / Upstash REST environment variables.
+  - Supports temporary server-memory fallback for quick testing when KV is not configured.
+  - Supports write/read token protection through environment variables.
+- `connector/apex-connector.mjs`
+  - Adds a Node 18+ local Apex connector.
+  - Reads local Apex `/rest/status`.
+  - Normalizes probes, outlets, alarms, and safe system details.
+  - Pushes telemetry to Reef Keeper Cloud.
+  - Supports username/password Basic auth or an Apex session cookie fallback.
+- `connector/README.md`
+  - Adds setup instructions for Vercel KV, Vercel tokens, and running the connector from a Mac/Raspberry Pi.
+- `apex-bridge.js`
+  - Adds Connector Push settings to the Telemetry Test card.
+  - Adds Fetch Cloud Telemetry support.
+  - Auto-fetches cloud telemetry when enabled.
+- `css/app.css`
+  - Adds styling for the Connector Push card.
+
+### Test Checklist
+- [ ] Deploy branch with `api/telemetry.js` and connector files.
+- [ ] Optional: configure Vercel KV and `REEF_TELEMETRY_WRITE_TOKEN`.
+- [ ] Run connector once with `node connector/apex-connector.mjs --once`.
+- [ ] More → Apex Integration → Fetch Cloud Telemetry.
+- [ ] Home Live Telemetry updates from cloud data.
+- [ ] Reef Timeline shows telemetry event.
+- [ ] Ask AI includes Apex telemetry context.
+- [ ] Dark mode remains readable.
+
+## v4.1.0 — Native Apex Driver
+
+### Goal
+Connect Reef Keeper to the native local Apex LAN REST status schema instead of relying only on generic bridge payloads.
+
+### Changed
+- `apex-connect.js`
+  - Updates Apex Integration to target the local Apex `/rest/status` endpoint.
+  - Changes Local mode into a native Apex LAN driver path with bridge fallback.
+  - `Fetch /rest/status` now imports a successful Apex response into Reef Keeper telemetry.
+  - Keeps Fusion mode safe: no Fusion password is requested or tested.
+- `apex-bridge.js`
+  - Upgrades telemetry normalization to v4.1.0.
+  - Adds a native Apex `/rest/status` parser for `system`, `nstat`, `inputs`, `outputs`, modules, outlets, alerts, and leak sensors.
+  - Normalizes Apex probe values: temperature, pH, ORP, and salinity/conductivity when present.
+  - Normalizes Apex outlet states such as `AON`, `AOF`, `ON`, and `OFF`.
+  - Adds an Apex sample payload matching the discovered AC6L schema.
+- `reef-brain.js`
+  - Updates wording from Apex bridge to Apex telemetry where appropriate.
+- `index.html`
+  - Updates Apex Integration labels and script versions for v4.1.0.
+- `css/app.css`
+  - Adds native Apex summary and outlet-preview styling.
+
+### Test Checklist
+- [ ] More → Apex Integration opens.
+- [ ] Fusion mode still saves and does not ask for Fusion password.
+- [ ] Local mode shows Native Apex LAN wording.
+- [ ] Enter `http://apex.local` or Apex IP and press Fetch `/rest/status`.
+- [ ] If browser fetch is blocked, paste the `/rest/status` JSON into Telemetry Test and import.
+- [ ] Probe tiles show Temp, pH, ORP, and salinity if present.
+- [ ] Outlet preview shows Apex outlet names and states.
+- [ ] Home Live Telemetry updates.
+- [ ] Reef Brain confidence/score still works.
+- [ ] Reef Timeline records telemetry.
+- [ ] Ask AI still works.
+- [ ] Dark mode remains readable.
+
 ## v4.0.5 — Live Reef Brain
 
 ### Goal

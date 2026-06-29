@@ -3734,3 +3734,65 @@ html.theme-dark .home-brain-explain,html.theme-dark .brain-factor,html.theme-dar
 html.theme-dark .brain-factor.good{background:rgba(82,183,136,.14);color:#9de0bd;}
 html.theme-dark .brain-factor.watch{background:rgba(255,183,3,.13);color:#ffd166;}
 @media(max-width:430px){.home-confidence-card{align-items:flex-start;flex-direction:column}.home-confidence-card small{text-align:left;max-width:100%;}}
+
+/* v4.1.0 Native Apex Driver */
+.apex-native-summary{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:10px 0 4px;
+}
+.apex-native-summary span{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid rgba(72,202,228,.35);
+  border-radius:999px;
+  padding:6px 10px;
+  background:rgba(255,255,255,.72);
+  color:var(--text-mid);
+  font-size:12px;
+  font-weight:900;
+}
+.apex-outlet-preview{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:10px 0 12px;
+}
+.apex-outlet-preview span{
+  border:1px solid rgba(72,202,228,.24);
+  border-radius:14px;
+  padding:8px 10px;
+  background:rgba(255,255,255,.66);
+  color:var(--text-mid);
+  font-size:12px;
+  font-weight:800;
+}
+.apex-outlet-preview b{
+  display:block;
+  color:var(--text-dark);
+  font-size:12px;
+  font-weight:900;
+  margin-bottom:2px;
+}
+html.theme-dark .apex-native-summary span,
+html.theme-dark .apex-outlet-preview span{
+  background:rgba(8,27,42,.86);
+  border-color:rgba(155,216,240,.22);
+}
+@media (max-width:420px){
+  .apex-outlet-preview{ grid-template-columns:1fr; }
+}
+
+/* v4.1.1 connector push */
+.apex-cloud-card{
+  margin-top:12px;
+  padding:14px;
+  border:1px solid rgba(0,180,216,.16);
+  border-radius:18px;
+  background:rgba(255,255,255,.58);
+  display:grid;
+  gap:10px;
+}
+.apex-cloud-card .apex-field{margin:0;}
+html.theme-dark .apex-cloud-card{background:rgba(8,27,42,.78);border-color:rgba(155,216,240,.20);}
