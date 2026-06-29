@@ -9,8 +9,14 @@
   const HISTORY_KEY = 'reef_apex_bridge_history_v1';
   const MAX_HISTORY = 180;
   const CLOUD_SETTINGS_KEY = 'reef_cloud_telemetry_settings_v1';
-  const DEFAULT_CLOUD_ENDPOINT = String(window.ReefKeeperTelemetryConfig?.endpoint || window.REEF_KEEPER_TELEMETRY_ENDPOINT || '/api/telemetry').trim() || '/api/telemetry';
-  const HAS_CONFIGURED_CLOUD_ENDPOINT = Boolean(String(window.ReefKeeperTelemetryConfig?.endpoint || window.REEF_KEEPER_TELEMETRY_ENDPOINT || '').trim());
+  const PRODUCTION_TELEMETRY_HOST = 'reefkeeper.vercel.app';
+  function automaticTelemetryEndpoint(){
+    const host = String(window.location?.hostname || '').toLowerCase();
+    if (host === PRODUCTION_TELEMETRY_HOST) return '/api/telemetry';
+    return `https://${PRODUCTION_TELEMETRY_HOST}/api/telemetry`;
+  }
+  const DEFAULT_CLOUD_ENDPOINT = automaticTelemetryEndpoint();
+  const HAS_CONFIGURED_CLOUD_ENDPOINT = true;
 
   function nowIso(){ return new Date().toISOString(); }
   function readJson(key, fallback){

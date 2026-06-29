@@ -1,37 +1,11 @@
-## v4.3.2 - Live Probes Mobile Layout Fix
+# Reef Keeper v4.3.4 — Auto Telemetry Hub
 
-- Fixed Live Probes cards collapsing into single-letter labels on mobile/tablet widths.
-- Raised the desktop breakpoint so the health card and probes do not squeeze side-by-side too early.
-- Increased probe card minimum widths and value spacing.
-
-# Reef Keeper v4.3.0 — Live Reef Dashboard
-
-## Added
-- Live controller-style tank health card powered by Apex telemetry.
-- Automatic outlet classification by Apex outlet name/type.
-- Live equipment dashboard grouped by Return, Filtration, Flow, Heating, Cooling, ATO, Reactors, Dosing, Lighting, Safety, Accessory, and Other.
-- Probe status interpretation for temperature, pH, ORP, and salinity.
-- Basic telemetry health scoring with age, alarm, probe, and critical-equipment checks.
-- Local controller event capture for outlet state changes and large temperature changes.
-
-## Improved
-- Home Live Telemetry now acts like a dashboard instead of a raw telemetry display.
-- Preview branches continue to read from the stable telemetry hub established in v4.2.x.
-- Equipment handling is no longer dependent on exact hardcoded outlet lists.
+## Fixed
+- Removed the need to maintain `telemetry-config.js` for each preview branch.
+- Production now reads telemetry from its own `/api/telemetry` endpoint.
+- Preview deployments and local testing automatically read telemetry from `https://reefkeeper.vercel.app/api/telemetry`.
+- Prevents stale preview URLs from breaking Live Telemetry.
 
 ## Notes
-- This release builds on v4.2.1 telemetry hardening.
-- Telemetry history and alert notifications are still planned for later releases.
-
-
-## v4.3.1 - Live Dashboard Layout + Apex AUTO State Fix
-
-- Fixed mobile Live Telemetry layout so the dashboard uses the full card width instead of narrow columns.
-- Fixed Apex `AUTO/ON` and `AUTO/OFF` state interpretation. `AUTO/ON` now counts as normal/on for expected-running equipment.
-- Treated heaters, fans, dosing pumps, accessories, and safety virtuals as allowed idle/off unless an alarm is active.
-- Improved probe and equipment chip wrapping for mobile screens.
-
-## v4.3.3 Live Probes Stack Fix
-- Fixed Live Probes overflow on mobile/tablet widths.
-- Kept the Tank Health and Live Probes sections stacked so probe cards cannot be squeezed into unreadable slivers.
-- Tightened dashboard containment to prevent horizontal scrolling.
+- Keep the Mac Apex connector pointed at `https://reefkeeper.vercel.app`.
+- `telemetry-config.js` is no longer required for this release.

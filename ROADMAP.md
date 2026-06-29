@@ -1,44 +1,10 @@
-## Next after v4.3.2
-
-- Continue refining the Live Equipment dashboard and add drill-down detail for outlet power/current.
-
 # Reef Keeper Roadmap
 
-## Completed
-- v4.2.0: Stable telemetry hub architecture.
-- v4.2.1: Telemetry hardening and connector/session reliability improvements.
-- v4.3.0: Live Reef Dashboard and automatic Apex outlet classification.
+## Current
+- v4.3.4 stabilizes the telemetry source selection so all preview branches read from the production telemetry hub automatically.
 
 ## Next
-
-### v4.3.1 — Live Equipment Detail
-- Tap equipment rows for details.
-- Show watts/amps when present.
-- Runtime and state history.
-- Equipment-specific AI explanations.
-
-### v4.4.0 — Telemetry History
-- Temperature, pH, and ORP trend charts.
-- Daily min/max summaries.
-- Parameter stability scoring.
-
-### v4.5.0 — Smart Alerts
-- Temperature excursions.
-- Leak alarms.
-- Critical outlet off detection.
-- Stale connector heartbeat alerts.
-
-### v4.6.0 — Reef Brain Live Context
-- Reef Brain explanations based on telemetry changes.
-- AI summaries of equipment and parameter behavior.
-- Automatic timeline insights.
-
-
-## Next after v4.3.1
-
-- Add equipment detail drill-down from live outlet cards.
-- Add durable telemetry history graphs after KV persistence is fully configured.
-- Add automatic timeline entries for Apex state changes and temperature swings.
-
-### v4.3.3
-- Stabilize Live Dashboard responsive layout before adding additional telemetry charts.
+- Live Equipment Dashboard refinements.
+- Telemetry history and trend charts.
+- Automatic timeline entries from Apex events.
+- Reef Brain live telemetry interpretation.
