@@ -1,42 +1,64 @@
-let latestApexStatus = null;
+const APEX_STATUS_KEY = "reefkeeper:apex:latest";
 
-function readBearerToken(req) {
-  const auth = req.headers.authorization || req.headers.Authorization || '';
-  if (!auth.startsWith('Bearer ')) return '';
-  return auth.slice('Bearer '.length).trim();
+async function kvSet(key, value) {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+
+  if (!url || !token) {
+    throw new Error("Missing KV_REST_API_URL or KV_REST_API_TOKEN");
+  }
+
+  const res = await fetch(`${url}/set/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(value),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`KV set failed ${res.status}: ${text}`);
+  }
+
+  return res.json();
 }
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  try {
+    if (req.method !== "POST") {
+      return res.status(405).json({ ok: false, error: "Method not allowed" });
+    }
+
+    const expectedSecret = process.env.REEF_CONNECTOR_SECRET;
+    const providedSecret = req.headers["x-reef-connector-secret"];
+
+    if (!expectedSecret || providedSecret !== expectedSecret) {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+
+    const payload = req.body || {};
+    const now = new Date().toISOString();
+
+    const record = {
+      ok: true,
+      received: now,
+      source: payload.source || "unknown",
+      apex: payload.apex || payload,
+    };
+
+    await kvSet(APEX_STATUS_KEY, record);
+
+    return res.status(200).json({
+      ok: true,
+      received: now,
+      source: record.source,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: error.message || String(error),
+    });
   }
-
-  const expectedSecret = process.env.REEF_CONNECTOR_SECRET;
-  if (!expectedSecret) {
-    return res.status(500).json({ error: 'Server missing REEF_CONNECTOR_SECRET' });
-  }
-
-  const token = readBearerToken(req);
-  if (token !== expectedSecret) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const payload = req.body || {};
-  const receivedAt = new Date().toISOString();
-
-  latestApexStatus = {
-    receivedAt,
-    connectorVersion: payload.connectorVersion || null,
-    piTimestamp: payload.piTimestamp || null,
-    apexSourceUrl: payload.apexSourceUrl || null,
-    probes: payload.probes || [],
-    inputs: payload.inputs || [],
-    outputs: payload.outputs || [],
-    raw: payload.raw || null,
-    rawText: payload.rawText || null
-  };
-
-  return res.status(200).json({ ok: true, receivedAt });
 }
-
-export { latestApexStatus };
