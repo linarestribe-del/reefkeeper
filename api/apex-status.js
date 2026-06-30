@@ -21,7 +21,19 @@ async function kvGet(key) {
   }
 
   const data = await res.json();
-  return data.result;
+  const result = data.result;
+
+  if (!result) return null;
+
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result);
+    } catch {
+      return result;
+    }
+  }
+
+  return result;
 }
 
 export default async function handler(req, res) {
