@@ -1,12 +1,33 @@
-import { Redis } from "@upstash/redis";
-
-const redis = Redis.fromEnv();
 const APEX_STATUS_KEY = "reefkeeper:apex:latest";
 
 function readBearerToken(req) {
   const auth = req.headers.authorization || req.headers.Authorization || "";
   if (!auth.startsWith("Bearer ")) return "";
   return auth.slice("Bearer ".length).trim();
+}
+
+async function kvSet(key, value) {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+
+  if (!url || !token) {
+    throw new Error("Missing KV_REST_API_URL or KV_REST_API_TOKEN");
+  }
+
+  const response = await fetch(`${url}/set/${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(value),
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`KV set failed ${response.status}: ${text}`);
+  }
 }
 
 export default async function handler(req, res) {
@@ -48,15 +69,14 @@ export default async function handler(req, res) {
       rawText: payload.rawText || null,
     };
 
-    await redis.set(APEX_STATUS_KEY, record);
+    await kvSet(APEX_STATUS_KEY, record);
 
     return res.status(200).json({
       ok: true,
-      receivedAt,
+      received: receivedAt,
       source: record.source,
     });
   } catch (error) {
-    console.error("apex-sync failed", error);
     return res.status(500).json({
       ok: false,
       error: error.message || String(error),
