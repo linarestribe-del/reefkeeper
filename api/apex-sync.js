@@ -1,5 +1,11 @@
 const APEX_STATUS_KEY = "reefkeeper:apex:latest";
 
+function readBearerToken(req) {
+  const auth = req.headers.authorization || req.headers.Authorization || "";
+  if (!auth.startsWith("Bearer ")) return "";
+  return auth.slice("Bearer ".length).trim();
+}
+
 async function kvSet(key, value) {
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
@@ -32,27 +38,44 @@ export default async function handler(req, res) {
     }
 
     const expectedSecret = process.env.REEF_CONNECTOR_SECRET;
-    const providedSecret = req.headers["x-reef-connector-secret"];
 
-    if (!expectedSecret || providedSecret !== expectedSecret) {
+    if (!expectedSecret) {
+      return res.status(500).json({
+        ok: false,
+        error: "Server missing REEF_CONNECTOR_SECRET",
+      });
+    }
+
+    const bearerToken = readBearerToken(req);
+    const headerToken = req.headers["x-reef-connector-secret"];
+    const providedSecret = bearerToken || headerToken || "";
+
+    if (providedSecret !== expectedSecret) {
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
     const payload = req.body || {};
-    const now = new Date().toISOString();
+    const receivedAt = new Date().toISOString();
 
     const record = {
       ok: true,
-      received: now,
-      source: payload.source || "unknown",
-      apex: payload.apex || payload,
+      receivedAt,
+      connectorVersion: payload.connectorVersion || null,
+      piTimestamp: payload.piTimestamp || null,
+      apexSourceUrl: payload.apexSourceUrl || null,
+      source: payload.apexSourceUrl || "unknown",
+      probes: payload.probes || [],
+      inputs: payload.inputs || [],
+      outputs: payload.outputs || [],
+      raw: payload.raw || null,
+      rawText: payload.rawText || null,
     };
 
     await kvSet(APEX_STATUS_KEY, record);
 
     return res.status(200).json({
       ok: true,
-      received: now,
+      receivedAt,
       source: record.source,
     });
   } catch (error) {
@@ -61,4 +84,5 @@ export default async function handler(req, res) {
       error: error.message || String(error),
     });
   }
+}
 }
