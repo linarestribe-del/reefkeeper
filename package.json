@@ -1,14 +1,14 @@
 {
-  "name": "reef-keeper",
-  "version": "1.0.0",
+  "name": "reefkeeper-pi-connector",
+  "version": "4.3.5",
   "private": true,
-  "type": "module",
+  "description": "Raspberry Pi Apex connector for Reef Keeper v4.3.5",
+  "main": "connector.js",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "vercel dev"
+    "start": "node connector.js",
+    "once": "RUN_ONCE=true node connector.js"
   },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {"@upstash/redis": "^1.35.3"}
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
 }
