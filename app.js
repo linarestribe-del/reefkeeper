@@ -1,27 +1,10 @@
-// Reef Keeper build marker: 20260619-refactor-v9
-window.REEF_KEEPER_BUILD = '20260626-v2.0.1-mytank-cleanup';
-// Early Safari/PWA-safe completed-history aliases. These are intentionally defined before the rest of the app.
-(function(){
-  window.getCompletedHistory = window.getCompletedHistory || function(){
-    try {
-      const raw = localStorage.getItem('reef_completed_history');
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch(e) { return []; }
-  };
-  window.setCompletedHistory = window.setCompletedHistory || function(entries){
-    try { localStorage.setItem('reef_completed_history', JSON.stringify(Array.isArray(entries) ? entries : [])); } catch(e) {}
-  };
-})();
-
 // ── Tank context fed to AI ──────────────────────────────────────────────
 const TANK_CONTEXT = `You are Reef Keeper, an expert AI reef tank assistant. You know everything about this specific tank:
 
 TANK: 120 gallon SCA display + 50 gallon Red Sea Reefer sump. Started December 24, 2023.
 EQUIPMENT: 2 Jerboa MDP Smart DC return pumps, 2 Hygger 802 titanium heaters, Bubble Magus filter roller, 240 DC Simplicity protein skimmer (outdoor air intake), 27W IceCap UV sterilizer, IceCap 120 GFO reactor (BIG Kahuna GFO, tumbling, ~3 weeks in), DIY two-stage reactor (GFO then ROX 0.8 carbon separated by foam), 4 A8se 11 Max lights, 2 MP40 powerheads + 1 Jebao DMP20, Useek smart ATO (10 gal reservoir), Neptune Apex controller, 5-stage RODI with booster pump, DIY kalk stirrer (not currently running), 55 gal Brute saltwater mixing can. User has cancelled the previous chaeto reactor plan and does not want chaeto reactor setup/reminder/plan tasks unless explicitly changed later.
 
-LIVESTOCK: 2 clownfish (breeding pair, hosting Duncan coral, laying eggs regularly), yellow corgi wrasse, melanurus wrasse, red head Solon wrasse, banggai cardinal, blue chromis, yellow tang, white tail bristle tooth tang, desjardini sailfin tang, orange banded goby, tiger pistol shrimp, Molly Miller blenny, 2 bubble tip anemones (stationary ~1 year, not hosted by clownfish), 2 Halloween hermit crabs, scarlet red leg hermits, Hawaiian blue leg hermits, sand sifting starfish (new, 1-2 months), serpent starfish, 2 fighting conchs, hammer corals and torch corals (lost/resolved — none currently alive), green candy cane coral status unconfirmed after heat/bacterial event, purple stylophora (lost), Ricordea mushrooms (stressed, below BTAs — allelopathy issue), Grube's gorgonia, Duncan coral status should be treated as unconfirmed unless the user confirms it survived the heat/bacterial event).
+LIVESTOCK: 2 clownfish (breeding pair, hosting Duncan coral, laying eggs regularly), yellow corgi wrasse, melanurus wrasse, red head Solon wrasse, banggai cardinal, blue chromis, yellow tang, white tail bristle tooth tang, desjardini sailfin tang, orange banded goby, tiger pistol shrimp, Molly Miller blenny, 2 bubble tip anemones (stationary ~1 year, not hosted by clownfish), 2 Halloween hermit crabs, scarlet red leg hermits, Hawaiian blue leg hermits, sand sifting starfish (new, 1-2 months), serpent starfish, 2 fighting conchs, hammer coral (2 surviving colonies), green candy cane coral, purple stylophora (lost), Ricordea mushrooms (stressed, below BTAs — allelopathy issue), Grube's gorgonia, Duncan coral (healthy, clownfish host).
 
 CURRENT PARAMETERS (latest readings):
 - Phosphate: 0.65 ppm (was 1.88 peak, dropping with GFO — target 0.05-0.10)
@@ -39,7 +22,7 @@ ISSUES:
 - 2 Australian Stripy fish were in sump and needed rehoming; if local memory says this was resolved, treat that newer memory as authoritative
 - Mushrooms stressed from BTA allelopathy (positioned below BTAs)
 - Hair algae mostly treated with Reef Flux, some remains
-- Lost SPS (stylophora) and all hammer/torch corals due to the heat/bacterial event plus prior phosphate/alk instability. Do not plan hammer or torch observation/care tasks unless the user adds new hammers/torches later.
+- Lost SPS (stylophora) and some hammer/torch coral due to high phosphate + alk swings
 - No coralline algae growing (phosphate inhibiting calcification)
 - Iodine elevated — likely from nori in homemade food, switching to Rod's Frozen Reef Frenzy
 
@@ -55,276 +38,6 @@ let currentConversationId = null;
 const API_URL = "/api/chat";
 const PLAN_API_URL = "/api/plan";
 const GENERAL_REEF_CONTEXT = `You are Reef Keeper, a practical reef aquarium assistant. Give safe, general reef husbandry advice. Do not assume Jorge's specific tank parameters, livestock, equipment, or schedule unless the user provides them in the message.`;
-
-// ── Central authoritative tank state ───────────────────────────────────────
-// This is the shared truth layer. Ask AI, Reminders, Days-Off Plan, Inventory,
-// Reports, and diagnostics should read these facts before using old templates.
-const REEF_TANK_STATE_KEY = 'reef_tank_state_v7';
-
-function reefStateNow() { return new Date().toISOString(); }
-
-function defaultReefTankState() {
-  return {
-    schemaVersion: 7,
-    updatedAt: reefStateNow(),
-    hardPreferences: {
-      chaetoReactorCancelled: true,
-      kalkHoldUntilCalciumBelow450AndAlkStable: true
-    },
-    completedProtocols: {
-      kfcRecovery: {
-        status: 'completed',
-        completedAt: '2026-06-19T12:00:00.000Z',
-        note: 'KFC/cipro/amoxicillin recovery protocol is complete. Do not generate recovery-dose or antibiotic-protocol tasks.'
-      }
-    },
-    activeProtocols: {},
-    resolvedIssues: {
-      australianStripyRehomed: {
-        status: 'resolved',
-        resolvedAt: '2026-05-13T12:00:00.000Z',
-        note: 'Australian Stripy fish were rehomed/resolved.'
-      },
-      hammersTorchesLost: {
-        status: 'resolved',
-        resolvedAt: '2026-06-19T12:00:00.000Z',
-        note: 'All hammer and torch corals were lost/resolved. Do not include hammer/torch observation, feeding, recovery, or care tasks unless new ones are added later.'
-      }
-    },
-    livestockStatus: {
-      'Australian Stripy fish': 'rehomed/resolved',
-      'hammer corals': 'lost/resolved',
-      'torch corals': 'lost/resolved',
-      'purple stylophora': 'lost/resolved'
-    },
-    activeCoralAndAnemones: [
-      'zoanthids/zoas',
-      'bubble tip anemones',
-      'Grube\'s gorgonia',
-      'mushrooms/Ricordea',
-      'Montipora satosa',
-      'green star polyps'
-    ],
-    planningRules: [
-      'Do not plan tasks around livestock marked lost/resolved, rehomed/resolved, or cancelled.',
-      'When a user says an issue is done, remove it from active planning rather than only hiding a task card.',
-      'Use completedProtocols and resolvedIssues before old templates or fixed profile text.',
-      'If a task conflicts with authoritative tank state, filter it out before display and before saving the plan.'
-    ],
-    facts: [
-      'KFC recovery protocol is complete.',
-      'Chaeto reactor plan is cancelled.',
-      'Australian Stripy fish are rehomed/resolved.',
-      'All hammer and torch corals are lost/resolved.'
-    ]
-  };
-}
-
-function mergeReefTankState(base, saved) {
-  const merged = { ...base, ...(saved || {}) };
-  ['hardPreferences','completedProtocols','activeProtocols','resolvedIssues','livestockStatus'].forEach(key => {
-    merged[key] = { ...(base[key] || {}), ...((saved && saved[key]) || {}) };
-  });
-  ['activeCoralAndAnemones','planningRules','facts'].forEach(key => {
-    const vals = [...(base[key] || []), ...((saved && saved[key]) || [])].map(v => String(v || '').trim()).filter(Boolean);
-    merged[key] = [...new Set(vals)];
-  });
-  merged.schemaVersion = 7;
-  merged.updatedAt = saved?.updatedAt || base.updatedAt;
-  return merged;
-}
-
-function getReefTankState() {
-  const base = defaultReefTankState();
-  try {
-    const raw = localStorage.getItem(REEF_TANK_STATE_KEY);
-    if (!raw) return base;
-    const saved = JSON.parse(raw);
-    return mergeReefTankState(base, saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {});
-  } catch(e) { return base; }
-}
-
-function setReefTankState(state) {
-  const merged = mergeReefTankState(defaultReefTankState(), state || {});
-  merged.updatedAt = reefStateNow();
-  try { localStorage.setItem(REEF_TANK_STATE_KEY, JSON.stringify(merged)); } catch(e) {}
-  return merged;
-}
-
-function updateReefTankState(mutator) {
-  const state = getReefTankState();
-  const next = typeof mutator === 'function' ? (mutator(state) || state) : { ...state, ...(mutator || {}) };
-  return setReefTankState(next);
-}
-
-function reefStateIsResolved(key) {
-  const issue = getReefTankState().resolvedIssues?.[key];
-  return Boolean(issue && (issue.status === 'resolved' || issue.resolvedAt));
-}
-
-function reefStateProtocolCompleted(key) {
-  const protocol = getReefTankState().completedProtocols?.[key];
-  return Boolean(protocol && protocol.status === 'completed');
-}
-
-function reefStateHardPreference(key) {
-  return Boolean(getReefTankState().hardPreferences?.[key]);
-}
-
-function getAuthoritativeTankStateMemoryLines() {
-  const state = getReefTankState();
-  const lines = [];
-  lines.push('AUTHORITATIVE TANK STATE: these facts override older fixed profile text, old AI plans, old inventory defaults, and hidden task lists.');
-  Object.entries(state.hardPreferences || {}).forEach(([key, val]) => { if (val) lines.push(`Hard preference: ${key} = true.`); });
-  Object.entries(state.completedProtocols || {}).forEach(([key, val]) => lines.push(`Completed protocol: ${key} — ${val.note || val.status || 'completed'}.`));
-  Object.entries(state.resolvedIssues || {}).forEach(([key, val]) => lines.push(`Resolved issue: ${key} — ${val.note || val.status || 'resolved'}.`));
-  Object.entries(state.livestockStatus || {}).forEach(([name, status]) => lines.push(`Livestock status: ${name} = ${status}.`));
-  if (Array.isArray(state.activeCoralAndAnemones) && state.activeCoralAndAnemones.length) {
-    lines.push(`Active coral/anemone list for planning: ${state.activeCoralAndAnemones.join(', ')}.`);
-  }
-  (state.planningRules || []).forEach(rule => lines.push(`Planning rule: ${rule}`));
-  return lines.map(line => compactMemoryLine(line, 420));
-}
-
-function syncReefTankStateToLegacyKeys() {
-  const state = getReefTankState();
-  if (state.resolvedIssues?.australianStripyRehomed) setResolvedIssue('australianStripyRehomed', state.resolvedIssues.australianStripyRehomed);
-  if (state.hardPreferences?.chaetoReactorCancelled) setResolvedIssue('chaetoReactorCancelled', { note: 'Chaeto reactor plan cancelled in authoritative tank state.' });
-  if (state.completedProtocols?.kfcRecovery) setResolvedIssue('kfcRecoveryCompleted', { note: state.completedProtocols.kfcRecovery.note || 'KFC recovery protocol completed.' });
-  if (state.resolvedIssues?.hammersTorchesLost) setResolvedIssue('hammersTorchesLost', state.resolvedIssues.hammersTorchesLost);
-}
-
-function recordAuthoritativeTankUpdate(label, note) {
-  try {
-    const actions = getActionEntries();
-    const duplicate = actions.some(a => a && a.title === label && String(a.notes || '').includes(note));
-    if (!duplicate) {
-      actions.unshift({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2),
-        title: label,
-        category: 'other',
-        notes: note,
-        date: new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
-        isoDate: reefStateNow()
-      });
-      setActionEntries(actions.slice(0, 80));
-    }
-  } catch(e) {}
-}
-
-function applyAuthoritativeStateSideEffects(options = {}) {
-  syncReefTankStateToLegacyKeys();
-  try {
-    const blockKey = getPlanBlockKey();
-    const plans = getAiDaysOffPlans();
-    let changed = false;
-    Object.keys(plans || {}).forEach(key => {
-      const normalized = normalizeDaysOffPlan(plans[key]);
-      if (normalized) plans[key] = normalized;
-      else delete plans[key];
-      changed = true;
-    });
-    if (changed) setAiDaysOffPlans(plans);
-
-    const states = getDaysOffPlanStates();
-    if (states && states[blockKey]) {
-      Object.keys(states[blockKey]).forEach(taskId => {
-        const meta = getPlanTaskMeta(taskId);
-        if (meta && shouldFilterResolvedPlanTask(`${meta.dayTitle} ${meta.task}`)) delete states[blockKey][taskId];
-      });
-      setDaysOffPlanStates(states);
-    }
-  } catch(e) {}
-  if (!options.silent) showToast('✅ Tank state synced across app');
-}
-
-function captureAuthoritativeTankStateFromText(text) {
-  const normalized = normalizeManagementText(text);
-  let captured = null;
-  const mentionsHammerTorch = /(hammer|hammers|torch|torches|euphyllia)/.test(normalized);
-  const lostWords = /(lost|gone|dead|died|removed|no more|none left|all gone|all lost)/.test(normalized);
-  if (mentionsHammerTorch && lostWords) {
-    updateReefTankState(state => {
-      state.resolvedIssues.hammersTorchesLost = { status:'resolved', resolvedAt:reefStateNow(), note:'User said all hammer and/or torch corals are lost/resolved.' };
-      state.livestockStatus['hammer corals'] = 'lost/resolved';
-      state.livestockStatus['torch corals'] = 'lost/resolved';
-      state.facts = [...new Set([...(state.facts || []), 'All hammer and torch corals are lost/resolved.'])];
-      return state;
-    });
-    applyHammersTorchesLostSideEffects({ silent:true });
-    recordAuthoritativeTankUpdate('Hammer/torch corals lost', 'Recorded as authoritative tank state; removed from active planning.');
-    captured = { key:'hammersTorchesLost', label:'Hammer/torch corals marked lost/resolved' };
-  }
-
-  const mentionsKfc = /(kfc|kung fu corals|cipro|ciprofloxacin|antibiotic|recovery protocol|recovery treatment)/.test(normalized);
-  const completedKfc = /(done|complete|completed|finished|ended|over|no more|final dose)/.test(normalized);
-  if (mentionsKfc && completedKfc) {
-    updateReefTankState(state => {
-      state.completedProtocols.kfcRecovery = { status:'completed', completedAt:reefStateNow(), note:'User said KFC/antibiotic recovery protocol is complete.' };
-      state.facts = [...new Set([...(state.facts || []), 'KFC recovery protocol is complete.'])];
-      return state;
-    });
-    applyKfcRecoveryCompletedSideEffects({ silent:true });
-    recordAuthoritativeTankUpdate('KFC recovery completed', 'Recorded as authoritative tank state; recovery-dose tasks removed from active planning.');
-    captured = captured || { key:'kfcRecoveryCompleted', label:'KFC recovery protocol marked completed' };
-  }
-
-  const mentionsChaeto = /(chaeto|cheato|cheeto|refugium|macroalgae|macro algae)/.test(normalized);
-  const cancelledChaeto = /(no longer|not going|cancel|cancelled|canceled|remove|removed|forget|dont|do not|won't|wont)/.test(normalized);
-  if (mentionsChaeto && cancelledChaeto) {
-    updateReefTankState(state => {
-      state.hardPreferences.chaetoReactorCancelled = true;
-      state.facts = [...new Set([...(state.facts || []), 'Chaeto reactor plan is cancelled.'])];
-      return state;
-    });
-    applyChaetoReactorCancelledSideEffects({ silent:true });
-    recordAuthoritativeTankUpdate('Chaeto reactor cancelled', 'Recorded as authoritative tank state; chaeto/refugium tasks removed from active planning.');
-    captured = captured || { key:'chaetoReactorCancelled', label:'Chaeto reactor plan marked cancelled' };
-  }
-
-  const mentionsAustralian = /(australian|australians|stripy|stripies|stripey)/.test(normalized);
-  const resolvedWords = /(found|got|have|has|new home|rehomed|rehoming complete|gone|removed|adopted|picked up|took them|took it)/.test(normalized);
-  const negated = /(need|still need|looking|find a new home|looking for|should i|can i|maybe|might)/.test(normalized);
-  if (mentionsAustralian && resolvedWords && !negated) {
-    updateReefTankState(state => {
-      state.resolvedIssues.australianStripyRehomed = { status:'resolved', resolvedAt:reefStateNow(), note:'User said Australian Stripy fish are rehomed/resolved.' };
-      state.livestockStatus['Australian Stripy fish'] = 'rehomed/resolved';
-      return state;
-    });
-    applyAustralianStripyResolvedSideEffects({ silent:true });
-    recordAuthoritativeTankUpdate('Australian Stripy rehomed', 'Recorded as authoritative tank state; rehoming/sump tasks removed from active planning.');
-    captured = captured || { key:'australianStripyRehomed', label:'Australian Stripy rehoming marked resolved' };
-  }
-
-  if (/lost all coral except|lost all corals except|all coral except/.test(normalized)) {
-    updateReefTankState(state => {
-      state.activeCoralAndAnemones = ['zoanthids/zoas','bubble tip anemones','Grube\'s gorgonia','mushrooms/Ricordea','Montipora satosa','green star polyps'];
-      state.livestockStatus['hammer corals'] = 'lost/resolved';
-      state.livestockStatus['torch corals'] = 'lost/resolved';
-      state.facts = [...new Set([...(state.facts || []), 'After the heat/bacterial event, active coral/anemone planning should focus only on confirmed survivors unless the user adds new livestock.'])];
-      return state;
-    });
-    recordAuthoritativeTankUpdate('Coral survivor list updated', 'Recorded user statement that most corals were lost; future planning should focus on confirmed survivors.');
-    captured = captured || { key:'coralSurvivorListUpdated', label:'Coral survivor list saved to tank state' };
-  }
-
-  if (captured) {
-    applyAuthoritativeStateSideEffects({ silent:true });
-    try { renderActionHistory(); renderReminderCenter(); renderDaysOffWorkPlan(); renderCompletedHistory(); } catch(e) {}
-  }
-  return captured;
-}
-
-function migrateReefTankStateV7() {
-  try {
-    const migrationKey = 'reef_migration_authoritative_state_v7';
-    if (localStorage.getItem(migrationKey) === 'done') return;
-    setReefTankState(getReefTankState());
-    applyAuthoritativeStateSideEffects({ silent:true });
-    localStorage.setItem(migrationKey, 'done');
-  } catch(e) {}
-}
-
 
 // ── Tank context preference ────────────────────────────────────────────────
 function getUseTankContext() {
@@ -556,42 +269,6 @@ function initModelMode() {
 }
 
 
-// ── Appearance / Night Reef theme ─────────────────────────────────────────
-function getThemeMode() {
-  try { return localStorage.getItem('reef_theme_mode') || 'system'; } catch(e) { return 'system'; }
-}
-
-function systemPrefersDark() {
-  try { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; } catch(e) { return false; }
-}
-
-function applyThemeMode(mode) {
-  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
-  const dark = selected === 'dark' || (selected === 'system' && systemPrefersDark());
-  document.documentElement.classList.toggle('theme-dark', dark);
-  document.documentElement.dataset.themeMode = selected;
-  const meta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
-  if (meta) meta.setAttribute('content', dark ? 'black-translucent' : 'default');
-  document.querySelectorAll('#theme-mode-select, .theme-mode-select').forEach(el => { el.value = selected; });
-}
-
-function setThemeMode(mode) {
-  const selected = ['light','dark','system'].includes(mode) ? mode : 'system';
-  try { localStorage.setItem('reef_theme_mode', selected); } catch(e) {}
-  applyThemeMode(selected);
-  try { showToast(selected === 'dark' ? '🌙 Night Reef mode on' : selected === 'light' ? '☀️ Light mode on' : '📱 Following system appearance'); } catch(e) {}
-}
-
-function initThemeMode() {
-  applyThemeMode(getThemeMode());
-  try {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => { if (getThemeMode() === 'system') applyThemeMode('system'); };
-    if (mq.addEventListener) mq.addEventListener('change', onChange);
-    else if (mq.addListener) mq.addListener(onChange);
-  } catch(e) {}
-}
-
 function scrollActivePageToTop(event) {
   if (event) {
     event.preventDefault?.();
@@ -637,8 +314,6 @@ function openLongTermTool(tool) {
   if (tool === 'inventory') { renderInventory(); renderLivestockGuide(); }
   if (tool === 'strategy') { renderGuardrails(); renderMaintenanceIntervals(); }
   if (tool === 'summary') { refreshLongTermSummary(); }
-  if (tool === 'tankhistory') { renderTankHistory(); }
-  if (tool === 'familytree') { renderCoralFamilyTree(); }
   setTimeout(() => scrollToolToTop(tool), 20);
 }
 
@@ -675,8 +350,8 @@ function inventoryTabGroup(item) {
   return 'invert';
 }
 
-function toggleLivestockCatalogCard(target) {
-  const card = (target && target.closest) ? target.closest('.livestock-guide-card') : document.getElementById(target);
+function toggleLivestockCatalogCard(id) {
+  const card = document.getElementById(id);
   if (!card) return;
   card.classList.toggle('expanded');
 }
@@ -697,15 +372,12 @@ function showPage(name, btn) {
   const content = document.querySelector('.app-content');
   if (content) content.scrollTop = 0;
   if (name === 'chat') autoRefreshQuickQuestionsOnChatOpen();
-  if (name === 'home') { renderTankStatus(); renderTankDashboard(); renderRecentChangesHome(); }
+  if (name === 'home') { renderTankStatus(); renderRecentChangesHome(); }
   if (name === 'log') renderLongTermTools();
-  if (name === 'settings') renderReefTargetSettings();
 }
 
 
-function openLivestockCatalog(tab = null) {
-  const allowed = ['fish', 'invert', 'coral'];
-  if (allowed.includes(tab)) currentLivestockCatalogTab = tab;
+function openLivestockCatalog() {
   renderLivestockCatalogModal();
   const overlay = document.getElementById('catalog-overlay');
   if (overlay) overlay.classList.add('visible');
@@ -721,24 +393,13 @@ function handleCatalogOverlayClick(event) {
 }
 
 // ── Backend AI call ─────────────────────────────────────────────────────────
-async function askOpenAI(userMsg, history, modelMode = getModelMode(), attachment = null) {
+async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
   const messages = history.length > 0
     ? [...history, { role: 'user', content: userMsg }]
     : [{ role: 'user', content: userMsg }];
 
   const useTankContext = getUseTankContext();
   const selectedSystem = useTankContext ? `${TANK_CONTEXT}${getLocalTankMemorySummary(userMsg)}` : GENERAL_REEF_CONTEXT;
-
-  const rawAttachments = Array.isArray(attachment) ? attachment : (attachment ? [attachment] : []);
-  const imageAttachments = rawAttachments
-    .filter(item => item && item.kind === 'image' && item.dataUrl)
-    .slice(0, MAX_AI_IMAGES)
-    .map(item => ({
-      kind: 'image',
-      name: item.name || 'reef photo',
-      type: item.type || 'image/jpeg',
-      dataUrl: item.dataUrl
-    }));
 
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -747,9 +408,7 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode(), attachmen
       system: selectedSystem,
       messages,
       modelMode,
-      useTankContext,
-      attachments: imageAttachments,
-      attachment: imageAttachments[0] || null
+      useTankContext
     })
   });
 
@@ -876,25 +535,13 @@ function autoRefreshQuickQuestionsOnChatOpen() {
 
 // ── File attachment state ───────────────────────────────────────────────────
 let attachedFileContext = null;
-let attachedImageContexts = [];
-const MAX_AI_IMAGES = 10;
-
-function getAttachmentSummaryText() {
-  const parts = [];
-  if (attachedImageContexts.length) {
-    parts.push(`${attachedImageContexts.length} photo${attachedImageContexts.length === 1 ? '' : 's'}`);
-  }
-  if (attachedFileContext) parts.push(attachedFileContext.name || 'document');
-  return parts.join(' + ');
-}
 
 function updateAttachmentStatus() {
   const box = document.getElementById('attachment-status');
   const label = document.getElementById('attachment-label');
   if (!box || !label) return;
-  const summary = getAttachmentSummaryText();
-  if (summary) {
-    label.textContent = `📎 Attached: ${summary}`;
+  if (attachedFileContext) {
+    label.textContent = `📎 ${attachedFileContext.name}`;
     box.classList.add('visible');
   } else {
     label.textContent = '📎 File attached';
@@ -904,11 +551,8 @@ function updateAttachmentStatus() {
 
 function clearAttachment() {
   attachedFileContext = null;
-  attachedImageContexts = [];
-  ['file-input', 'photo-library-input', 'camera-input'].forEach(id => {
-    const input = document.getElementById(id);
-    if (input) input.value = '';
-  });
+  const input = document.getElementById('file-input');
+  if (input) input.value = '';
   updateAttachmentStatus();
 }
 
@@ -1161,109 +805,6 @@ function appendSuggestedReminders(reminders) {
 }
 
 
-// ── Tank update proposal cards v10c ─────────────────────────────────────────────
-const pendingTankUpdateProposals = {};
-
-
-function normalizeAiAnswerPayload(answer) {
-  let text = String(answer || '').trim();
-  if (!text) return '';
-
-  // Sometimes the backend/OpenAI returns a JSON object as the answer string.
-  // Extract the nested answer so the chat bubble does not display raw JSON.
-  const tryParse = value => {
-    try { return JSON.parse(value); } catch(e) { return null; }
-  };
-
-  let parsed = tryParse(text);
-  if (!parsed) {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) parsed = tryParse(match[0]);
-  }
-  if (parsed && typeof parsed.answer === 'string') {
-    text = parsed.answer;
-  }
-
-  return text.replace(/\\n/g, '\n').replace(/\\t/g, '  ').trim();
-}
-
-function fallbackTankUpdateProposalFromText(text) {
-  const raw = String(text || '').trim();
-  const t = raw.toLowerCase().replace(/cheato|cheeto/g, 'chaeto');
-  const id = () => `fallback-proposal-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const base = (kind, label, summary, details) => ({
-    id: id(), kind, label, summary, updateText: raw,
-    scopes: details?.scopes || ['Tank Memory','Livestock','AI Context','Days-Off Plan'],
-    details: details || {}
-  });
-
-  const addedColon = raw.match(/(?:added|bought|got|picked up|introduced)[^:]{0,80}:\s*([^.!?]+)/i);
-  const addedTyped = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?(?:coral|fish|invert|invertebrate|anemone|livestock)\s+(?:called\s+|named\s+)?([^.!?,]+)/i);
-  const addedCommon = raw.match(/(?:added|bought|got|picked up|introduced)\s+(?:a\s+|an\s+|some\s+|new\s+)?([a-zA-Z0-9 '\-]+?)(?:\.|,|$)/i);
-  let addedName = (addedColon?.[1] || addedTyped?.[1] || addedCommon?.[1] || '').trim()
-    .replace(/^(?:new\s+)?(?:coral|fish|invert|invertebrate|anemone|livestock)[:\s-]*/i, '')
-    .replace(/^(?:called|named)\s+/i, '')
-    .trim();
-  if (addedName && addedName.length >= 3 && addedName.length <= 80 && !/water|salt|food|test kit|kit|reminder|task|plan/i.test(addedName)) {
-    return base('livestock_added_generic', `Add active livestock: ${addedName}`, `Save ${addedName} as active livestock so Ask AI and Days-Off Plan may consider it.`, { affected:[addedName], status:'active', activeInTank:true, allowPlanningTasks:true });
-  }
-
-  if (/(hammer|hammers|torch|torches|euphyllia)/.test(t) && /(lost|gone|dead|died|removed|no more|none left|all gone|all lost)/.test(t)) {
-    return base('livestock_lost_hammer_torch','Hammer/torch corals lost','Mark all hammer and torch corals as historical/lost and block future care or observation tasks unless you add new ones later.', { affected:['hammer corals','torch corals'], status:'historical', activeInTank:false, allowPlanningTasks:false });
-  }
-  if (/(kfc|kung fu|cipro|ciprofloxacin|amoxicillin|antibiotic|recovery protocol)/.test(t) && /(done|complete|completed|finished|ended|over|final dose)/.test(t)) {
-    return base('protocol_completed_kfc','KFC recovery complete','Mark the KFC/antibiotic recovery protocol complete and block future recovery-dose tasks.', { protocol:'kfcRecovery', scopes:['Tank Memory','AI Context','Days-Off Plan','Reminders'] });
-  }
-  if (/(chaeto|refugium|macroalgae|macro algae)/.test(t) && /(cancel|cancelled|canceled|no longer|not going|remove|removed|forget|dont|do not|wont|won t)/.test(t)) {
-    return base('preference_cancel_chaeto','Chaeto/refugium cancelled','Save a hard preference that chaeto/refugium/reactor startup tasks should not be planned.', { preference:'chaetoReactorCancelled', scopes:['Tank Memory','AI Context','Days-Off Plan','Reminders'] });
-  }
-  return null;
-}
-
-function appendTankUpdateProposalCard(proposal) {
-  if (!proposal || !proposal.id) return;
-  pendingTankUpdateProposals[proposal.id] = proposal;
-  const msgs = document.getElementById('chat-messages');
-  if (!msgs) return;
-  const div = document.createElement('div');
-  div.className = 'management-card tank-update-proposal-card';
-  const scopes = Array.isArray(proposal.scopes) ? proposal.scopes : [];
-  div.innerHTML = `
-    <div class="management-card-title">Save tank update?</div>
-    <div class="management-card-text"><strong>${escapeHtml(proposal.label || 'Tank update')}</strong><br>${escapeHtml(proposal.summary || 'Save this as authoritative tank memory?')}</div>
-    <div class="management-match-list">Applies to: ${escapeHtml(scopes.join(', ') || 'Tank Memory, AI Context, Days-Off Plan')}</div>
-    <div class="management-actions">
-      <button class="management-btn management-confirm-btn" type="button" onclick="saveTankUpdateProposal('${escapeHtml(proposal.id)}')">Save Update</button>
-      <button class="management-btn management-cancel-btn" type="button" onclick="dismissTankUpdateProposal('${escapeHtml(proposal.id)}')">Dismiss</button>
-    </div>`;
-  div.dataset.proposalId = proposal.id;
-  msgs.appendChild(div);
-  scrollChatToBottom();
-}
-
-function saveTankUpdateProposal(id) {
-  const proposal = pendingTankUpdateProposals[id];
-  if (!proposal) return;
-  let saved = false;
-  try { saved = window.ReefKeeperState?.applyProposal?.(proposal) || false; } catch(e) { console.warn('Could not save tank update proposal:', e); }
-  document.querySelectorAll(`[data-proposal-id="${CSS.escape(id)}"]`).forEach(card => card.remove());
-  delete pendingTankUpdateProposals[id];
-  if (saved) {
-    appendMsg('ai', `Saved — I updated Tank Memory for: ${proposal.label || 'tank update'}. Future AI advice, reminders, and days-off plans will use this.`);
-    try { showToast('✅ Tank update saved'); } catch(e) {}
-  } else {
-    appendMsg('ai', 'I could not save that tank update. Please try adding it from the Tank Memory card.');
-  }
-  scrollChatToBottom();
-}
-
-function dismissTankUpdateProposal(id) {
-  document.querySelectorAll(`[data-proposal-id="${CSS.escape(id)}"]`).forEach(card => card.remove());
-  delete pendingTankUpdateProposals[id];
-  try { showToast('Dismissed tank update'); } catch(e) {}
-}
-
-
 function normalizeManagementText(text) {
   return String(text || '')
     .toLowerCase()
@@ -1472,23 +1013,15 @@ async function sendChat(event) {
     return;
   }
 
-  let tankUpdateProposal = null;
-  try {
-    tankUpdateProposal = window.ReefKeeperState?.proposeFromText?.(text) || fallbackTankUpdateProposalFromText(text) || null;
-  } catch(e) {
-    console.warn('Tank update proposal detection failed:', e);
-  }
-
   let capturedUpdate = null;
   try {
-    // Known tank facts now prefer an approval card, so the user controls what is saved.
-    capturedUpdate = tankUpdateProposal ? null : autoCaptureTankUpdateFromChat(text);
+    capturedUpdate = autoCaptureTankUpdateFromChat(text);
   } catch(e) {
     console.warn('Tank update auto-capture failed:', e);
   }
 
   try {
-    appendMsg('user', getAttachmentSummaryText() ? `${text}\n\n📎 Attached: ${getAttachmentSummaryText()}` : text);
+    appendMsg('user', attachedFileContext ? `${text}\n\n📎 Attached: ${attachedFileContext.name}` : text);
     input.value = '';
     input.style.height = 'auto';
     scrollChatToBottom();
@@ -1503,24 +1036,9 @@ async function sendChat(event) {
     scrollChatToBottom();
   }
 
-  // Show the approval card immediately, before the AI response is requested.
-  if (tankUpdateProposal) {
-    appendTankUpdateProposalCard(tankUpdateProposal);
-  }
-
-  const attachmentForAI = [...attachedImageContexts];
-  const docAttachmentForAI = attachedFileContext;
-  if (docAttachmentForAI) attachmentForAI.push(docAttachmentForAI);
-  const textForAI = docAttachmentForAI
-    ? `${text}
-
-Attached file for context (${docAttachmentForAI.name}):
-
-${docAttachmentForAI.text || ''}`
-    : (attachedImageContexts.length ? `${text}
-
-${attachedImageContexts.length} reef photo${attachedImageContexts.length === 1 ? '' : 's'} attached for visual analysis.` : text);
-
+  const textForAI = attachedFileContext
+    ? `${text}\n\nAttached file for context (${attachedFileContext.name}):\n\n${attachedFileContext.text}`
+    : text;
 
   chatHistory.push({ role: 'user', content: textForAI });
   saveCurrentConversation();
@@ -1529,25 +1047,19 @@ ${attachedImageContexts.length} reef photo${attachedImageContexts.length === 1 ?
   scrollChatToBottom();
 
   try {
-    const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode(), attachmentForAI);
+    const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode());
     removeTyping();
-    result.answer = normalizeAiAnswerPayload(result.answer);
     appendMsg('ai', result.answer || 'I received your question, but the answer came back empty.');
-    // If the approval card was pushed off-screen by the AI reply or failed to render before typing,
-    // re-append it once after the AI reply. This keeps the user approval workflow visible.
-    if (tankUpdateProposal && !document.querySelector(`[data-proposal-id="${CSS.escape(tankUpdateProposal.id)}"]`)) {
-      appendTankUpdateProposalCard(tankUpdateProposal);
-    }
     appendSuggestedReminders(result.reminders);
     chatHistory.push({ role: 'assistant', content: result.answer || '' });
     if (chatHistory.length > 80) chatHistory = chatHistory.slice(-80);
     saveCurrentConversation();
-    if (attachedFileContext || attachedImageContexts.length) clearAttachment();
+    if (attachedFileContext) clearAttachment();
     scrollChatToBottom();
   } catch(e) {
     console.error('Ask AI failed:', e);
     removeTyping();
-    appendMsg('ai', `⚠️ Couldn't connect to AI. ${e && e.message ? e.message : 'Please check your connection and try again.'}`);
+    appendMsg('ai', '⚠️ Couldn\'t connect to AI. Please check your connection and try again.');
     scrollChatToBottom();
   }
 }
@@ -1579,7 +1091,6 @@ function saveLog() {
   renderTrendChart(currentTrendParam);
   updateHomeChips(entry);
   renderTankStatus();
-  renderSmartTankDashboard();
 
   ['log-po4','log-alk','log-ca','log-no3','log-ph','log-sal','log-mg'].forEach(id => {
     document.getElementById(id).value = '';
@@ -1905,17 +1416,6 @@ function setCompletedHistoryEntries(entries) {
   try { localStorage.setItem('reef_completed_history', JSON.stringify(entries)); } catch(e) {}
 }
 
-// Backwards-compatible alias used by diagnostics, planning, and completed-task filters.
-function getCompletedHistory() {
-  return getCompletedHistoryEntries();
-}
-window.getCompletedHistory = getCompletedHistory;
-
-function setCompletedHistory(entries) {
-  return setCompletedHistoryEntries(entries);
-}
-window.setCompletedHistory = setCompletedHistory;
-
 function completedHistoryIcon(type) {
   return type === 'days-off' ? '🧰' : '✅';
 }
@@ -2213,7 +1713,7 @@ const INVENTORY_GUIDE_DEFAULTS = {
   'inv-molly-miller-blenny': { scientificName:'Scartella cristata', naturalRange:'Tropical and subtropical Atlantic/Caribbean rocky reefs, tidepools, and algae-covered hard surfaces', facts:['Hardy algae-grazing blenny with lots of personality.', 'Often picks at film algae and small nuisance growth.', 'Can become territorial around favorite perches.'] },
   'inv-btas': { scientificName:'Entacmaea quadricolor', naturalRange:'Indo-Pacific reef habitats', facts:['Can move or split when stressed or thriving.', 'Capable of stinging nearby corals.', 'Stable placement for a long period is a good sign.'] },
   'inv-duncan': { scientificName:'Duncanopsammia axifuga', naturalRange:'Australia and Indo-Pacific turbid reef zones', facts:['Photosynthetic LPS coral that also accepts meaty foods.', 'Often tolerant and expressive, making it a useful “mood indicator.”', 'Clownfish hosting may irritate polyps but yours has remained healthy.'] },
-  'inv-hammers': { scientificName:'Fimbriaphyllia / Euphyllia spp. (historical/lost)', naturalRange:'Indo-Pacific reef slopes and lagoons', facts:['Historical record only: user reported all hammers and torches were lost.', 'Do not include active care or observation tasks unless new colonies are added.', 'Loss is useful context for judging when the system is ready for LPS again.'] },
+  'inv-hammers': { scientificName:'Fimbriaphyllia / Euphyllia spp. (verify)', naturalRange:'Indo-Pacific reef slopes and lagoons', facts:['LPS coral that prefers moderate flow and stable alkalinity.', 'Can sting neighbors with sweeper tentacles.', 'Recovery is often slow after nutrient or alkalinity swings.'] },
   'inv-candy': { scientificName:'Caulastrea furcata', naturalRange:'Indo-Pacific reef flats and lagoons', facts:['Hardy LPS coral with fleshy polyps.', 'Benefits from stable alkalinity and occasional feeding.', 'Good long-term indicator for tissue recession or nutrient stress.'] },
   'inv-ricordea': { scientificName:'Ricordea spp.', naturalRange:'Caribbean and Indo-Pacific reef rubble zones depending species', facts:['Mushroom corallimorph that dislikes direct stinging/chemical warfare.', 'Can shrink when irritated by anemones or changing conditions.', 'Often benefits from lower flow and space from aggressive neighbors.'] },
   'inv-gorgonia': { scientificName:'Pinnigorgia flava (verify)', naturalRange:'Aquacultured strain; related gorgonians occur in Indo-Pacific reefs', facts:['Hardy photosynthetic gorgonian often sold as Grube’s gorgonian.', 'Enjoys moderate to stronger flow.', 'Can grow quickly when conditions are stable.'] },
@@ -2247,7 +1747,7 @@ function defaultInventoryItems() {
     { id:'inv-molly-miller-blenny', name:'Molly Miller Blenny', type:'fish', status:'stable', location:'Display', notes:'' },
     { id:'inv-btas', name:'Bubble tip anemones', type:'anemone', status:'stable', location:'Display', notes:'Stationary about a year; near Ricordea/mushroom concern.' },
     { id:'inv-duncan', name:'Duncan coral', type:'coral', status:'healthy', location:'Display', notes:'Clownfish host; currently healthy.' },
-    { id:'inv-hammers', name:'Hammer / torch corals', type:'coral', status:'lost/resolved', location:'Historical', notes:'All hammers and torches were lost; keep only as history unless new colonies are added.' },
+    { id:'inv-hammers', name:'Hammer coral colonies', type:'coral', status:'recovering', location:'Display', notes:'Two surviving colonies after earlier instability.' },
     { id:'inv-candy', name:'Green candy cane coral', type:'coral', status:'stable', location:'Display', notes:'' },
     { id:'inv-ricordea', name:'Ricordea mushrooms', type:'coral', status:'stressed', location:'Below BTAs', notes:'Likely allelopathy/irritation concern from BTAs above.' },
     { id:'inv-gorgonia', name:"Grube's gorgonia", type:'coral', status:'stable', location:'Display', notes:'' },
@@ -2279,11 +1779,7 @@ function normalizeInventoryItem(item) {
     facts: Array.isArray(item.facts) ? item.facts : (item.facts ? String(item.facts).split('\n').map(x => x.trim()).filter(Boolean) : (defaults.facts || [])),
     photoData: item.photoData || '',
     photoKey: item.photoKey || '',
-    photoUpdatedAt: item.photoUpdatedAt || '',
-    photoAnalyses: Array.isArray(item.photoAnalyses) ? item.photoAnalyses : [],
-    parentColony: item.parentColony || item.parent || '',
-    fragDate: item.fragDate || item.acquiredDate || '',
-    lineageNotes: item.lineageNotes || ''
+    photoUpdatedAt: item.photoUpdatedAt || ''
   };
 }
 
@@ -2571,153 +2067,6 @@ async function handleInventoryPhotoSelect(event) {
   }
 }
 
-let pendingInventoryAnalysis = null;
-
-function getInventoryAnalysisHistory(itemId) {
-  if (!itemId) return [];
-  const item = getInventoryItems().find(i => String(i.id) === String(itemId));
-  return Array.isArray(item?.photoAnalyses) ? item.photoAnalyses.slice(0, 8) : [];
-}
-
-function currentInventoryFormItem() {
-  return {
-    id: document.getElementById('inventory-edit-id')?.value || '',
-    name: document.getElementById('inventory-name')?.value.trim() || '',
-    type: document.getElementById('inventory-type')?.value || currentInventoryTab || 'other',
-    status: document.getElementById('inventory-status')?.value || 'stable',
-    scientificName: document.getElementById('inventory-scientific')?.value.trim() || '',
-    location: document.getElementById('inventory-location')?.value.trim() || '',
-    parentColony: document.getElementById('inventory-parent')?.value.trim() || '',
-    fragDate: document.getElementById('inventory-frag-date')?.value.trim() || '',
-    notes: document.getElementById('inventory-notes')?.value.trim() || ''
-  };
-}
-
-function renderInventoryAnalysisResult(result, itemId = '') {
-  const panel = document.getElementById('inventory-photo-analysis-result');
-  if (!panel) return;
-  const list = value => Array.isArray(value) && value.length ? `<ul>${value.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : '<div class="photo-analysis-muted">None visible from this photo.</div>';
-  panel.innerHTML = `
-    <div class="photo-analysis-title">🔎 AI Photo Analysis</div>
-    <div class="photo-analysis-meta">Suggested ID: <strong>${escapeHtml(result.suggestedId || 'uncertain')}</strong> · Confidence: ${escapeHtml(result.confidence || 'low')} · Category: ${escapeHtml(result.category || 'other')} · Health: ${escapeHtml(result.healthStatus || 'uncertain')}</div>
-    <div class="photo-analysis-section"><strong>Visible signs</strong>${list(result.visibleSigns)}</div>
-    <div class="photo-analysis-section"><strong>Concerns</strong>${list(result.healthConcerns)}</div>
-    ${result.growthAssessment ? `<div class="photo-analysis-section"><strong>Growth / coral condition</strong><br>${escapeHtml(result.growthAssessment)}</div>` : ''}
-    ${result.estimatedGrowthPercent && result.estimatedGrowthPercent !== 'unknown' ? `<div class="photo-analysis-section"><strong>Estimated growth change</strong><br>${escapeHtml(result.estimatedGrowthPercent)}</div>` : ''}
-    ${result.bodyCondition && result.bodyCondition !== 'unknown' ? `<div class="photo-analysis-section"><strong>Body/extension condition</strong><br>${escapeHtml(result.bodyCondition)}</div>` : ''}
-    ${result.timelineComparison && result.timelineComparison !== 'insufficient history' ? `<div class="photo-analysis-section"><strong>Compared with prior photos</strong><br>${escapeHtml(result.timelineComparison)}</div>` : ''}
-    <div class="photo-analysis-section"><strong>Recommended actions</strong>${list(result.recommendedActions)}</div>
-    ${result.trackingNotes ? `<div class="photo-analysis-section"><strong>Timeline note</strong><br>${escapeHtml(result.trackingNotes)}</div>` : ''}
-    <div class="photo-analysis-section"><strong>Save suggestion:</strong> ${escapeHtml(result.saveSuggestion || 'growth progress photo')}</div>
-    <div class="photo-analysis-actions">
-      <button class="photo-analysis-save" type="button" onclick="saveInventoryAnalysisToTimeline()">Save to Timeline</button>
-      <button class="photo-analysis-fill" type="button" onclick="fillInventoryFormFromAnalysis()">Fill Form</button>
-      ${itemId ? `<button class="photo-analysis-fill" type="button" onclick="loadInventoryItemForEdit('${escapeHtml(itemId)}')">Edit Item</button>` : ''}
-    </div>`;
-  panel.classList.add('visible');
-  try { panel.scrollIntoView({ block:'nearest', behavior:'smooth' }); } catch(e) {}
-}
-
-async function analyzeInventoryPhoto(id = '', event = null) {
-  const file = event?.target?.files?.[0];
-  if (!file) return;
-  const panel = document.getElementById('inventory-photo-analysis-result');
-  if (panel) { panel.classList.add('visible'); panel.innerHTML = '<span class="spinner"></span> Analyzing livestock photo...'; }
-  try {
-    const dataUrl = await resizeInventoryImage(file);
-    const items = getInventoryItems();
-    const existing = id ? items.find(i => String(i.id) === String(id)) : null;
-    const item = existing || currentInventoryFormItem();
-    const response = await fetch('/api/photo-analysis', {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({
-        item,
-        image: { name:file.name || 'livestock photo', type:file.type || 'image/jpeg', dataUrl },
-        previousAnalyses: getInventoryAnalysisHistory(existing?.id || item.id),
-        tankSummary: typeof getLocalTankMemorySummary === 'function' ? getLocalTankMemorySummary('livestock photo analysis') : ''
-      })
-    });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || result.error) throw new Error(result.error || 'Photo analysis failed');
-    pendingInventoryAnalysis = { itemId: existing?.id || item.id || '', item, imageDataUrl:dataUrl, result, analyzedAt:new Date().toISOString() };
-    renderInventoryAnalysisResult(result, pendingInventoryAnalysis.itemId);
-    showToast('🔎 Photo analyzed');
-  } catch(e) {
-    console.error(e);
-    if (panel) panel.innerHTML = `⚠️ Could not analyze photo. ${escapeHtml(e.message || 'Try a clearer or smaller image.')}`;
-    showToast('⚠️ Photo analysis failed');
-  } finally {
-    if (event?.target) event.target.value = '';
-  }
-}
-
-function fillInventoryFormFromAnalysis() {
-  if (!pendingInventoryAnalysis?.result) { showToast('⚠️ Analyze a photo first'); return; }
-  const r = pendingInventoryAnalysis.result;
-  const set = (id, value) => { const el = document.getElementById(id); if (el && value) el.value = value; };
-  if (r.suggestedId && r.suggestedId !== 'uncertain') set('inventory-name', r.suggestedId);
-  if (r.category) set('inventory-type', r.category);
-  if (r.healthStatus && r.healthStatus !== 'uncertain') set('inventory-status', r.healthStatus);
-  const notes = [
-    r.trackingNotes ? `Photo analysis: ${r.trackingNotes}` : '',
-    r.growthAssessment ? `Growth/condition: ${r.growthAssessment}` : '',
-    Array.isArray(r.visibleSigns) && r.visibleSigns.length ? `Visible signs: ${r.visibleSigns.join('; ')}` : '',
-    Array.isArray(r.healthConcerns) && r.healthConcerns.length ? `Concerns: ${r.healthConcerns.join('; ')}` : ''
-  ].filter(Boolean).join('\n');
-  const notesEl = document.getElementById('inventory-notes');
-  if (notesEl && notes) notesEl.value = notesEl.value ? `${notesEl.value}\n${notes}` : notes;
-  pendingInventoryPhotoData = pendingInventoryAnalysis.imageDataUrl || pendingInventoryPhotoData;
-  const preview = document.getElementById('inventory-photo-preview');
-  if (preview && pendingInventoryPhotoData) {
-    preview.innerHTML = `<img src="${pendingInventoryPhotoData}" alt="Analyzed livestock photo"><div><strong>Analyzed photo ready.</strong><br><span style="font-size:12px;color:var(--text-mid);font-weight:700;">Review fields, then tap Save to Catalog.</span></div>`;
-    preview.classList.add('visible');
-  }
-  showToast('✨ Form filled from analysis — review before saving');
-}
-
-async function saveInventoryAnalysisToTimeline() {
-  if (!pendingInventoryAnalysis?.result) { showToast('⚠️ Analyze a photo first'); return; }
-  let items = getInventoryItems();
-  let itemId = pendingInventoryAnalysis.itemId;
-  let idx = itemId ? items.findIndex(i => String(i.id) === String(itemId)) : -1;
-  if (idx < 0) {
-    fillInventoryFormFromAnalysis();
-    showToast('Review the new entry, then tap Save to Catalog');
-    return;
-  }
-  try {
-    const imageKey = `inventory-analysis-${itemId}-${Date.now().toString(36)}`;
-    await saveInventoryPhotoData(imageKey, pendingInventoryAnalysis.imageDataUrl);
-    const entry = {
-      id: imageKey,
-      imageKey,
-      analyzedAt: pendingInventoryAnalysis.analyzedAt,
-      suggestedId: pendingInventoryAnalysis.result.suggestedId || '',
-      confidence: pendingInventoryAnalysis.result.confidence || 'low',
-      category: pendingInventoryAnalysis.result.category || items[idx].type || 'other',
-      healthStatus: pendingInventoryAnalysis.result.healthStatus || 'uncertain',
-      visibleSigns: pendingInventoryAnalysis.result.visibleSigns || [],
-      healthConcerns: pendingInventoryAnalysis.result.healthConcerns || [],
-      growthAssessment: pendingInventoryAnalysis.result.growthAssessment || '',
-      estimatedGrowthPercent: pendingInventoryAnalysis.result.estimatedGrowthPercent || 'unknown',
-      bodyCondition: pendingInventoryAnalysis.result.bodyCondition || 'unknown',
-      timelineComparison: pendingInventoryAnalysis.result.timelineComparison || 'insufficient history',
-      recommendedActions: pendingInventoryAnalysis.result.recommendedActions || [],
-      trackingNotes: pendingInventoryAnalysis.result.trackingNotes || '',
-      saveSuggestion: pendingInventoryAnalysis.result.saveSuggestion || 'growth progress photo'
-    };
-    const current = Array.isArray(items[idx].photoAnalyses) ? items[idx].photoAnalyses : [];
-    items[idx] = { ...items[idx], photoAnalyses:[entry, ...current].slice(0, 30), status: entry.healthStatus !== 'uncertain' ? entry.healthStatus : items[idx].status, updatedAt:new Date().toISOString() };
-    if (!setInventoryItems(items)) throw new Error('Could not save inventory timeline.');
-    renderInventory(); renderLivestockGuide(); renderLivestockCatalogModal();
-    showToast('📈 Photo saved to livestock timeline');
-  } catch(e) {
-    console.error(e);
-    showToast('⚠️ Could not save timeline entry');
-  }
-}
-
 async function uploadInventoryPhoto(id, event) {
   const file = event?.target?.files?.[0];
   if (!file) return;
@@ -2795,8 +2144,6 @@ async function saveInventoryItem() {
   const status = document.getElementById('inventory-status')?.value || 'stable';
   const location = document.getElementById('inventory-location')?.value.trim() || '';
   const naturalRange = document.getElementById('inventory-range')?.value.trim() || '';
-  const parentColony = document.getElementById('inventory-parent')?.value.trim() || '';
-  const fragDate = document.getElementById('inventory-frag-date')?.value.trim() || '';
   const scientificName = document.getElementById('inventory-scientific')?.value.trim() || '';
   const factsText = document.getElementById('inventory-facts')?.value.trim() || '';
   const facts = factsText ? factsText.split('\n').map(x => x.trim()).filter(Boolean) : [];
@@ -2866,7 +2213,7 @@ function clearInventoryForm() {
   // Make sure any late AI-fill response cannot repopulate the fields after save/clear.
   inventoryAiFillRequestId++;
   inventoryAiFillInProgress = false;
-  ['inventory-name','inventory-location','inventory-parent','inventory-frag-date','inventory-range','inventory-scientific','inventory-facts','inventory-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['inventory-name','inventory-location','inventory-range','inventory-scientific','inventory-facts','inventory-notes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   const type = document.getElementById('inventory-type'); if (type) type.value = 'fish';
   const status = document.getElementById('inventory-status'); if (status) status.value = 'stable';
   const file = document.getElementById('inventory-photo-file');
@@ -2898,8 +2245,6 @@ async function loadInventoryItemForEdit(id) {
   const map = {
     'inventory-name': item.name || '',
     'inventory-location': item.location || '',
-    'inventory-parent': item.parentColony || '',
-    'inventory-frag-date': item.fragDate || '',
     'inventory-range': item.naturalRange || '',
     'inventory-scientific': item.scientificName || '',
     'inventory-facts': (item.facts || []).join('\n'),
@@ -2966,19 +2311,14 @@ function renderInventory() {
       <div class="inventory-main">
         <div class="inventory-name">${escapeHtml(i.name)}</div>
         ${i.scientificName ? `<div class="inventory-species">${escapeHtml(i.scientificName)}</div>` : ''}
-        <div class="inventory-meta">${escapeHtml(i.type || 'other')} · ${escapeHtml(i.status || 'stable')}${i.location ? ` · ${escapeHtml(i.location)}` : ''}${i.parentColony ? ` · Parent: ${escapeHtml(i.parentColony)}` : ''}${factsCount ? ` · ${factsCount} facts` : ''}</div>
+        <div class="inventory-meta">${escapeHtml(i.type || 'other')} · ${escapeHtml(i.status || 'stable')}${i.location ? ` · ${escapeHtml(i.location)}` : ''}${factsCount ? ` · ${factsCount} facts` : ''}</div>
         ${i.notes ? `<div class="inventory-notes-text">${escapeHtml(i.notes)}</div>` : ''}
-        ${Array.isArray(i.photoAnalyses) && i.photoAnalyses.length ? `<div class="inventory-notes-text"><strong>Latest photo:</strong> ${escapeHtml(i.photoAnalyses[0].trackingNotes || i.photoAnalyses[0].growthAssessment || i.photoAnalyses[0].healthStatus || 'Analysis saved')}</div>` : ''}
         <div class="inventory-actions">
           <label class="inventory-small-btn" for="inv-photo-${escapeHtml(i.id)}">Upload photo</label>
           <input class="inventory-photo-input" id="inv-photo-${escapeHtml(i.id)}" type="file" accept="image/*" onchange="uploadInventoryPhoto('${escapeHtml(i.id)}', event)">
-          <label class="inventory-small-btn" for="inv-analyze-${escapeHtml(i.id)}">Analyze</label>
-          <input class="inventory-photo-input" id="inv-analyze-${escapeHtml(i.id)}" type="file" accept="image/*" capture="environment" onchange="analyzeInventoryPhoto('${escapeHtml(i.id)}', event)">
-          ${Array.isArray(i.photoAnalyses) && i.photoAnalyses.length ? `<button class="inventory-small-btn" onclick="toggleInventoryTimeline('${escapeHtml(i.id)}')">Timeline</button>` : ''}
           <button class="inventory-small-btn" onclick="loadInventoryItemForEdit('${escapeHtml(i.id)}')">Edit</button>
           ${inventoryPhotoKeyFor(i) ? `<button class="inventory-small-btn danger" onclick="removeInventoryPhoto('${escapeHtml(i.id)}')">Remove photo</button>` : ''}
         </div>
-        <div class="timeline-list" id="timeline-${escapeHtml(i.id)}" style="display:none;"></div>
       </div>
       <button class="reminder-delete-small" onclick="deleteInventoryItem('${escapeHtml(i.id)}')" aria-label="Delete inventory item">×</button>
     </div>`;
@@ -3033,7 +2373,7 @@ function getLivestockGuideHtml(filterGroup = 'all') {
     const facts = Array.isArray(i.facts) ? i.facts : [];
     const cardId = `catalog-card-${idx}-${String(i.id || i.name || 'item').replace(/[^a-z0-9_-]/gi, '-')}`;
     return `<article class="livestock-guide-card collapsed-card" id="${escapeHtml(cardId)}">
-      <button class="livestock-guide-card-head" type="button" onclick="toggleLivestockCatalogCard(this)" aria-label="Expand ${escapeHtml(i.name)} details">
+      <button class="livestock-guide-card-head" type="button" onclick="toggleLivestockCatalogCard('${escapeHtml(cardId)}')" aria-label="Expand ${escapeHtml(i.name)} details">
         ${livestockPhotoHtml(i)}
         <div class="livestock-guide-card-title-wrap">
           <div class="livestock-guide-name">${escapeHtml(i.name)}</div>
@@ -3045,8 +2385,6 @@ function getLivestockGuideHtml(filterGroup = 'all') {
         ${i.naturalRange ? `<div class="livestock-guide-range">Natural range: ${escapeHtml(i.naturalRange)}</div>` : ''}
         ${facts.length ? `<ul class="livestock-guide-facts">${facts.map(f => `<li>${escapeHtml(f)}</li>`).join('')}</ul>` : ''}
         ${i.notes ? `<div class="livestock-guide-notes"><strong>Your tank:</strong> ${escapeHtml(i.notes)}</div>` : ''}
-        ${Array.isArray(i.photoAnalyses) && i.photoAnalyses.length ? `<div class="timeline-chip-row"><span class="timeline-chip">${i.photoAnalyses.length} photo checks</span><span class="timeline-chip">Latest: ${escapeHtml(i.photoAnalyses[0].healthStatus || 'saved')}</span></div>` : ''}
-        ${i.parentColony || i.fragDate ? `<div class="livestock-guide-notes"><strong>Lineage:</strong> ${i.parentColony ? `Parent: ${escapeHtml(i.parentColony)}. ` : ''}${i.fragDate ? `Frag/acquired: ${escapeHtml(i.fragDate)}.` : ''}</div>` : ''}
       </div>
     </article>`;
   }).join('');
@@ -3078,128 +2416,6 @@ function printLivestockGuide() {
     document.querySelectorAll('.livestock-guide-card').forEach(card => card.classList.add('expanded'));
     window.print();
   }, 150);
-}
-
-
-function latestAnalysisForItem(item){
-  const list = Array.isArray(item?.photoAnalyses) ? item.photoAnalyses : [];
-  return list.length ? list[0] : null;
-}
-
-async function timelineEntryHtml(entry){
-  let img = '';
-  try { if (entry.imageKey) img = await getInventoryPhotoData(entry.imageKey); } catch(e) {}
-  const date = entry.analyzedAt ? memoryLineDate({ isoDate: entry.analyzedAt }) : 'Photo check';
-  const title = `${entry.healthStatus || 'photo'} · ${entry.confidence || 'saved'} confidence`;
-  const text = [entry.trackingNotes, entry.growthAssessment, entry.estimatedGrowthPercent && entry.estimatedGrowthPercent !== 'unknown' ? `Growth: ${entry.estimatedGrowthPercent}` : '', entry.bodyCondition && entry.bodyCondition !== 'unknown' ? `Condition: ${entry.bodyCondition}` : '', entry.timelineComparison && entry.timelineComparison !== 'insufficient history' ? `Comparison: ${entry.timelineComparison}` : '', Array.isArray(entry.healthConcerns) && entry.healthConcerns.length ? `Concerns: ${entry.healthConcerns.join('; ')}` : ''].filter(Boolean).join('\n');
-  return `<div class="timeline-entry"><div class="timeline-entry-photo">${img ? `<img src="${img}" alt="Timeline photo">` : '📷'}</div><div><div class="timeline-entry-title">${escapeHtml(title)}</div><div class="timeline-entry-meta">${escapeHtml(date)} · ${escapeHtml(entry.saveSuggestion || 'timeline')}</div><div class="timeline-entry-text">${escapeHtml(text || 'Analysis saved.')}</div></div></div>`;
-}
-
-async function toggleInventoryTimeline(id){
-  const el = document.getElementById(`timeline-${CSS.escape(id)}`) || document.getElementById(`timeline-${id}`);
-  const item = getInventoryItems().find(i => String(i.id) === String(id));
-  if (!el || !item) return;
-  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
-  const entries = Array.isArray(item.photoAnalyses) ? item.photoAnalyses : [];
-  el.innerHTML = entries.length ? (await Promise.all(entries.slice(0,10).map(timelineEntryHtml))).join('') : '<div class="empty-state">No timeline entries yet.</div>';
-  el.style.display = 'grid';
-}
-
-function tankDashboardScore(){
-  const latest = getLatestLogForStatus();
-  let score = 84;
-  if (!latest) return { score:70, level:'Needs logs' };
-  const penalties = { critical:18, warn:8 };
-  ['po4','alk','no3','ca','mg','ph','sal'].forEach(k => {
-    const c = classifyStatusValue(k, latest[k]);
-    if (penalties[c]) score -= penalties[c];
-  });
-  const watch = getInventoryItems().filter(i => ['watch','recovering','stressed'].includes(i.status)).length;
-  score -= Math.min(12, watch * 3);
-  score = Math.max(20, Math.min(99, score));
-  return { score, level: score >= 85 ? 'Strong' : score >= 70 ? 'Watch' : 'Recovery' };
-}
-
-function renderTankDashboard(){
-  const el = document.getElementById('tank-dashboard-content');
-  if (!el) return;
-  const latest = getLatestLogForStatus();
-  const brain = window.ReefKeeperBrain?.getSnapshot?.();
-  const score = Number.isFinite(brain?.score) ? brain.score : tankDashboardScore().score;
-  const statusLabel = brain?.status?.label || tankDashboardScore().level;
-  const inventory = getInventoryItems();
-  const watch = inventory.filter(i => ['watch','recovering','stressed'].includes(i.status));
-  const coralAnalyses = inventory.filter(i => Array.isArray(i.photoAnalyses) && i.photoAnalyses.length);
-  const photoLine = coralAnalyses.length ? `${coralAnalyses.length} livestock item${coralAnalyses.length===1?'':'s'} have AI photo timelines.` : 'No AI photo timelines saved yet.';
-  const trendLine = latest ? buildLogMemoryLine(latest).replace(/^[^:]+:\s*/, '') : 'No user parameter log yet.';
-  const watchLine = watch.length ? watch.slice(0,3).map(i => `${i.name} (${i.status})`).join(', ') : 'No livestock flagged as stressed/watch.';
-  const next = !latest ? 'Log parameters, then add a full-tank photo.' : watch.length ? 'Open Livestock Inventory and add/update photos for watch items.' : 'Add a monthly full-tank photo to build visual history.';
-  const reasonLines = [];
-  if (brain?.scoreExplanation?.positives?.length) brain.scoreExplanation.positives.slice(0, 3).forEach(item => reasonLines.push(`✓ ${item}`));
-  if (brain?.scoreExplanation?.penalties?.length) brain.scoreExplanation.penalties.slice(0, 3).forEach(item => reasonLines.push(`⚠ ${item.title}${item.detail ? ` — ${item.detail}` : ''}`));
-  if (!reasonLines.length && brain?.watching?.length) brain.watching.slice(0, 3).forEach(item => reasonLines.push(`${item.title}${item.detail ? ` — ${item.detail}` : ''}`));
-  if (!reasonLines.length && watch.length) reasonLines.push(`Livestock watch list: ${watchLine}`);
-  if (!reasonLines.length && latest) reasonLines.push(`Latest parameters: ${trendLine}`);
-  if (!reasonLines.length) reasonLines.push('Add recent tests, maintenance, and photo history to improve score confidence.');
-  const confidenceLine = brain?.confidence ? `${brain.confidence.score}% ${brain.confidence.label}${brain.confidence.missing?.length ? ` — needs ${brain.confidence.missing.slice(0,2).join(', ')}` : ''}` : 'Add more current data to improve confidence.';
-  el.innerHTML = `
-    <div class="tank-dashboard-list">
-      <div class="tank-dashboard-row"><strong>Score:</strong> ${escapeHtml(score)} / 100 · ${escapeHtml(statusLabel)}</div>
-      <div class="tank-dashboard-row"><strong>Confidence:</strong> ${escapeHtml(confidenceLine)}</div>
-      <div class="tank-dashboard-row"><strong>Latest:</strong> ${escapeHtml(trendLine)}</div>
-      <div class="tank-dashboard-row"><strong>Why:</strong> ${escapeHtml(reasonLines[0])}</div>
-      <div class="tank-dashboard-row"><strong>Next:</strong> ${escapeHtml(next)}</div>
-    </div>
-    <div class="tank-dashboard-actions"><button class="dashboard-btn" type="button" onclick="showWorkspace('vision')">Open Reef Timeline</button><button class="dashboard-btn secondary" type="button" onclick="openLongTermTool('tankhistory')">Add Full-Tank Photo</button></div>`;
-}
-
-const TANK_HISTORY_KEY = 'reef_tank_visual_history_v13';
-function getTankHistory(){ return memoryArray(TANK_HISTORY_KEY); }
-function setTankHistory(items){ try { localStorage.setItem(TANK_HISTORY_KEY, JSON.stringify((items||[]).slice(0,60))); return true; } catch(e){ return false; } }
-async function saveTankHistoryPhoto(event){
-  const file = event?.target?.files?.[0];
-  if (!file) return;
-  try {
-    const dataUrl = await resizeInventoryImage(file, 1280);
-    const id = 'tank-photo-' + Date.now().toString(36);
-    const key = 'tank-history-' + id;
-    await saveInventoryPhotoData(key, dataUrl);
-    const title = document.getElementById('tank-history-title')?.value.trim() || 'Full-tank photo';
-    const notes = document.getElementById('tank-history-notes')?.value.trim() || '';
-    const items = getTankHistory();
-    items.unshift({ id, imageKey:key, title, notes, createdAt:new Date().toISOString() });
-    if (!setTankHistory(items)) throw new Error('Could not save visual history.');
-    const t = document.getElementById('tank-history-title'); if (t) t.value = '';
-    const n = document.getElementById('tank-history-notes'); if (n) n.value = '';
-    renderTankHistory(); renderTankDashboard(); showToast('📷 Full-tank photo saved');
-  } catch(e){ console.error(e); showToast('⚠️ Could not save tank photo'); }
-  finally { if (event?.target) event.target.value = ''; }
-}
-async function renderTankHistory(){
-  const el = document.getElementById('tank-history-list');
-  if (!el) return;
-  const items = getTankHistory();
-  if (!items.length) { el.innerHTML = '<div class="empty-state"><div class="empty-emoji">📷</div>No full-tank photos saved yet.</div>'; return; }
-  const html = [];
-  for (const item of items) {
-    let img = ''; try { img = await getInventoryPhotoData(item.imageKey); } catch(e) {}
-    html.push(`<div class="timeline-entry"><div class="timeline-entry-photo">${img ? `<img src="${img}" alt="${escapeHtml(item.title)}">` : '📷'}</div><div><div class="timeline-entry-title">${escapeHtml(item.title)}</div><div class="timeline-entry-meta">${escapeHtml(memoryLineDate({ isoDate:item.createdAt }))} · visual tank history</div><div class="timeline-entry-text">${escapeHtml(item.notes || 'Full-tank reference photo saved.')}</div></div></div>`);
-  }
-  el.innerHTML = html.join('');
-}
-function renderCoralFamilyTree(){
-  const el = document.getElementById('coral-family-tree-list');
-  if (!el) return;
-  const corals = getInventoryItems().filter(i => ['coral','anemone'].includes(String(i.type||'').toLowerCase()) && (i.status || '') !== 'lost/resolved');
-  const withLineage = corals.filter(i => i.parentColony || i.fragDate || i.lineageNotes);
-  if (!withLineage.length) { el.innerHTML = '<div class="empty-state"><div class="empty-emoji">🪸</div>No coral lineage entries yet. Add parent colony or frag date in the inventory form.</div>'; return; }
-  const groups = new Map();
-  withLineage.forEach(i => {
-    const parent = i.parentColony || 'Unassigned parent';
-    if (!groups.has(parent)) groups.set(parent, []);
-    groups.get(parent).push(i);
-  });
-  el.innerHTML = Array.from(groups.entries()).map(([parent, children]) => `<div class="family-tree-card"><div class="family-tree-title">${escapeHtml(parent)}</div><div class="family-tree-meta">${children.length} related coral${children.length===1?'':'s'}</div><div class="family-tree-children">${children.map(c => `<div class="family-tree-child">↳ ${escapeHtml(c.name)}${c.fragDate ? ` · ${escapeHtml(c.fragDate)}` : ''}${c.status ? ` · ${escapeHtml(c.status)}` : ''}</div>`).join('')}</div></div>`).join('');
 }
 
 function defaultGuardrails() {
@@ -3380,7 +2596,7 @@ function renderLongTermTools() {
 
 
 // ── Backup / restore ───────────────────────────────────────────────────────
-const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base', 'reef_personalized_targets_v15'];
+const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base'];
 
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
@@ -3664,7 +2880,6 @@ function chooseBalancedDayForTask(task, schedule, loads) {
 }
 
 function autoScheduleActiveTasks(options = {}) {
-  pruneCompletedScheduledTasks();
   const schedule = getTaskSchedule();
   const tasks = getAllActiveReefTasksForPlanning();
   const loads = {1:0,2:0,3:0,4:0,5:0,6:0,7:0};
@@ -3709,62 +2924,6 @@ function buildTaskScheduleControl(taskKey) {
   </div>`;
 }
 
-
-function normalizeTaskCompletionText(text) {
-  return String(text || '')
-    .toLowerCase()
-    .replace(/[\u{1F300}-\u{1FAFF}]/gu, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\b(from reef tasks|scheduled reef tasks|days off work plan|built in reminder|ai reminder)\b/g, ' ')
-    .trim();
-}
-
-function isTaskTextCompletedRecently(title, detail, options = {}) {
-  const needle = normalizeTaskCompletionText(`${title || ''} ${detail || ''}`);
-  const titleOnly = normalizeTaskCompletionText(title || '');
-  if (!needle && !titleOnly) return false;
-  const now = Date.now();
-  const maxAgeDays = options.maxAgeDays || 21;
-  const blockKey = options.blockKey || '';
-  return getCompletedHistory().some(entry => {
-    if (!entry) return false;
-    if (blockKey && entry.blockKey && entry.blockKey !== blockKey) return false;
-    const when = new Date(entry.completedAt || entry.date || 0).getTime();
-    if (Number.isFinite(when) && when && (now - when) > maxAgeDays * 86400000) return false;
-    const haystack = normalizeTaskCompletionText(`${entry.title || ''} ${entry.notes || ''}`);
-    if (!haystack) return false;
-    if (needle && haystack.includes(needle)) return true;
-    if (titleOnly && haystack.includes(titleOnly)) return true;
-    return false;
-  });
-}
-
-function isScheduledTaskDoneOrWaiting(task) {
-  if (!task) return true;
-  if (task.completed) return true;
-  return isTaskTextCompletedRecently(task.title, task.detail, { maxAgeDays: 21 });
-}
-
-function isPlanTaskTextAlreadyCompleted(blockKey, taskText) {
-  // Do not hide AI plan tasks just because a similar task was completed in older history.
-  // Only explicit checkbox state for this current block should hide a plan task.
-  return false;
-}
-
-function pruneCompletedScheduledTasks() {
-  const schedule = getTaskSchedule();
-  let changed = false;
-  Object.keys(schedule).forEach(taskKey => {
-    const task = getTaskRecordByKey(taskKey);
-    if (!task || isScheduledTaskDoneOrWaiting(task)) {
-      delete schedule[taskKey];
-      changed = true;
-    }
-  });
-  if (changed) setTaskSchedule(schedule);
-  return changed;
-}
-
 function getTaskRecordByKey(taskKey) {
   const [kind, ...rest] = String(taskKey || '').split(':');
   const id = rest.join(':');
@@ -3798,7 +2957,7 @@ function getScheduledTasksForDay(dayNum) {
   return Object.entries(schedule)
     .filter(([, day]) => Number(day) === Number(dayNum))
     .map(([taskKey]) => getTaskRecordByKey(taskKey))
-    .filter(task => task && !isScheduledTaskDoneOrWaiting(task));
+    .filter(task => task && !task.completed);
 }
 
 function toggleScheduledTask(taskKey) {
@@ -4090,7 +3249,7 @@ function setResolvedIssue(key, value) {
 
 function isAustralianStripyResolved() {
   const issue = getResolvedIssues().australianStripyRehomed;
-  return reefStateIsResolved('australianStripyRehomed') || Boolean(issue && issue.resolvedAt);
+  return Boolean(issue && issue.resolvedAt);
 }
 
 function isAustralianStripyText(text) {
@@ -4099,53 +3258,17 @@ function isAustralianStripyText(text) {
 
 function isChaetoReactorCancelled() {
   const issue = getResolvedIssues().chaetoReactorCancelled;
-  return reefStateHardPreference('chaetoReactorCancelled') || Boolean(issue && issue.resolvedAt);
+  return Boolean(issue && issue.resolvedAt);
 }
 
 function isChaetoText(text) {
   return /chaeto|cheato|cheeto|refugium|macroalgae|macro algae/i.test(String(text || ''));
 }
 
-function isKfcRecoveryCompleted() {
-  const issue = getResolvedIssues().kfcRecoveryCompleted;
-  return reefStateProtocolCompleted('kfcRecovery') || Boolean(issue && issue.resolvedAt);
-}
-
-function isKfcRecoveryText(text) {
-  const value = String(text || '').toLowerCase();
-  return /\bkfc\b|kung fu corals|cipro|ciprofloxacin|amoxicillin|antibiotic|microbacter|reef snow|recovery dose|final recovery dose|recovery check|day [0-9] recovery|retry skimmer cup|skimmer cup after|restart skimmer|turn skimmer back|uv back on|carbon after treatment|post[- ]?treatment/.test(value);
-}
-
-function isHammerTorchLost() {
-  const issue = getResolvedIssues().hammersTorchesLost;
-  return reefStateIsResolved('hammersTorchesLost') || Boolean(issue && issue.resolvedAt);
-}
-
-function isHammerTorchText(text) {
-  const value = String(text || '').toLowerCase();
-  return /hammer|hammers|torch|torches|euphyllia|fimbriaphyllia/.test(value);
-}
-
-function isHammerTorchCareTask(text) {
-  const value = String(text || '').toLowerCase();
-  return isHammerTorchText(value) && /observe|inspect|check|monitor|feed|target[- ]?feed|dip|move|place|placement|care|reaction|polyps|extension|recovery|recovering|irritation/.test(value);
-}
-
 function shouldFilterResolvedPlanTask(text) {
   const value = String(text || '');
-  const lower = value.toLowerCase();
   if (isAustralianStripyResolved() && isAustralianStripyText(value) && /rehome|rehoming|feed|feeding|coverage|sump|australian|stripy/i.test(value)) return true;
   if (isChaetoReactorCancelled() && isChaetoText(value) && /start|inspect|harvest|reactor|chaeto|cheato|cheeto|refugium|macro/i.test(value)) return true;
-  if (isKfcRecoveryCompleted() && isKfcRecoveryText(value)) return true;
-  if (isHammerTorchLost() && isHammerTorchText(value)) return true;
-  const state = getReefTankState();
-  const statuses = state.livestockStatus || {};
-  for (const [name, status] of Object.entries(statuses)) {
-    const statusText = String(status || '').toLowerCase();
-    if (!/(lost|resolved|rehomed|cancelled|canceled)/.test(statusText)) continue;
-    const words = String(name || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3);
-    if (words.length && words.some(w => lower.includes(w))) return true;
-  }
   return false;
 }
 
@@ -4160,10 +3283,6 @@ function getResolvedIssueMemoryLines() {
     const when = memoryLineDate({ isoDate: issues.chaetoReactorCancelled.resolvedAt });
     lines.push(`Chaeto reactor plan CANCELLED on ${when}: user said they are no longer going to add a chaeto reactor. Do not include chaeto reactor startup, harvest, refugium, or macroalgae tasks unless the user explicitly reverses this.`);
   }
-  if (issues.hammersTorchesLost) {
-    const when = memoryLineDate({ isoDate: issues.hammersTorchesLost.resolvedAt });
-    lines.push(`Hammer and torch corals LOST/RESOLVED on ${when}: user reported all hammers and torches were lost. Do not include hammer/torch observation, feeding, recovery, or care tasks unless the user explicitly adds new hammer or torch corals later.`);
-  }
   return lines;
 }
 
@@ -4177,8 +3296,7 @@ function defaultTankKnowledgeItems() {
     { id:'kb-chaeto-cancelled', category:'Equipment', title:'Chaeto reactor plan cancelled', note:'User is no longer going to add a chaeto/cheato reactor. Do not suggest setup, harvest, refugium, or macroalgae tasks unless the user explicitly reverses this.', createdAt:'2026-05-22T12:00:00.000Z', locked:true },
     { id:'kb-kalk-hold', category:'Dosing', title:'Hold kalk dosing', note:'Do not dose kalk until calcium is below 450 mg/L and alkalinity has been stable for at least 3 weeks.', createdAt:'2026-05-13T12:00:00.000Z', locked:true },
     { id:'kb-stability-first', category:'Strategy', title:'Stability before aggressive changes', note:'Favor stable trends over chasing single readings. Avoid stacking water changes, media changes, pest treatments, and dosing changes on the same day.', createdAt:'2026-05-13T12:00:00.000Z', locked:true },
-    { id:'kb-sps-wait', category:'Coral', title:'Wait on SPS additions', note:'Avoid adding SPS until phosphate and alkalinity trends have been stable for several weeks.', createdAt:'2026-05-13T12:00:00.000Z', locked:true },
-    { id:'kb-hammers-torches-lost', category:'Coral', title:'Hammers and torches lost', note:'User reported all hammer and torch corals were lost. Do not include hammer/torch observation, feeding, recovery, or care tasks unless the user adds new hammer or torch corals later.', createdAt:'2026-06-19T12:00:00.000Z', locked:true }
+    { id:'kb-sps-wait', category:'Coral', title:'Wait on SPS additions', note:'Avoid adding SPS until phosphate and alkalinity trends have been stable for several weeks.', createdAt:'2026-05-13T12:00:00.000Z', locked:true }
   ];
 }
 
@@ -4357,147 +3475,7 @@ function applyChaetoReactorCancelledSideEffects() {
   initStaticReminderChecks();
 }
 
-
-function applyKfcRecoveryCompletedSideEffects(options = {}) {
-  setResolvedIssue('kfcRecoveryCompleted', { note: 'User reported the KFC / antibiotic recovery protocol is done.' });
-
-  const schedule = getTaskSchedule();
-  Object.keys(schedule).forEach(key => {
-    const task = getTaskRecordByKey(key);
-    if (task && isKfcRecoveryText(`${task.title} ${task.detail || ''}`)) delete schedule[key];
-  });
-  setTaskSchedule(schedule);
-
-  const saved = normalizeSavedReminderRecurrences().filter(r => !isKfcRecoveryText(`${r.title} ${r.notes || ''} ${r.when || ''} ${r.repeat || ''}`));
-  setSavedReminders(saved);
-
-  // Do not hide plan tasks by dN-tN ID here. Those IDs are reused by every new AI plan,
-  // which can accidentally hide unrelated future tasks. KFC text is filtered by
-  // shouldFilterResolvedPlanTask() when plans are normalized/rendered.
-
-  const blockKey = getPlanBlockKey();
-  const states = getDaysOffPlanStates();
-  if (states[blockKey]) {
-    // Clear accidental/current-block plan checkmarks. KFC tasks are hidden separately above.
-    delete states[blockKey];
-    setDaysOffPlanStates(states);
-  }
-
-  const history = getCompletedHistoryEntries().filter(h => !isKfcRecoveryText(`${h.title || ''} ${h.notes || ''}`));
-  setCompletedHistoryEntries(history);
-
-  const actions = getActionEntries();
-  const alreadyLogged = actions.some(a => isKfcRecoveryText(`${a.title} ${a.notes}`) && /done|complete|completed|finished|ended/i.test(`${a.title} ${a.notes}`));
-  if (!alreadyLogged) {
-    actions.unshift({
-      id: 'action-' + Date.now(),
-      date: new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
-      isoDate: new Date().toISOString(),
-      category: 'Treatment',
-      title: 'KFC recovery protocol completed',
-      notes: 'Recorded from user direction: KFC / antibiotic recovery is done, so recovery dosing/check/skimmer-retry tasks should be removed from active plans.'
-    });
-    try { localStorage.setItem('reef_actions', JSON.stringify(actions.slice(0, 80))); } catch(e) {}
-  }
-
-  if (!options.silent) showToast('✅ KFC recovery tasks cleared and current plan checkmarks reset');
-  renderActionHistory();
-  renderReminderCenter();
-  renderDaysOffWorkPlan();
-  renderCompletedHistory();
-  initStaticReminderChecks();
-}
-
-
-function applyHammersTorchesLostSideEffects(options = {}) {
-  setResolvedIssue('hammersTorchesLost', { note: 'User reported all hammer and torch corals were lost.' });
-
-  const schedule = getTaskSchedule();
-  Object.keys(schedule).forEach(key => {
-    const task = getTaskRecordByKey(key);
-    if (task && isHammerTorchCareTask(`${task.title} ${task.detail || ''}`)) delete schedule[key];
-  });
-  setTaskSchedule(schedule);
-
-  const saved = normalizeSavedReminderRecurrences().filter(r => !isHammerTorchCareTask(`${r.title} ${r.notes || ''} ${r.when || ''} ${r.repeat || ''}`));
-  setSavedReminders(saved);
-
-  const actions = getActionEntries();
-  const alreadyLogged = actions.some(a => isHammerTorchText(`${a.title} ${a.notes}`) && /lost|gone|dead|removed|resolved/i.test(`${a.title} ${a.notes}`));
-  if (!alreadyLogged) {
-    actions.unshift({
-      id: 'action-' + Date.now(),
-      date: new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
-      isoDate: new Date().toISOString(),
-      category: 'Coral',
-      title: 'Hammer and torch corals lost',
-      notes: 'Recorded from user direction: all hammers and torches are lost/resolved, so future plans should not include hammer/torch observation or care tasks.'
-    });
-    try { localStorage.setItem('reef_actions', JSON.stringify(actions.slice(0, 80))); } catch(e) {}
-  }
-
-  // Re-normalize saved AI plan so any hammer/torch care task disappears immediately.
-  const blockKey = getPlanBlockKey();
-  const plans = getAiDaysOffPlans();
-  if (plans[blockKey]) {
-    const normalized = normalizeDaysOffPlan(plans[blockKey]);
-    if (normalized) plans[blockKey] = normalized;
-    else delete plans[blockKey];
-    setAiDaysOffPlans(plans);
-  }
-
-  if (!options.silent) showToast('✅ Hammer/torch tasks cleared from future planning');
-  renderActionHistory();
-  renderReminderCenter();
-  renderDaysOffWorkPlan();
-  renderCompletedHistory();
-  initStaticReminderChecks();
-}
-
-function autoApplyKnownCompletedTreatments() {
-  // This build was made after the user confirmed the KFC recovery protocol is done.
-  // Run once per browser/PWA storage area so Safari and the installed app both repair their own local history.
-  try {
-    const migrationKey = 'reef_migration_kfc_completed_fixed4';
-    if (localStorage.getItem(migrationKey) === 'done') return;
-    applyKfcRecoveryCompletedSideEffects({ silent: true });
-    localStorage.setItem(migrationKey, 'done');
-  } catch(e) {}
-
-  try {
-    const hammerMigrationKey = 'reef_migration_hammers_torches_lost_fixed6';
-    if (localStorage.getItem(hammerMigrationKey) !== 'done') {
-      applyHammersTorchesLostSideEffects({ silent: true });
-      localStorage.setItem(hammerMigrationKey, 'done');
-    }
-  } catch(e) {}
-}
-
-
-function repairHiddenPlanTaskIdBugFromV4() {
-  // v4 hid resolved KFC tasks by generic IDs like d1-t0. New AI plans reuse those
-  // same IDs, which made normal tasks disappear and each day say "All tasks complete."
-  // Clear only days-off hidden IDs and current-block checkbox states once. Built-in
-  // and saved Reef Task hidden states are left alone.
-  try {
-    const migrationKey = 'reef_migration_clear_hidden_plan_ids_fixed5';
-    if (localStorage.getItem(migrationKey) === 'done') return;
-    const hiddenPlan = getHiddenPlanTasks();
-    if (Array.isArray(hiddenPlan) && hiddenPlan.length) setHiddenPlanTasks([]);
-    const blockKey = getPlanBlockKey();
-    const states = getDaysOffPlanStates();
-    if (states && states[blockKey]) {
-      delete states[blockKey];
-      setDaysOffPlanStates(states);
-    }
-    localStorage.setItem(migrationKey, 'done');
-  } catch(e) {}
-}
-
 function autoCaptureTankUpdateFromChat(text) {
-  const capturedByState = captureAuthoritativeTankStateFromText(text);
-  if (capturedByState) return capturedByState;
-
   const normalized = normalizeManagementText(text);
   const mentionsAustralian = /(australian|australians|stripy|stripies|stripey)/.test(normalized);
   const resolvedWords = /(found|got|have|has|new home|rehomed|rehoming complete|gone|removed|adopted|picked up|took them|took it)/.test(normalized);
@@ -4505,6 +3483,12 @@ function autoCaptureTankUpdateFromChat(text) {
   if (mentionsAustralian && resolvedWords && !negated) {
     applyAustralianStripyResolvedSideEffects();
     return { key: 'australianStripyRehomed', label: 'Australian Stripy rehoming marked resolved' };
+  }
+  const mentionsChaeto = /(chaeto|cheato|cheeto|refugium|macroalgae|macro algae)/.test(normalized);
+  const cancelledChaeto = /(no longer|not going|cancel|cancelled|canceled|remove|removed|forget|dont|do not|won't|wont)/.test(normalized);
+  if (mentionsChaeto && cancelledChaeto) {
+    applyChaetoReactorCancelledSideEffects();
+    return { key: 'chaetoReactorCancelled', label: 'Chaeto reactor plan marked cancelled' };
   }
   return null;
 }
@@ -4933,222 +3917,9 @@ function renderTankStatus() {
   `;
 }
 
-
-// ── Personalized dashboard scoring and editable reef targets ───────────────
-const REEF_TARGETS_KEY = 'reef_personalized_targets_v15';
-const REEF_TARGET_DEFS = [
-  { key:'alk', label:'Alk', full:'Alkalinity', unit:'dKH', decimals:1, idealMin:8.2, idealMax:9.5, alertMin:7.5, alertMax:11.0, stability:0.4 },
-  { key:'po4', label:'PO₄', full:'Phosphate', unit:'ppm', decimals:2, idealMin:0.03, idealMax:0.10, alertMin:0.00, alertMax:0.40, stability:0.05 },
-  { key:'no3', label:'NO₃', full:'Nitrate', unit:'ppm', decimals:1, idealMin:5, idealMax:15, alertMin:0, alertMax:30, stability:5 },
-  { key:'ca', label:'Ca', full:'Calcium', unit:'mg/L', decimals:0, idealMin:400, idealMax:450, alertMin:360, alertMax:480, stability:25 },
-  { key:'mg', label:'Mg', full:'Magnesium', unit:'mg/L', decimals:0, idealMin:1280, idealMax:1400, alertMin:1200, alertMax:1500, stability:60 },
-  { key:'ph', label:'pH', full:'pH', unit:'', decimals:2, idealMin:8.1, idealMax:8.5, alertMin:7.8, alertMax:8.7, stability:0.20 },
-  { key:'sal', label:'SG', full:'Salinity', unit:'SG', decimals:3, idealMin:1.025, idealMax:1.026, alertMin:1.023, alertMax:1.028, stability:0.0015 }
-];
-
-function getDefaultReefTargets() {
-  const out = {};
-  REEF_TARGET_DEFS.forEach(d => { out[d.key] = { idealMin:d.idealMin, idealMax:d.idealMax, alertMin:d.alertMin, alertMax:d.alertMax }; });
-  return out;
-}
-
-function getReefTargets() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(REEF_TARGETS_KEY) || '{}');
-    const merged = getDefaultReefTargets();
-    Object.keys(merged).forEach(key => {
-      if (saved[key]) merged[key] = { ...merged[key], ...saved[key] };
-      ['idealMin','idealMax','alertMin','alertMax'].forEach(k => {
-        const v = parseFloat(merged[key][k]);
-        if (Number.isFinite(v)) merged[key][k] = v;
-      });
-    });
-    return merged;
-  } catch(e) { return getDefaultReefTargets(); }
-}
-
-function setReefTargets(targets) {
-  try { localStorage.setItem(REEF_TARGETS_KEY, JSON.stringify(targets || getDefaultReefTargets())); } catch(e) {}
-}
-
-function formatTargetValue(v, def) {
-  const n = parseFloat(v);
-  if (!Number.isFinite(n)) return '';
-  return n.toFixed(def.decimals).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
-}
-
-function scoreParameterValue(key, raw) {
-  const def = REEF_TARGET_DEFS.find(d => d.key === key);
-  const targets = getReefTargets()[key];
-  const v = parseFloat(raw);
-  if (!def || !targets || !Number.isFinite(v)) return null;
-  const { idealMin, idealMax, alertMin, alertMax } = targets;
-  if (v >= idealMin && v <= idealMax) return { score:100, level:'good', text:`${def.label} ${formatTargetValue(v, def)} is inside your target ${formatTargetValue(idealMin, def)}–${formatTargetValue(idealMax, def)}${def.unit ? ' ' + def.unit : ''}.` };
-  if (v < alertMin || v > alertMax) return { score:0, level:'critical', text:`${def.label} ${formatTargetValue(v, def)} is outside your alert range ${formatTargetValue(alertMin, def)}–${formatTargetValue(alertMax, def)}${def.unit ? ' ' + def.unit : ''}.` };
-  let score = 0;
-  if (v < idealMin) score = ((v - alertMin) / Math.max(idealMin - alertMin, 0.000001)) * 70;
-  else score = ((alertMax - v) / Math.max(alertMax - idealMax, 0.000001)) * 70;
-  score = Math.max(0, Math.min(70, score));
-  return { score, level:'warn', text:`${def.label} ${formatTargetValue(v, def)} is outside your ideal range ${formatTargetValue(idealMin, def)}–${formatTargetValue(idealMax, def)}${def.unit ? ' ' + def.unit : ''}.` };
-}
-
-// Override status classification so Tank Status and chips respect personalized targets.
-classifyStatusValue = function(key, raw) {
-  const scored = scoreParameterValue(key, raw);
-  return scored ? scored.level : null;
-};
-
-function latestPointsForParam(key) {
-  return getAllLogsForCharts().map(log => ({ log, value:parseFloat(log[key]) })).filter(p => Number.isFinite(p.value));
-}
-
-function average(nums) {
-  const good = nums.filter(n => Number.isFinite(n));
-  return good.length ? good.reduce((a,b)=>a+b,0) / good.length : null;
-}
-
-function computeDashboardScore() {
-  const latest = getLatestLogForStatus();
-  const deductions = [];
-  const positives = [];
-  if (!latest) {
-    return { overall:0, categories:{ chemistry:0, stability:0, maintenance:0, livestock:0, equipment:0, alerts:0 }, deductions:['No parameter logs yet.'], positives:[] };
-  }
-
-  const paramScores = [];
-  REEF_TARGET_DEFS.forEach(def => {
-    if (latest[def.key] === undefined || latest[def.key] === '') return;
-    const scored = scoreParameterValue(def.key, latest[def.key]);
-    if (!scored) return;
-    paramScores.push(scored.score);
-    if (scored.level !== 'good') deductions.push(scored.text);
-    else positives.push(scored.text);
-  });
-  const chemistryPct = average(paramScores);
-  const chemistry = chemistryPct === null ? 12 : Math.round((chemistryPct / 100) * 30);
-
-  const stabilityScores = [];
-  REEF_TARGET_DEFS.forEach(def => {
-    const pts = latestPointsForParam(def.key);
-    if (pts.length < 2) return;
-    const delta = Math.abs(pts[pts.length - 1].value - pts[pts.length - 2].value);
-    const ratio = delta / Math.max(def.stability, 0.000001);
-    const s = ratio <= 1 ? 100 : Math.max(0, 100 - ((ratio - 1) * 35));
-    stabilityScores.push(s);
-    if (s < 70) deductions.push(`${def.label} changed by ${formatTargetValue(delta, def)}${def.unit ? ' ' + def.unit : ''} since the last logged reading.`);
-  });
-  const stabilityPct = average(stabilityScores);
-  const stability = stabilityPct === null ? 10 : Math.round((stabilityPct / 100) * 20);
-
-  const now = Date.now();
-  const daysAgo = iso => { const t = new Date(iso || 0).getTime(); return Number.isFinite(t) ? (now - t) / 86400000 : 9999; };
-  const actions = typeof getActionEntries === 'function' ? getActionEntries() : [];
-  const completed = typeof getCompletedHistoryEntries === 'function' ? getCompletedHistoryEntries() : [];
-  const recentActions = actions.filter(a => daysAgo(a.isoDate) <= 14);
-  const recentCompleted = completed.filter(h => daysAgo(h.completedAt) <= 14);
-  let maintenancePct = Math.min(100, recentActions.length * 18 + recentCompleted.length * 8);
-  if (latest && daysAgo(latest.isoDate) <= 10) maintenancePct += 20;
-  maintenancePct = Math.min(100, maintenancePct);
-  if (maintenancePct < 70) deductions.push('Maintenance/history logging is light for the last two weeks. Log water changes, media changes, testing, and inspections.');
-  const maintenance = Math.round((maintenancePct / 100) * 15);
-
-  let inventory = [];
-  try { inventory = JSON.parse(localStorage.getItem('reef_inventory_custom_v2') || localStorage.getItem('reef_inventory') || '[]'); } catch(e) { inventory = []; }
-  const activeInventory = Array.isArray(inventory) ? inventory.filter(i => !/lost|resolved|historical|rehomed/i.test(String(i.status || ''))) : [];
-  const hasPhotoNotes = actions.some(a => /photo|analysis|coral|fish|livestock|growth|health/i.test(`${a.title || ''} ${a.notes || ''}`) && daysAgo(a.isoDate) <= 45);
-  let livestockPct = activeInventory.length ? 72 : 55;
-  if (hasPhotoNotes) livestockPct += 18;
-  if (activeInventory.length >= 6) livestockPct += 10;
-  livestockPct = Math.min(100, livestockPct);
-  if (!hasPhotoNotes) deductions.push('No recent livestock/photo health notes found. Add a coral or fish photo analysis to improve livestock confidence.');
-  const livestock = Math.round((livestockPct / 100) * 20);
-
-  const equipmentTerms = /skimmer|pump|heater|uv|ato|roller|apex|return|gfo|carbon|light/i;
-  const recentEquipment = actions.some(a => equipmentTerms.test(`${a.title || ''} ${a.notes || ''}`) && daysAgo(a.isoDate) <= 30);
-  const equipmentPct = recentEquipment ? 95 : 78;
-  if (!recentEquipment) deductions.push('No recent equipment check/cleaning log in the last 30 days.');
-  const equipment = Math.round((equipmentPct / 100) * 10);
-
-  const criticalParams = REEF_TARGET_DEFS.map(def => scoreParameterValue(def.key, latest[def.key])).filter(s => s && s.level === 'critical').length;
-  const alerts = Math.max(0, 5 - criticalParams * 2);
-  if (criticalParams) deductions.push(`${criticalParams} parameter${criticalParams === 1 ? '' : 's'} are outside alert range.`);
-
-  const categories = { chemistry, stability, maintenance, livestock, equipment, alerts };
-  const overall = Math.max(0, Math.min(100, Object.values(categories).reduce((a,b)=>a+b,0)));
-  return { overall, categories, deductions:deductions.slice(0,6), positives:positives.slice(0,4) };
-}
-
-function renderSmartTankDashboard() {
-  const box = document.getElementById('tank-dashboard-content');
-  if (!box) return;
-  const score = computeDashboardScore();
-  const catRows = [
-    ['Chemistry', score.categories.chemistry, 30],
-    ['Stability', score.categories.stability, 20],
-    ['Maintenance', score.categories.maintenance, 15],
-    ['Livestock', score.categories.livestock, 20],
-    ['Equipment', score.categories.equipment, 10],
-    ['Alerts', score.categories.alerts, 5]
-  ];
-  const label = score.overall >= 90 ? 'Excellent' : score.overall >= 75 ? 'Stable' : score.overall >= 55 ? 'Watch' : 'Needs work';
-  box.innerHTML = `
-    <div class="tank-dashboard-grid">
-      <div class="tank-score-ring" style="--score:${score.overall}"><div class="tank-score-num">${score.overall}</div><div class="tank-score-label">${escapeHtml(label)}</div></div>
-      <div class="tank-dashboard-list">
-        <div class="tank-dashboard-row"><strong>Scored against your personal targets.</strong> Edit ranges in Settings → Personalized Tank Targets.</div>
-        <div class="tank-dashboard-row"><strong>Top focus:</strong> ${escapeHtml(score.deductions[0] || 'Keep logging and avoid stacking major changes.')}</div>
-      </div>
-    </div>
-    <div class="score-breakdown-grid">
-      ${catRows.map(([name,val,max]) => `<div class="score-breakdown-row"><div class="score-breakdown-name">${escapeHtml(name)}</div><div class="score-bar"><div class="score-bar-fill" style="--pct:${Math.round((val/max)*100)}%"></div></div><div class="score-breakdown-value">${val}/${max}</div></div>`).join('')}
-    </div>
-    <div class="score-explain"><strong>Why not 100?</strong>${score.deductions.length ? `<ul>${score.deductions.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>` : '<div style="margin-top:5px;">No major deductions from the current data.</div>'}</div>
-  `;
-}
-
-function renderReefTargetSettings() {
-  const box = document.getElementById('reef-target-settings');
-  if (!box) return;
-  const targets = getReefTargets();
-  box.innerHTML = REEF_TARGET_DEFS.map(def => {
-    const t = targets[def.key];
-    const field = (name, label) => `<div class="target-field"><label>${label}</label><input class="target-input reef-target-input" data-param="${def.key}" data-field="${name}" inputmode="decimal" value="${escapeHtml(formatTargetValue(t[name], def))}"></div>`;
-    return `<div class="target-row"><div class="target-name">${escapeHtml(def.full)}<br><span style="font-size:10px;color:var(--text-light);">${escapeHtml(def.unit || 'value')}</span></div>${field('idealMin','Ideal min')}${field('idealMax','Ideal max')}${field('alertMin','Alert min')}${field('alertMax','Alert max')}</div>`;
-  }).join('');
-}
-
-function saveReefTargetSettings() {
-  const current = getReefTargets();
-  document.querySelectorAll('.reef-target-input').forEach(input => {
-    const param = input.dataset.param; const field = input.dataset.field; const val = parseFloat(input.value);
-    if (param && field && Number.isFinite(val)) current[param][field] = val;
-  });
-  Object.keys(current).forEach(key => {
-    const t = current[key];
-    if (t.alertMin > t.idealMin) t.alertMin = t.idealMin;
-    if (t.idealMin > t.idealMax) [t.idealMin, t.idealMax] = [t.idealMax, t.idealMin];
-    if (t.alertMax < t.idealMax) t.alertMax = t.idealMax;
-  });
-  setReefTargets(current);
-  renderReefTargetSettings();
-  renderTankStatus();
-  renderSmartTankDashboard();
-  updateHomeChips();
-  showToast('✅ Personalized targets saved');
-}
-
-function resetReefTargetSettings() {
-  setReefTargets(getDefaultReefTargets());
-  renderReefTargetSettings();
-  renderTankStatus();
-  renderSmartTankDashboard();
-  updateHomeChips();
-  showToast('Targets reset');
-}
-
 // ── Days-off work plan ──────────────────────────────────────────────────────
 const DAYS_OFF_PLAN_TEMPLATE = [
-  { day: 1, title: 'Test and inspect', tasks: ['Test phosphate, alkalinity, nitrate, calcium, magnesium, pH, and salinity.', 'Inspect Duncan, mushrooms, BTAs, gorgonia, GSP/zoas, and visible aiptasia before making changes.'] },
+  { day: 1, title: 'Test and inspect', tasks: ['Test phosphate, alkalinity, nitrate, calcium, magnesium, pH, and salinity.', 'Inspect Duncan, hammers, mushrooms, BTAs, and visible aiptasia before making changes.'] },
   { day: 2, title: 'Water-change day', tasks: ['Do the planned 20 gallon Fritz RPM water change if saltwater is mixed and matched.', 'Record salinity, temperature, and any coral reaction in Action History.'] },
   { day: 3, title: 'Aiptasia control', tasks: ['Treat a small section with Aiptasia-X at lights-out rather than the whole tank at once.', 'Run/confirm carbon and watch nearby corals the next day.'] },
   { day: 4, title: 'Export and equipment', tasks: ['Check GFO/carbon flow and avoid increasing phosphate removal too aggressively.', 'Inspect skimmer, UV, return pumps, and filter roller for normal operation.'] },
@@ -5263,10 +4034,10 @@ function getPlanTaskMeta(taskId) {
 function getAllActiveReefTasksForPlanning() {
   const hidden = new Set(getHiddenStaticReminders());
   const staticTasks = STATIC_REMINDER_LIBRARY
-    .filter(r => !hidden.has(r.id) && !getStaticReminderStateById(r.id).completed && !isTaskTextCompletedRecently(r.title, r.detail, { maxAgeDays: 21 }) && !shouldFilterResolvedPlanTask(`${r.title} ${r.detail}`))
+    .filter(r => !hidden.has(r.id) && !getStaticReminderStateById(r.id).completed && !shouldFilterResolvedPlanTask(`${r.title} ${r.detail}`))
     .map(r => ({ id: staticTaskKey(r.id), title: r.title, detail: r.detail, scheduledDay: getScheduledDayForTask(staticTaskKey(r.id)) }));
   const savedTasks = normalizeSavedReminderRecurrences()
-    .filter(r => !r.completed && !isTaskTextCompletedRecently(r.title, `${r.when || ''} ${r.notes || ''}`, { maxAgeDays: 21 }) && !shouldFilterResolvedPlanTask(`${r.title} ${r.notes} ${r.when} ${r.repeat}`))
+    .filter(r => !r.completed && !shouldFilterResolvedPlanTask(`${r.title} ${r.notes} ${r.when} ${r.repeat}`))
     .map(r => ({ id: savedTaskKey(r.id), title: r.title, detail: [r.when || '', r.repeat || '', r.notes || ''].filter(Boolean).join(' · '), scheduledDay: getScheduledDayForTask(savedTaskKey(r.id)) }));
   return [...staticTasks, ...savedTasks].slice(0, 30);
 }
@@ -5282,8 +4053,6 @@ function getCurrentPlanPromptContext() {
     range,
     isCurrentlyOff: info.isOff,
     latestLog: latest || null,
-    authoritativeTankState: getReefTankState(),
-    authoritativeTankStateLines: getAuthoritativeTankStateMemoryLines(),
     localMemory: getLocalTankMemorySummary('days off work plan'),
     resolvedIssues: getResolvedIssues(),
     currentPlan: currentPlan.isTemplate ? null : currentPlan,
@@ -5482,7 +4251,6 @@ function renderDaysOffWorkPlan() {
   const container = document.getElementById('days-off-plan');
   if (!summary || !container) return;
 
-  pruneCompletedScheduledTasks();
   const info = getDaysOffInfo();
   const blockKey = getPlanBlockKey();
   const range = `${formatShortDate(info.nextStart)}–${formatShortDate(info.blockEnd)}`;
@@ -5506,7 +4274,7 @@ function renderDaysOffWorkPlan() {
       const taskId = `d${day.day}-t${idx}`;
       if (hiddenTasks.has(taskId)) return '';
       const done = isPlanTaskDone(blockKey, taskId);
-      if (done || isPlanTaskTextAlreadyCompleted(blockKey, task)) return '';
+      if (done) return '';
       const moveOptions = [1,2,3,4,5,6,7].map(dayNum => `<option value="${dayNum}"${dayNum === day.day ? ' selected' : ''}>Day ${dayNum}</option>`).join('');
       return `<div class="plan-task" draggable="true" ondragstart="startPlanTaskDrag(event, '${blockKey}', '${taskId}')" ondragend="endPlanTaskDrag(event)">
         <button class="plan-task-check" onclick="togglePlanTask('${blockKey}', '${taskId}')" aria-label="Check off task"></button>
@@ -5525,7 +4293,6 @@ function renderDaysOffWorkPlan() {
     }).join('');
 
     const scheduledForDay = getScheduledTasksForDay(day.day);
-
     const scheduledHtml = scheduledForDay.length ? `
       <div class="plan-day-linked-label">Scheduled reef tasks</div>
       ${scheduledForDay.map(task => {
@@ -5618,7 +4385,7 @@ function handleHelpOverlayClick(event) {
 }
 
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { closeHelp(); closeChatHistory(); closeLivestockCatalog(); closeLongTermTool('inventory'); closeLongTermTool('strategy'); closeLongTermTool('summary'); closeLongTermTool('tankhistory'); closeLongTermTool('familytree'); }
+  if (event.key === 'Escape') { closeHelp(); closeChatHistory(); closeLivestockCatalog(); closeLongTermTool('inventory'); closeLongTermTool('strategy'); closeLongTermTool('summary'); }
 });
 
 // ── Toast ────────────────────────────────────────────────────────────────────
@@ -5630,12 +4397,7 @@ function showToast(msg) {
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
-initThemeMode();
 renderQuickQuestions();
-migrateReefTankStateV7();
-autoApplyKnownCompletedTreatments();
-repairHiddenPlanTaskIdBugFromV4();
-applyAuthoritativeStateSideEffects({ silent: true });
 if (isAustralianStripyResolved()) applyAustralianStripyResolvedSideEffects();
 if (!isChaetoReactorCancelled()) applyChaetoReactorCancelledSideEffects();
 ensureDefaultAutoScheduledTasks();
@@ -5643,7 +4405,6 @@ renderLogHistory();
 renderTrendControls();
 renderTrendChart(currentTrendParam);
 renderTankStatus();
-renderTankDashboard();
 renderLongTermTools();
 migrateInventoryPhotosToIndexedDb();
 updateHomeChips();
@@ -5651,7 +4412,6 @@ renderActionHistory();
 renderCompletedHistory();
 initModelMode();
 initTankContextToggle();
-renderReefTargetSettings();
 renderSavedReminders();
 renderReminderCenter();
 renderHiddenTasksPanel();
@@ -5752,15 +4512,11 @@ async function readFileAsTextSafe(file) {
   return String(text || '').replace(/\u0000/g, '').slice(0, 65000);
 }
 
-function setupPdfJsWorker() {
+async function extractPdfText(file) {
   if (!window.pdfjsLib) throw new Error('PDF reader is not loaded yet. Try again in a few seconds.');
   try {
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   } catch(e) {}
-}
-
-async function extractPdfText(file) {
-  setupPdfJsWorker();
   const buffer = await file.arrayBuffer();
   const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
   const pageTexts = [];
@@ -5772,63 +4528,16 @@ async function extractPdfText(file) {
     if (pageText) pageTexts.push(`Page ${pageNum}: ${pageText}`);
   }
   const text = pageTexts.join('\n\n').slice(0, 65000);
-  if (!text.trim()) throw new Error('No selectable text found in this PDF. It may be a scanned/image PDF.');
+  if (!text.trim()) throw new Error('No readable text was found in this PDF. It may be a scanned image PDF.');
   return text;
-}
-
-async function renderPdfPagesForVision(file, maxPages = 6) {
-  setupPdfJsWorker();
-  const buffer = await file.arrayBuffer();
-  const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
-  const images = [];
-  const pageLimit = Math.min(pdf.numPages || 0, maxPages);
-  for (let pageNum = 1; pageNum <= pageLimit; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    const baseViewport = page.getViewport({ scale: 1 });
-    const maxSide = 1400;
-    const scale = Math.min(2, Math.max(0.8, maxSide / Math.max(baseViewport.width || maxSide, baseViewport.height || maxSide)));
-    const viewport = page.getViewport({ scale });
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(viewport.width));
-    canvas.height = Math.max(1, Math.round(viewport.height));
-    const ctx = canvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    images.push({
-      kind: 'image',
-      name: `${file.name || 'PDF'} page ${pageNum}`,
-      text: `Rendered PDF page ${pageNum} from ${file.name || 'attached PDF'} for AI visual reading.`,
-      type: 'image/jpeg',
-      dataUrl: canvas.toDataURL('image/jpeg', 0.78),
-      source: 'pdf-page',
-      page: pageNum
-    });
-  }
-  return images;
 }
 
 async function readDocumentForReefKeeper(file) {
   const name = String(file?.name || 'document');
   const type = String(file?.type || '');
   if (/\.pdf$/i.test(name) || type === 'application/pdf') {
-    try {
-      const text = await extractPdfText(file);
-      return { name, type: type || 'application/pdf', text, extracted: true, method: 'pdf-text' };
-    } catch(textError) {
-      const imageSlots = Math.max(1, Math.min(6, MAX_AI_IMAGES - attachedImageContexts.length));
-      const images = await renderPdfPagesForVision(file, imageSlots);
-      if (images.length) {
-        return {
-          name,
-          type: type || 'application/pdf',
-          text: `Attached PDF: ${name}\nSelectable text could not be extracted, so the app rendered ${images.length} page${images.length === 1 ? '' : 's'} as image${images.length === 1 ? '' : 's'} for AI visual reading. Ask AI can read visible schedule/table content from those page images.`,
-          extracted: false,
-          method: 'pdf-images',
-          images,
-          pdfTextError: textError?.message || String(textError || '')
-        };
-      }
-      throw textError;
-    }
+    const text = await extractPdfText(file);
+    return { name, type: type || 'application/pdf', text, extracted: true, method: 'pdf' };
   }
   if (isTextLikeFile(file)) {
     const text = await readFileAsTextSafe(file);
@@ -5865,70 +4574,18 @@ function chooseDocumentUpload() {
   if (input) input.click();
 }
 
-function readImageFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(reader.error || new Error('Could not read image'));
-    reader.readAsDataURL(file);
-  });
-}
-
-function loadImageElement(dataUrl) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Could not load image for resizing'));
-    img.src = dataUrl;
-  });
-}
-
-async function resizeImageForVision(file) {
-  const originalDataUrl = await readImageFileAsDataUrl(file);
-  const img = await loadImageElement(originalDataUrl);
-  const maxSide = 1200;
-  const scale = Math.min(1, maxSide / Math.max(img.width || maxSide, img.height || maxSide));
-  const width = Math.max(1, Math.round((img.width || maxSide) * scale));
-  const height = Math.max(1, Math.round((img.height || maxSide) * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0, width, height);
-  return canvas.toDataURL('image/jpeg', 0.78);
-}
-
 async function handlePhotoLibraryUpload(event) {
-  const files = Array.from(event?.target?.files || []).filter(file => file && file.type && file.type.startsWith('image/'));
-  if (!files.length) return;
-  try {
-    const remaining = Math.max(0, MAX_AI_IMAGES - attachedImageContexts.length);
-    const selected = files.slice(0, remaining);
-    if (!selected.length) {
-      showToast(`Maximum ${MAX_AI_IMAGES} photos attached`);
-      return;
-    }
-    showToast(selected.length === 1 ? 'Preparing image…' : `Preparing ${selected.length} images…`);
-    for (const file of selected) {
-      const dataUrl = await resizeImageForVision(file);
-      attachedImageContexts.push({
-        kind: 'image',
-        name: file.name || `reef photo ${attachedImageContexts.length + 1}`,
-        text: `Attached image for visual analysis: ${file.name || 'reef photo'}.`,
-        type: 'image/jpeg',
-        dataUrl
-      });
-    }
-    updateAttachmentStatus();
-    showToast(attachedImageContexts.length === 1 ? '🖼 Image attached for AI analysis' : `🖼 ${attachedImageContexts.length} images attached`);
-  } catch(e) {
-    console.warn('Image attach failed', e);
-    showToast('⚠️ One or more images could not be prepared');
-  } finally {
-    if (event?.target) event.target.value = '';
-  }
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  attachedFileContext = {
+    name: file.name || 'reef photo',
+    text: `Attached photo reference: ${file.name || 'reef photo'}. The app can store and reference the image name, but this text-only AI endpoint does not analyze the image pixels yet. Add a short note describing what you want reviewed.`,
+    type: file.type || 'image/*'
+  };
+  updateAttachmentStatus();
+  showToast('🖼 Photo attached');
+  event.target.value = '';
 }
-
 
 handleFileUpload = async function(event) {
   const file = event?.target?.files?.[0];
@@ -5942,20 +4599,10 @@ handleFileUpload = async function(event) {
       type: doc.type,
       method: doc.method
     };
-    if (Array.isArray(doc.images) && doc.images.length) {
-      const remaining = Math.max(0, MAX_AI_IMAGES - attachedImageContexts.length);
-      const pagesToAttach = doc.images.slice(0, remaining);
-      attachedImageContexts.push(...pagesToAttach);
-      if (pagesToAttach.length < doc.images.length) {
-        attachedFileContext.text += `\nOnly ${pagesToAttach.length} page image${pagesToAttach.length === 1 ? '' : 's'} could be attached because the image limit is ${MAX_AI_IMAGES}.`;
-      }
-    }
     updateAttachmentStatus();
     if (doc.extracted) {
       saveReefLibraryDoc({ title: doc.name.replace(/\.[^.]+$/, ''), fileName: doc.name, category: 'Other Documents', type: doc.type, text: doc.text });
       showToast('📄 Document attached and saved to Reef Library');
-    } else if (Array.isArray(doc.images) && doc.images.length) {
-      showToast(`📄 PDF attached as ${doc.images.length} page image${doc.images.length === 1 ? '' : 's'} for AI`);
     } else {
       showToast('📎 Document attached as reference');
     }
@@ -6061,439 +4708,3 @@ document.addEventListener('keydown', event => {
 });
 
 try { renderReefLibrary(); } catch(e) {}
-
-// ── Report Center: true PDF/DOCX/HTML export ───────────────────────────────
-const REPORT_TYPES = {
-  monthly: 'Monthly Reef Report',
-  livestock: 'Livestock Catalog',
-  timeline: 'Tank Timeline',
-  equipment: 'Equipment Guide',
-  emergency: 'Emergency Binder',
-  custom: 'Custom Report'
-};
-
-const __rkReportOpenLongTermTool = typeof openLongTermTool === 'function' ? openLongTermTool : null;
-openLongTermTool = function(tool) {
-  if (__rkReportOpenLongTermTool) __rkReportOpenLongTermTool(tool);
-  if (tool === 'report') setTimeout(() => previewSelectedReport(), 60);
-};
-
-document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') closeLongTermTool('report');
-});
-
-function rkDateLabel(value) {
-  const d = value ? new Date(value) : new Date();
-  if (Number.isNaN(d.getTime())) return String(value || 'Unknown date');
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function rkNowFileStamp() {
-  const d = new Date();
-  return d.toISOString().slice(0,10);
-}
-
-function rkSafeFilename(text) {
-  return String(text || 'reef-report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0,80) || 'reef-report';
-}
-
-function rkDownloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
-}
-
-function rkTextLines(text) {
-  return String(text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
-}
-
-function rkWrapText(text, max = 92) {
-  const out = [];
-  rkTextLines(text).forEach(line => {
-    let s = line.trimEnd();
-    if (!s) { out.push(''); return; }
-    while (s.length > max) {
-      let cut = s.lastIndexOf(' ', max);
-      if (cut < 30) cut = max;
-      out.push(s.slice(0, cut).trimEnd());
-      s = s.slice(cut).trimStart();
-    }
-    out.push(s);
-  });
-  return out;
-}
-
-function rkGetLogsNewest() {
-  try { return memorySortNewest([...getDefaultLogs(), ...memoryArray('reef_logs')]); } catch(e) { return []; }
-}
-function rkGetActionsNewest() {
-  try { return memorySortNewest(getActionEntries()); } catch(e) { return []; }
-}
-function rkGetCompletedNewest() {
-  try { return memorySortNewest(memoryArray('reef_completed_history')); } catch(e) { return []; }
-}
-function rkGetInventoryForReports() {
-  try { return getInventoryItems().filter(i => (i.status || '') !== 'lost/resolved'); } catch(e) { return []; }
-}
-function rkGetKnowledgeForReports() {
-  try { return getTankKnowledgeItems(); } catch(e) { return []; }
-}
-function rkGetLibraryDocsForReports() {
-  try { return getReefLibraryDocs ? getReefLibraryDocs() : []; } catch(e) { return []; }
-}
-
-
-const RK_AI_MONTHLY_REPORT_KEY = 'reef_ai_monthly_report_v14';
-
-function rkGetTankHistoryForReports() {
-  try { return getTankHistory ? getTankHistory() : memoryArray('reef_tank_visual_history_v13'); } catch(e) { return []; }
-}
-
-function rkGetAiMonthlyReport() {
-  try {
-    const value = JSON.parse(localStorage.getItem(RK_AI_MONTHLY_REPORT_KEY) || 'null');
-    return value && typeof value === 'object' ? value : null;
-  } catch(e) { return null; }
-}
-
-function rkSetAiMonthlyReport(report) {
-  try { localStorage.setItem(RK_AI_MONTHLY_REPORT_KEY, JSON.stringify(report)); } catch(e) {}
-}
-
-function rkSummarizePhotoTimelinesForAI(inventory) {
-  const lines = [];
-  (inventory || []).forEach(item => {
-    const analyses = Array.isArray(item.photoAnalyses) ? item.photoAnalyses.slice(0, 5) : [];
-    if (!analyses.length) return;
-    const latest = analyses[0] || {};
-    const detail = [
-      latest.healthStatus ? `health ${latest.healthStatus}` : '',
-      latest.growthAssessment ? `growth/condition: ${latest.growthAssessment}` : '',
-      latest.estimatedGrowthPercent && latest.estimatedGrowthPercent !== 'unknown' ? `estimated change ${latest.estimatedGrowthPercent}` : '',
-      latest.timelineComparison && latest.timelineComparison !== 'insufficient history' ? `comparison: ${latest.timelineComparison}` : '',
-      Array.isArray(latest.healthConcerns) && latest.healthConcerns.length ? `concerns: ${latest.healthConcerns.join('; ')}` : '',
-      latest.trackingNotes ? `note: ${latest.trackingNotes}` : ''
-    ].filter(Boolean).join(' | ');
-    lines.push(`${item.name || 'Unnamed livestock'} (${item.type || 'unknown'}): ${analyses.length} saved photo check${analyses.length === 1 ? '' : 's'}; latest ${detail || 'analysis saved'}.`);
-  });
-  return lines;
-}
-
-function rkBuildAiMonthlyReportData() {
-  const logs = rkGetLogsNewest();
-  const actions = rkGetActionsNewest();
-  const completed = rkGetCompletedNewest();
-  const inventory = rkGetInventoryForReports();
-  const knowledge = rkGetKnowledgeForReports();
-  const tankHistory = rkGetTankHistoryForReports();
-  const photoLines = rkSummarizePhotoTimelinesForAI(inventory);
-  const latestLogs = logs.slice(0, 12).map(rkFormatLogLine);
-  const actionLines = actions.slice(0, 20).map(a => `${rkDateLabel(a.date || a.createdAt)}: ${a.title || 'Action'}${a.category ? ` (${a.category})` : ''}${a.notes ? ` — ${a.notes}` : ''}`);
-  const completedLines = completed.slice(0, 20).map(c => `${rkDateLabel(c.date || c.completedAt || c.createdAt)}: completed ${c.title || c.text || 'task'}${c.notes ? ` — ${c.notes}` : ''}`);
-  const livestockLines = inventory.slice(0, 40).map(i => `${i.name || 'Unnamed'} — ${i.type || 'unknown'} · ${i.status || 'unknown'}${i.location ? ` · ${i.location}` : ''}${i.notes ? ` · notes: ${i.notes}` : ''}`);
-  const knowledgeLines = knowledge.slice(0, 25).map(k => `${k.category || 'Knowledge'}: ${k.title || ''} — ${k.note || ''}`);
-  const tankHistoryLines = tankHistory.slice(0, 12).map(h => `${rkDateLabel(h.createdAt)}: ${h.title || 'Full-tank photo'}${h.notes ? ` — ${h.notes}` : ''}`);
-  return {
-    generatedAt: new Date().toISOString(),
-    tankMode: (typeof getTankMode === 'function' ? getTankMode() : 'unknown'),
-    parameterTrendSummary: rkTrendSummaryForReports(logs),
-    latestParameterReadings: latestLogs,
-    maintenanceActions: actionLines,
-    completedMaintenance: completedLines,
-    livestockHealthNotes: livestockLines,
-    photoTimelineSummary: photoLines,
-    visualTankHistory: tankHistoryLines,
-    knowledgeBase: knowledgeLines,
-    reportRequirements: [
-      'parameter trends',
-      'photo timeline summary',
-      'livestock health notes',
-      'maintenance completed',
-      'top 3 concerns',
-      'next month priorities'
-    ]
-  };
-}
-
-async function generateAiMonthlyReport() {
-  const type = document.getElementById('report-type')?.value || 'monthly';
-  if (type !== 'monthly') {
-    const select = document.getElementById('report-type');
-    if (select) select.value = 'monthly';
-  }
-  const box = document.getElementById('report-preview');
-  if (box) box.textContent = 'Generating AI Monthly Reef Report…';
-  const data = rkBuildAiMonthlyReportData();
-  const prompt = `Create a polished AI-generated Monthly Reef Report for Reef Keeper using the JSON data below.\n\nRequired sections, in this exact order:\n1. Monthly Snapshot\n2. Parameter Trends\n3. Photo Timeline Summary\n4. Livestock Health Notes\n5. Maintenance Completed\n6. Top 3 Concerns\n7. Next Month's Priorities\n\nRules:\n- Be practical and specific to this tank.\n- Do not recommend chaeto/cheato/refugium tasks because that plan is cancelled.\n- Do not include hammer/torch care unless the data says new hammer/torch corals were added.\n- Treat AI photo analysis as visual observation, not a definitive disease diagnosis.\n- If data is missing for a section, say what should be logged next rather than inventing details.\n- Keep the report readable and suitable for PDF export.\n- End with a short action checklist.\n\nMonthly report data JSON:\n${JSON.stringify(data, null, 2).slice(0, 22000)}`;
-  try {
-    const result = await askOpenAI(prompt, [], getModelMode ? getModelMode() : 'balanced');
-    const text = normalizeAiAnswerPayload ? normalizeAiAnswerPayload(result.answer || '') : (result.answer || 'No report returned.');
-    const report = {
-      id: Date.now().toString(36),
-      title: 'AI Monthly Reef Report',
-      text: text || 'No report returned.',
-      generatedAt: new Date().toISOString(),
-      dataSnapshot: data
-    };
-    rkSetAiMonthlyReport(report);
-    if (box) box.textContent = report.text;
-    try {
-      const reviews = getMonthlyReviews ? getMonthlyReviews() : [];
-      reviews.unshift({ id: report.id, date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}), isoDate: report.generatedAt, text: report.text });
-      if (setMonthlyReviews) setMonthlyReviews(reviews.slice(0, 12));
-    } catch(e) {}
-    showToast('✅ AI Monthly Reef Report generated');
-  } catch(e) {
-    if (box) box.textContent = `Could not generate the AI monthly report. ${e && e.message ? e.message : 'Check the backend connection.'}`;
-    try { showToast('⚠️ AI report failed'); } catch(_) {}
-  }
-}
-
-function rkFormatLogLine(log) {
-  const parts = [];
-  if (log.po4 !== undefined && log.po4 !== '') parts.push(`PO₄ ${log.po4} ppm`);
-  if (log.alk !== undefined && log.alk !== '') parts.push(`Alk ${log.alk} dKH`);
-  if (log.ca !== undefined && log.ca !== '') parts.push(`Ca ${log.ca}`);
-  if (log.mg !== undefined && log.mg !== '') parts.push(`Mg ${log.mg}`);
-  if (log.no3 !== undefined && log.no3 !== '') parts.push(`NO₃ ${log.no3} ppm`);
-  if (log.ph !== undefined && log.ph !== '') parts.push(`pH ${log.ph}`);
-  if (log.sal !== undefined && log.sal !== '') parts.push(`Salinity ${log.sal}`);
-  return `${rkDateLabel(log.date || log.createdAt)} — ${parts.join(' · ') || 'Reading logged'}`;
-}
-
-function rkTrendSummaryForReports(logs) {
-  try { return buildParameterTrendSummary(logs || rkGetLogsNewest()); } catch(e) { return 'Trend summary unavailable.'; }
-}
-
-function rkInventoryLine(item) {
-  const facts = String(item.facts || '').split('\n').filter(Boolean).slice(0, 4).map(f => `  - ${f.trim()}`).join('\n');
-  return `${item.name || 'Unnamed'}${item.scientific ? ` (${item.scientific})` : ''}\nType/status: ${item.type || 'unknown'} · ${item.status || 'unknown'}${item.location ? `\nTank location: ${item.location}` : ''}${item.range ? `\nNatural range: ${item.range}` : ''}${facts ? `\nFacts:\n${facts}` : ''}${item.notes ? `\nNotes: ${item.notes}` : ''}`;
-}
-
-function rkBuildTimelineEvents() {
-  const events = [];
-  rkGetLogsNewest().forEach(log => events.push({ date: new Date(log.date || log.createdAt || Date.now()), kind: 'Parameter log', text: rkFormatLogLine(log) }));
-  rkGetActionsNewest().forEach(a => events.push({ date: new Date(a.date || a.createdAt || Date.now()), kind: 'Action', text: `${rkDateLabel(a.date || a.createdAt)} — ${a.title || 'Action'}${a.category ? ` (${a.category})` : ''}${a.notes ? ` — ${a.notes}` : ''}` }));
-  rkGetCompletedNewest().forEach(c => events.push({ date: new Date(c.date || c.completedAt || c.createdAt || Date.now()), kind: 'Completed task', text: `${rkDateLabel(c.date || c.completedAt || c.createdAt)} — Completed: ${c.title || c.text || 'Task'}` }));
-  rkGetKnowledgeForReports().forEach(k => events.push({ date: new Date(k.createdAt || Date.now()), kind: 'Knowledge', text: `${rkDateLabel(k.createdAt)} — ${k.category || 'Knowledge'}: ${k.title || ''} — ${k.note || ''}` }));
-  return events.filter(e => !Number.isNaN(e.date.getTime())).sort((a,b) => a.date - b.date);
-}
-
-function rkBuildReport(type, customPrompt = '') {
-  const title = REPORT_TYPES[type] || 'Reef Keeper Report';
-  const logs = rkGetLogsNewest();
-  const actions = rkGetActionsNewest();
-  const completed = rkGetCompletedNewest();
-  const inventory = rkGetInventoryForReports();
-  const knowledge = rkGetKnowledgeForReports();
-  const docs = rkGetLibraryDocsForReports();
-  const mode = (typeof getTankMode === 'function' ? getTankMode() : 'unknown');
-  const lines = [];
-  const heading = (h) => { lines.push('', h.toUpperCase(), '-'.repeat(Math.min(48, h.length + 6))); };
-  lines.push(title);
-  lines.push(`Generated: ${new Date().toLocaleString()}`);
-  lines.push(`Tank mode: ${mode}`);
-  lines.push('Reef Keeper');
-
-  if (type === 'monthly') {
-    heading('Executive Summary');
-    lines.push(rkTrendSummaryForReports(logs));
-    heading('Latest Parameter Readings');
-    logs.slice(0, 8).forEach(l => lines.push(`- ${rkFormatLogLine(l)}`));
-    heading('What Changed Recently');
-    actions.slice(0, 12).forEach(a => lines.push(`- ${rkDateLabel(a.date || a.createdAt)}: ${a.title || 'Action'}${a.notes ? ` — ${a.notes}` : ''}`));
-    completed.slice(0, 10).forEach(c => lines.push(`- ${rkDateLabel(c.date || c.completedAt || c.createdAt)}: completed ${c.title || c.text || 'task'}`));
-    heading('Risks / Watch Items');
-    knowledge.slice(0, 10).forEach(k => lines.push(`- ${k.title || k.category}: ${k.note || ''}`));
-    heading('Recommended Focus');
-    lines.push('- Keep changes gradual and avoid stacking major interventions.');
-    lines.push('- Use trends and coral response before making nutrient/export changes.');
-    lines.push('- Continue documenting livestock, treatment, and equipment changes.');
-  } else if (type === 'livestock') {
-    heading('Fish');
-    inventory.filter(i => (i.type || '').toLowerCase() === 'fish').forEach(i => lines.push(rkInventoryLine(i), ''));
-    heading('Invertebrates');
-    inventory.filter(i => ['invert','invertebrate'].includes((i.type || '').toLowerCase())).forEach(i => lines.push(rkInventoryLine(i), ''));
-    heading('Coral & Anemones');
-    inventory.filter(i => ['coral','anemone'].includes((i.type || '').toLowerCase())).forEach(i => lines.push(rkInventoryLine(i), ''));
-  } else if (type === 'timeline') {
-    heading('Chronological Tank Timeline');
-    rkBuildTimelineEvents().forEach(e => lines.push(`- ${e.text}`));
-    heading('Timeline Notes');
-    lines.push('Use this timeline to look for cause-and-effect relationships after water changes, media changes, treatments, livestock additions, and parameter swings.');
-  } else if (type === 'equipment') {
-    heading('System Overview');
-    lines.push('120 gallon SCA display with 50 gallon Red Sea Reefer sump. Neptune Apex controller.');
-    heading('Equipment List');
-    ['2 Jebao MDP Smart DC return pumps','2 Hygger 802 titanium heaters','Bubble Magus filter roller','Simplicity 240 DC protein skimmer with outdoor air intake','27W IceCap UV sterilizer','IceCap GFO reactor / DIY reactor path','ROX 0.8 carbon / GFO media as used','4 A8se 11 Max lights','2 MP40 powerheads + 1 Jebao DMP20','Useek smart ATO with 10 gallon reservoir','5-stage RODI with booster pump','55 gallon Brute saltwater mixing can'].forEach(x => lines.push(`- ${x}`));
-    heading('Maintenance Rules');
-    try { getMaintenanceIntervals().forEach(x => lines.push(`- ${x}`)); } catch(e) { lines.push('- Review and clean pumps, skimmer, roller, UV, RODI, and reactors on regular intervals.'); }
-  } else if (type === 'emergency') {
-    heading('Tank Overview');
-    lines.push('120 gallon reef display with 50 gallon sump. Keep temperature, salinity, oxygenation, and circulation stable first.');
-    heading('Power Outage');
-    lines.push('- Prioritize water movement and oxygenation.');
-    lines.push('- Keep temperature stable.');
-    lines.push('- Avoid feeding during prolonged outages.');
-    heading('Overheating');
-    lines.push('- Verify heaters are on AUTO, not ON.');
-    lines.push('- Increase surface agitation and room ventilation.');
-    lines.push('- Cool slowly; avoid abrupt temperature swings.');
-    heading('Parameter Crash or Spike');
-    lines.push('- Retest before reacting.');
-    lines.push('- Make one correction at a time.');
-    lines.push('- Avoid stacking water change, GFO/carbon changes, and pest treatments on the same day unless urgent.');
-    heading('Known Guardrails');
-    knowledge.forEach(k => lines.push(`- ${k.title || k.category}: ${k.note || ''}`));
-  } else {
-    heading('Custom Request');
-    lines.push(customPrompt || 'Custom report requested.');
-    heading('Relevant Tank Snapshot');
-    lines.push(rkTrendSummaryForReports(logs));
-    heading('Recent Logs');
-    logs.slice(0, 12).forEach(l => lines.push(`- ${rkFormatLogLine(l)}`));
-    heading('Recent Actions');
-    actions.slice(0, 15).forEach(a => lines.push(`- ${rkDateLabel(a.date || a.createdAt)}: ${a.title || 'Action'}${a.notes ? ` — ${a.notes}` : ''}`));
-    heading('Knowledge Base');
-    knowledge.slice(0, 20).forEach(k => lines.push(`- ${k.title || k.category}: ${k.note || ''}`));
-  }
-
-  heading('Reef Library Documents on File');
-  if (docs.length) docs.slice(0, 20).forEach(d => lines.push(`- ${d.category || 'Document'}: ${d.title || d.fileName} (${rkDateLabel(d.createdAt)})${d.extracted ? ' — text searchable' : ' — reference only'}`));
-  else lines.push('No Reef Library documents saved yet.');
-  return { title, text: lines.join('\n').replace(/\n{3,}/g, '\n\n') };
-}
-
-function getSelectedReport() {
-  const type = document.getElementById('report-type')?.value || 'monthly';
-  const custom = document.getElementById('report-custom-prompt')?.value || '';
-  if (type === 'monthly') {
-    const ai = rkGetAiMonthlyReport();
-    if (ai && ai.text) {
-      const generated = ai.generatedAt ? `Generated: ${new Date(ai.generatedAt).toLocaleString()}\nAI-generated from Reef Keeper data.\n\n` : '';
-      return { title: ai.title || 'AI Monthly Reef Report', text: generated + ai.text };
-    }
-  }
-  return rkBuildReport(type, custom);
-}
-
-function previewSelectedReport() {
-  const box = document.getElementById('report-preview');
-  if (!box) return;
-  const type = document.getElementById('report-type')?.value || 'monthly';
-  const report = getSelectedReport();
-  if (type === 'monthly' && !rkGetAiMonthlyReport()) {
-    box.textContent = `${report.text}\n\nNote: tap Generate AI Monthly Report to create the full AI-written monthly report with photo timeline summary, livestock health notes, top 3 concerns, and next month priorities.`;
-    return;
-  }
-  box.textContent = report.text;
-}
-
-function downloadSelectedReportHTML() {
-  const report = getSelectedReport();
-  const body = escapeHtml(report.text).replace(/\n/g, '<br>');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(report.title)}</title><style>body{font-family:Arial,sans-serif;line-height:1.5;margin:40px;color:#123}h1{color:#0077b6}div{white-space:normal}</style></head><body><h1>${escapeHtml(report.title)}</h1><div>${body}</div></body></html>`;
-  rkDownloadBlob(new Blob([html], { type: 'text/html;charset=utf-8' }), `${rkSafeFilename(report.title)}-${rkNowFileStamp()}.html`);
-}
-
-function pdfEscape(s) { return String(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'); }
-function rkCreateSimplePDF(title, text) {
-  const wrapped = rkWrapText(`${title}\n\n${text}`, 88);
-  const pages = [];
-  for (let i=0; i<wrapped.length; i+=44) pages.push(wrapped.slice(i, i+44));
-  if (!pages.length) pages.push(['']);
-  const objs = [];
-  function add(s){ objs.push(s); return objs.length; }
-  const fontObj = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const pageObjs = [];
-  pages.forEach(lines => {
-    const content = `BT\n/F1 10 Tf\n50 780 Td\n14 TL\n${lines.map(l => `(${pdfEscape(l)}) Tj T*`).join('\n')}\nET`;
-    const streamObj = add(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
-    const pageObj = add(`<< /Type /Page /Parent 0 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontObj} 0 R >> >> /Contents ${streamObj} 0 R >>`);
-    pageObjs.push(pageObj);
-  });
-  const pagesObjIndex = objs.length + 1;
-  pageObjs.forEach(n => { objs[n-1] = objs[n-1].replace('/Parent 0 0 R', `/Parent ${pagesObjIndex} 0 R`); });
-  const pagesObj = add(`<< /Type /Pages /Kids [${pageObjs.map(n => `${n} 0 R`).join(' ')}] /Count ${pageObjs.length} >>`);
-  const catalogObj = add(`<< /Type /Catalog /Pages ${pagesObj} 0 R >>`);
-  let pdf = '%PDF-1.4\n';
-  const offsets = [0];
-  objs.forEach((obj, i) => { offsets.push(pdf.length); pdf += `${i+1} 0 obj\n${obj}\nendobj\n`; });
-  const xref = pdf.length;
-  pdf += `xref\n0 ${objs.length+1}\n0000000000 65535 f \n` + offsets.slice(1).map(o => String(o).padStart(10,'0') + ' 00000 n ').join('\n') + '\n';
-  pdf += `trailer\n<< /Size ${objs.length+1} /Root ${catalogObj} 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return new Blob([pdf], { type: 'application/pdf' });
-}
-
-function downloadSelectedReportPDF() {
-  const report = getSelectedReport();
-  const blob = rkCreateSimplePDF(report.title, report.text);
-  rkDownloadBlob(blob, `${rkSafeFilename(report.title)}-${rkNowFileStamp()}.pdf`);
-}
-
-// Minimal DOCX generator with uncompressed ZIP package.
-const rkCrcTable = (() => {
-  const table = new Uint32Array(256);
-  for (let n=0; n<256; n++) {
-    let c=n;
-    for (let k=0; k<8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-    table[n]=c>>>0;
-  }
-  return table;
-})();
-function rkCrc32(bytes) {
-  let c = 0xffffffff;
-  for (let i=0; i<bytes.length; i++) c = rkCrcTable[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-}
-function rkU16(n){ return [n & 255, (n>>>8)&255]; }
-function rkU32(n){ return [n & 255, (n>>>8)&255, (n>>>16)&255, (n>>>24)&255]; }
-function rkConcat(arrays){ const len=arrays.reduce((s,a)=>s+a.length,0); const out=new Uint8Array(len); let o=0; arrays.forEach(a=>{out.set(a,o);o+=a.length;}); return out; }
-function rkZipStore(files) {
-  const enc = new TextEncoder();
-  const locals = [], centrals = [];
-  let offset = 0;
-  Object.entries(files).forEach(([name, content]) => {
-    const nameBytes = enc.encode(name);
-    const data = content instanceof Uint8Array ? content : enc.encode(String(content));
-    const crc = rkCrc32(data);
-    const local = new Uint8Array([0x50,0x4b,0x03,0x04, ...rkU16(20), ...rkU16(0), ...rkU16(0), ...rkU16(0), ...rkU16(0), ...rkU32(crc), ...rkU32(data.length), ...rkU32(data.length), ...rkU16(nameBytes.length), ...rkU16(0)]);
-    locals.push(local, nameBytes, data);
-    const central = new Uint8Array([0x50,0x4b,0x01,0x02, ...rkU16(20), ...rkU16(20), ...rkU16(0), ...rkU16(0), ...rkU16(0), ...rkU16(0), ...rkU32(crc), ...rkU32(data.length), ...rkU32(data.length), ...rkU16(nameBytes.length), ...rkU16(0), ...rkU16(0), ...rkU16(0), ...rkU16(0), ...rkU32(0), ...rkU32(offset)]);
-    centrals.push(central, nameBytes);
-    offset += local.length + nameBytes.length + data.length;
-  });
-  const centralStart = offset;
-  const centralBytes = rkConcat(centrals);
-  const end = new Uint8Array([0x50,0x4b,0x05,0x06, ...rkU16(0), ...rkU16(0), ...rkU16(Object.keys(files).length), ...rkU16(Object.keys(files).length), ...rkU32(centralBytes.length), ...rkU32(centralStart), ...rkU16(0)]);
-  return rkConcat([...locals, centralBytes, end]);
-}
-function wordXmlEscape(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function rkDocxParagraph(text, bold=false) {
-  const style = bold ? '<w:rPr><w:b/></w:rPr>' : '';
-  return `<w:p><w:r>${style}<w:t xml:space="preserve">${wordXmlEscape(text || ' ')}</w:t></w:r></w:p>`;
-}
-function rkCreateSimpleDOCX(title, text) {
-  const paragraphs = [];
-  paragraphs.push(rkDocxParagraph(title, true));
-  rkTextLines(text).forEach(line => {
-    const isHeading = line && line === line.toUpperCase() && line.length < 70 && !line.startsWith('-') && !line.match(/^[-]+$/);
-    if (!line.match(/^[-]+$/)) paragraphs.push(rkDocxParagraph(line, isHeading));
-  });
-  const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraphs.join('')}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>`;
-  const files = {
-    '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`,
-    '_rels/.rels': `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`,
-    'word/document.xml': documentXml
-  };
-  return new Blob([rkZipStore(files)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-}
-function downloadSelectedReportDOCX() {
-  const report = getSelectedReport();
-  const blob = rkCreateSimpleDOCX(report.title, report.text);
-  rkDownloadBlob(blob, `${rkSafeFilename(report.title)}-${rkNowFileStamp()}.docx`);
-}

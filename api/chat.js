@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, modelMode, attachment, attachments } = req.body || {};
+    const { system, messages, modelMode } = req.body || {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Missing messages array.' });
@@ -21,46 +21,6 @@ export default async function handler(req, res) {
         role: m.role,
         content: m.content.slice(0, 12000)
       }));
-
-    const rawAttachments = Array.isArray(attachments) ? attachments : (attachment ? [attachment] : []);
-    const imageAttachments = rawAttachments
-      .filter(item => item && item.kind === 'image' && typeof item.dataUrl === 'string')
-      .slice(0, 10)
-      .map((item, index) => ({
-        name: String(item.name || `reef photo ${index + 1}`).slice(0, 160),
-        type: String(item.type || 'image/jpeg').slice(0, 80),
-        dataUrl: item.dataUrl
-      }));
-
-    for (const imageAttachment of imageAttachments) {
-      if (!imageAttachment.dataUrl.startsWith('data:image/')) {
-        return res.status(400).json({ error: 'One attached image was not in a supported data URL format.' });
-      }
-      if (imageAttachment.dataUrl.length > 6_000_000) {
-        return res.status(413).json({ error: 'One attached image is too large. Try a smaller photo or screenshot.' });
-      }
-    }
-
-    if (imageAttachments.length) {
-      const lastUserIndex = cleanMessages.map(m => m.role).lastIndexOf('user');
-      if (lastUserIndex >= 0) {
-        const originalText = String(cleanMessages[lastUserIndex].content || 'Please analyze these reef images.');
-        const content = [
-          {
-            type: 'input_text',
-            text: `${originalText}
-
-${imageAttachments.length} image attachment${imageAttachments.length === 1 ? '' : 's'} included. Please analyze the visible reef/tank/livestock details directly from the image${imageAttachments.length === 1 ? '' : 's'}. If multiple images are present, compare them and identify differences, progression, or before/after changes when relevant. Be honest about uncertainty and do not diagnose disease from the image alone without explaining what visual signs support it.`
-          },
-          ...imageAttachments.map(img => ({
-            type: 'input_image',
-            image_url: img.dataUrl
-          }))
-        ];
-        cleanMessages[lastUserIndex] = { role: 'user', content };
-      }
-    }
-
 
     const modelProfiles = {
       quick: {
@@ -123,10 +83,7 @@ If there are no good reminders, return an empty reminders array.`;
         instructions: `${typeof system === 'string' ? system.slice(0, 50000) : ''}
 
 ANSWER STYLE FOR THIS REQUEST:
-${selectedProfile.style}
-
-IMAGE ANALYSIS:
-If the user attaches one or more images, inspect the image(s) directly. If multiple images are attached, compare them when relevant. Answer from what is visible. Mention uncertainty where image quality, angle, lighting, or obstruction limits confidence. For reef livestock health, distinguish observations from diagnosis.${reminderInstructions}`,
+${selectedProfile.style}${reminderInstructions}`,
         input: cleanMessages,
         max_output_tokens: selectedProfile.max_output_tokens
       })
