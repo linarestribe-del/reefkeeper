@@ -392,6 +392,101 @@ function handleCatalogOverlayClick(event) {
   if (event.target && event.target.id === 'catalog-overlay') closeLivestockCatalog();
 }
 
+// ── Live Apex context for Ask AI ────────────────────────────────────────────
+async function buildLiveApexContextForAI() {
+  try {
+    const response = await fetch('/api/apex-status', { cache: 'no-store' });
+    const status = await response.json();
+
+    if (!status || !status.ok) {
+      return `
+
+LIVE APEX STATUS FROM RASPBERRY PI BRIDGE:
+Unavailable. ${status && status.error ? status.error : 'No live Apex status returned.'}`;
+    }
+
+    const inputs = status.raw && status.raw.istat && Array.isArray(status.raw.istat.inputs)
+      ? status.raw.istat.inputs
+      : [];
+
+    const outputs = status.raw && status.raw.istat && Array.isArray(status.raw.istat.outputs)
+      ? status.raw.istat.outputs
+      : [];
+
+    const inputByName = {};
+    inputs.forEach(item => {
+      if (item && item.name) inputByName[item.name] = item;
+    });
+
+    const outputByName = {};
+    outputs.forEach(item => {
+      if (item && item.name) outputByName[item.name] = item;
+    });
+
+    function inputValue(name, suffix = '') {
+      const item = inputByName[name];
+      if (!item || item.value === undefined || item.value === null) return 'unavailable';
+      return `${item.value}${suffix}`;
+    }
+
+    function outputStatus(name) {
+      const item = outputByName[name];
+      if (!item || !Array.isArray(item.status)) return 'unavailable';
+      return item.status[0] || 'unavailable';
+    }
+
+    function digitalValue(name) {
+      const item = inputByName[name];
+      if (!item || item.value === undefined || item.value === null) return 'unavailable';
+      return String(item.value);
+    }
+
+    return `
+
+LIVE APEX STATUS FROM RASPBERRY PI BRIDGE:
+Use this as the most current Apex data. If older saved Apex values conflict with this section, prioritize this live section.
+
+Last sync received by Reef Keeper: ${status.receivedAt || 'unavailable'}
+Pi timestamp: ${status.piTimestamp || 'unavailable'}
+Apex source: ${status.source || status.apexSourceUrl || 'unavailable'}
+
+Current probes:
+- Temperature: ${inputValue('Tmp', ' °F')}
+- pH: ${inputValue('pH')}
+- ORP: ${inputValue('ORP', ' mV')}
+- Voltage EnergyBar 2: ${inputValue('Volt_2', ' V')}
+- Voltage EnergyBar 5: ${inputValue('Volt_5', ' V')}
+
+Current equipment outlet states:
+- Return1: ${outputStatus('Return1')} / ${inputValue('Return1W', ' W')}
+- Return2: ${outputStatus('Return2')} / ${inputValue('Return2W', ' W')}
+- UV pump: ${outputStatus('UVpump')} / ${inputValue('UVpumpW', ' W')}
+- UV light: ${outputStatus('UVlight')}
+- Skimmer: ${outputStatus('Skimmer')} / ${inputValue('SkimmerW', ' W')}
+- Left MP40: ${outputStatus('LMP40')} / ${inputValue('LMP40W', ' W')}
+- Right MP40: ${outputStatus('RMP40')} / ${inputValue('RMP40W', ' W')}
+- Filter roller: ${outputStatus('FilterRoller')} / ${inputValue('FilterRollerW', ' W')}
+- GFO: ${outputStatus('GFO')}
+- ATO: ${outputStatus('ATO')} / ${inputValue('ATOW', ' W')}
+- Kalk stirrer: ${outputStatus('Kalkstirrer')} / ${inputValue('KalkstirrerW', ' W')}
+- Kalk pump: ${outputStatus('Kalkpump')} / ${inputValue('KalkpumpW', ' W')}
+- NOPOX: ${outputStatus('NOPOX')} / ${inputValue('NOPOXW', ' W')}
+- Fan: ${outputStatus('Fan')} / ${inputValue('FanW', ' W')}
+- Heat1: ${outputStatus('Heat1')} / ${inputValue('Heat1W', ' W')}
+- Heat2: ${outputStatus('Heat2')} / ${inputValue('Heat2W', ' W')}
+
+Current safety inputs:
+- Leak1: ${digitalValue('Leak1')}
+- Leak2: ${digitalValue('Leak2')}
+- Leak3: ${digitalValue('Leak3')}`;
+  } catch (error) {
+    return `
+
+LIVE APEX STATUS FROM RASPBERRY PI BRIDGE:
+Unavailable. Error while fetching /api/apex-status: ${error && error.message ? error.message : String(error)}`;
+  }
+}
+
 // ── Backend AI call ─────────────────────────────────────────────────────────
 async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
   const messages = history.length > 0
@@ -399,7 +494,10 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
     : [{ role: 'user', content: userMsg }];
 
   const useTankContext = getUseTankContext();
-  const selectedSystem = useTankContext ? `${TANK_CONTEXT}${getLocalTankMemorySummary(userMsg)}` : GENERAL_REEF_CONTEXT;
+  const liveApexContext = useTankContext ? await buildLiveApexContextForAI() : '';
+  const selectedSystem = useTankContext
+    ? `${TANK_CONTEXT}${getLocalTankMemorySummary(userMsg)}${liveApexContext}`
+    : GENERAL_REEF_CONTEXT;
 
   const response = await fetch(API_URL, {
     method: 'POST',
