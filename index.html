@@ -76,15 +76,15 @@
         </div>
         <div class="home-brain-explain" id="home-brain-explain">
           <div class="home-brain-explain-head">
-            <div><strong>Why this score?</strong><span id="home-score-summary">Live Apex is connected. Reef Brain scoring is paused during cleanup.</span></div>
+            <div><strong>Why this score?</strong><span id="home-score-summary">Reef Brain is calculating from live Apex telemetry.</span></div>
             <button type="button" onclick="openHomeReefStatus()">Details</button>
           </div>
           <div class="home-brain-factors" id="home-brain-factors">
-            <span class="muted">Reef Brain scoring is paused while cleanup is in progress.</span>
+            <span class="muted">Loading Reef Brain score factors…</span>
           </div>
           <div class="home-confidence-card" id="home-confidence-card">
-            <div><span>Reef Brain Confidence</span><strong id="home-confidence-value">Paused</strong></div>
-            <small id="home-confidence-detail">Live Apex is working. Confidence scoring will be rebuilt after cleanup.</small>
+            <div><span>Reef Brain Confidence</span><strong id="home-confidence-value">—</strong></div>
+            <small id="home-confidence-detail">Confidence is based on live Apex availability and local app data.</small>
           </div>
         </div>
         <div class="home-daily-assistant" id="home-daily-assistant">
@@ -2179,5 +2179,19 @@ function startVisionPrompt(prompt, preferCamera) {
   }, 120);
 }
 </script>
+
+<script>
+window.addEventListener('load', function () {
+  setTimeout(function () {
+    try {
+      if (typeof renderHomeIntelligence === 'function') renderHomeIntelligence();
+      if (typeof renderHomeTelemetry === 'function') renderHomeTelemetry();
+    } catch (e) {
+      console.warn('Forced Home intelligence render failed', e);
+    }
+  }, 800);
+});
+</script>
+
 </body>
 </html>
