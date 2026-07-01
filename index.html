@@ -12,6 +12,62 @@
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/app.css?v=20260628-v3-9-2-polish-performance">
+
+<style id="reefkeeper-live-telemetry-compact-fix">
+  .home-telemetry-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .home-telemetry-chip {
+    min-height: 0 !important;
+    padding: 14px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .home-telemetry-chip span {
+    display: block !important;
+    margin-bottom: 6px !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+  }
+
+  .home-telemetry-chip strong {
+    display: block !important;
+    font-size: 1.75rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .home-telemetry-chip small {
+    display: block !important;
+    margin-top: 4px !important;
+    font-size: 0.85rem !important;
+  }
+
+  .home-telemetry-chip em {
+    display: none !important;
+  }
+
+  .home-telemetry-wide {
+    grid-column: 1 / -1 !important;
+    padding: 14px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .home-telemetry-wide strong {
+    display: block !important;
+    margin-bottom: 6px !important;
+  }
+
+  .home-telemetry-wide span {
+    display: block !important;
+    font-size: 0.9rem !important;
+    line-height: 1.35 !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -1668,10 +1724,18 @@ function renderHomeTelemetry() {
         return item.value;
       }
 
+      function cleanApexState(value) {
+        const raw = String(value || '').trim().toUpperCase();
+        if (!raw || raw === '—') return '—';
+        if (raw === 'AON' || raw === 'ON') return 'ON';
+        if (raw === 'AOF' || raw === 'OFF') return 'OFF';
+        return raw;
+      }
+
       function outputStatus(name) {
         const item = outputByName[name];
         if (!item || !Array.isArray(item.status)) return '—';
-        return item.status[0] || '—';
+        return cleanApexState(item.status[0] || '—');
       }
 
       function outputPower(name) {
@@ -1691,54 +1755,78 @@ function renderHomeTelemetry() {
         return `Updated ${days} day${days === 1 ? '' : 's'} ago`;
       }
 
+      function numberValue(value) {
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+      }
+
+      function tempStatus(value) {
+        const n = numberValue(value);
+        if (n === null) return 'unknown';
+        return n >= 75 && n <= 81 ? 'normal' : 'watch';
+      }
+
+      function phStatus(value) {
+        const n = numberValue(value);
+        if (n === null) return 'unknown';
+        return n >= 7.8 && n <= 8.6 ? 'normal' : 'watch';
+      }
+
+      function orpStatus(value) {
+        const n = numberValue(value);
+        if (n === null) return 'unknown';
+        return n >= 250 && n <= 450 ? 'normal' : 'watch';
+      }
+
       const alarmOutputs = outputs.filter(o => {
         const name = String(o.name || '').toLowerCase();
-        const state = Array.isArray(o.status) ? String(o.status[0] || '').toUpperCase() : '';
-        return /alarm|warn|heaterror/.test(name) && (state === 'ON' || state === 'AON');
+        const state = cleanApexState(Array.isArray(o.status) ? o.status[0] : '');
+        return /alarm|warn|heaterror/.test(name) && state === 'ON';
       });
 
       if (subtitle) {
         subtitle.textContent = `${age(status.receivedAt || status.piTimestamp)} · Live Apex bridge · ${alarmOutputs.length ? alarmOutputs.length + ' alarm' + (alarmOutputs.length === 1 ? '' : 's') : 'No alarms'}`;
       }
 
+      const temp = inputValue('Tmp');
+      const ph = inputValue('pH');
+      const orp = inputValue('ORP');
+      const ato = outputStatus('ATO');
+
       const tiles = [
         {
           label: 'Temperature',
-          value: inputValue('Tmp'),
+          value: temp,
           unit: '°F',
-          status: 'normal',
-          detail: 'Live Apex bridge value.'
+          status: tempStatus(temp)
         },
         {
           label: 'pH',
-          value: inputValue('pH'),
+          value: ph,
           unit: '',
-          status: 'normal',
-          detail: 'Live Apex bridge value.'
+          status: phStatus(ph)
         },
         {
           label: 'ORP',
-          value: inputValue('ORP'),
+          value: orp,
           unit: 'mV',
-          status: 'normal',
-          detail: 'Live Apex bridge value.'
+          status: orpStatus(orp)
         },
         {
           label: 'ATO',
-          value: outputStatus('ATO'),
+          value: ato,
           unit: outputPower('ATOW'),
-          status: outputStatus('ATO') === 'ON' || outputStatus('ATO') === 'AON' ? 'normal' : 'imported',
-          detail: 'Live outlet state.'
+          status: ato === 'ON' || ato === 'OFF' ? 'normal' : 'unknown'
         }
       ];
 
       const outletLine = [
-        `Return1: ${outputStatus('Return1')} / ${outputPower('Return1W')}`,
-        `Return2: ${outputStatus('Return2')} / ${outputPower('Return2W')}`,
-        `UV: ${outputStatus('UVpump')} / ${outputPower('UVpumpW')}`,
-        `Skimmer: ${outputStatus('Skimmer')} / ${outputPower('SkimmerW')}`,
-        `Heat1: ${outputStatus('Heat1')} / ${outputPower('Heat1W')}`,
-        `Heat2: ${outputStatus('Heat2')} / ${outputPower('Heat2W')}`
+        `Return1 ${outputStatus('Return1')} / ${outputPower('Return1W')}`,
+        `Return2 ${outputStatus('Return2')} / ${outputPower('Return2W')}`,
+        `UV ${outputStatus('UVpump')} / ${outputPower('UVpumpW')}`,
+        `Skimmer ${outputStatus('Skimmer')} / ${outputPower('SkimmerW')}`,
+        `Heat1 ${outputStatus('Heat1')} / ${outputPower('Heat1W')}`,
+        `Heat2 ${outputStatus('Heat2')} / ${outputPower('Heat2W')}`
       ].join(' · ');
 
       grid.innerHTML = `${tiles.map(item => `
@@ -1746,11 +1834,10 @@ function renderHomeTelemetry() {
           <span>${escapeHtml(item.label)}</span>
           <strong>${rkHomeTelemetryValue(item.value)}</strong>
           <small>${escapeHtml([item.unit, item.status].filter(Boolean).join(' · '))}</small>
-          <em>${escapeHtml(item.detail || '')}</em>
         </div>
       `).join('')}
       <div class="home-telemetry-wide">
-        <strong>Outlet status</strong>
+        <strong>Outlets</strong>
         <span>${escapeHtml(outletLine)}</span>
       </div>`;
     })
