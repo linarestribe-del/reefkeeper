@@ -3928,12 +3928,112 @@ function getTrendDelta(key) {
   return points[points.length - 1] - points[points.length - 2];
 }
 
+
+// ── Home live Apex status card ──────────────────────────────────────────────
+async function renderHomeLiveApexStatus() {
+  const box = document.getElementById('home-live-apex-status');
+  if (!box) return;
+
+  try {
+    const response = await fetch('/api/apex-status', { cache: 'no-store' });
+    const status = await response.json();
+
+    if (!status || !status.ok) {
+      box.innerHTML = `
+        <div class="tank-status-row">
+          <div class="tank-status-label">Live Apex</div>
+          <div class="tank-status-text">Unavailable${status && status.error ? `: ${escapeHtml(status.error)}` : ''}</div>
+        </div>
+      `;
+      return;
+    }
+
+    const inputs = status.raw && status.raw.istat && Array.isArray(status.raw.istat.inputs)
+      ? status.raw.istat.inputs
+      : [];
+
+    const outputs = status.raw && status.raw.istat && Array.isArray(status.raw.istat.outputs)
+      ? status.raw.istat.outputs
+      : [];
+
+    const inputByName = {};
+    inputs.forEach(item => {
+      if (item && item.name) inputByName[item.name] = item;
+    });
+
+    const outputByName = {};
+    outputs.forEach(item => {
+      if (item && item.name) outputByName[item.name] = item;
+    });
+
+    function inputValue(name, suffix = '') {
+      const item = inputByName[name];
+      if (!item || item.value === undefined || item.value === null) return '—';
+      return `${item.value}${suffix}`;
+    }
+
+    function outputStatus(name) {
+      const item = outputByName[name];
+      if (!item || !Array.isArray(item.status)) return '—';
+      return item.status[0] || '—';
+    }
+
+    function outputWithPower(outletName, wattsName) {
+      return `${outputStatus(outletName)} / ${inputValue(wattsName, ' W')}`;
+    }
+
+    const received = status.receivedAt
+      ? new Date(status.receivedAt).toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        })
+      : 'unknown';
+
+    box.innerHTML = `
+      <div class="tank-status-head">
+        <div>
+          <div class="tank-status-title">Live Apex Bridge</div>
+          <div class="tank-status-subtitle">Synced: ${escapeHtml(received)}</div>
+        </div>
+        <div class="tank-status-badge good">Live</div>
+      </div>
+
+      <div class="tank-status-metric-line">
+        <span class="tank-mini-pill good">Temp ${escapeHtml(inputValue('Tmp', '°F'))}</span>
+        <span class="tank-mini-pill good">pH ${escapeHtml(inputValue('pH'))}</span>
+        <span class="tank-mini-pill good">ORP ${escapeHtml(inputValue('ORP', ' mV'))}</span>
+      </div>
+
+      <div class="tank-status-grid">
+        <div class="tank-status-row"><div class="tank-status-label">Heat1</div><div class="tank-status-text">${escapeHtml(outputWithPower('Heat1', 'Heat1W'))}</div></div>
+        <div class="tank-status-row"><div class="tank-status-label">Heat2</div><div class="tank-status-text">${escapeHtml(outputWithPower('Heat2', 'Heat2W'))}</div></div>
+        <div class="tank-status-row"><div class="tank-status-label">ATO</div><div class="tank-status-text">${escapeHtml(outputWithPower('ATO', 'ATOW'))}</div></div>
+      </div>
+    `;
+  } catch (error) {
+    box.innerHTML = `
+      <div class="tank-status-row">
+        <div class="tank-status-label">Live Apex</div>
+        <div class="tank-status-text">Could not load live Apex status: ${escapeHtml(error && error.message ? error.message : String(error))}</div>
+      </div>
+    `;
+  }
+}
+
 function renderTankStatus() {
   const container = document.getElementById('tank-status-content');
   if (!container) return;
   const latest = getLatestLogForStatus();
   if (!latest) {
-    container.innerHTML = '<div class="tank-status-text">Log your first readings and Reef Keeper will summarize the tank status here.</div>';
+    container.innerHTML = `
+      <div id="home-live-apex-status" class="tank-status-grid">
+        <div class="tank-status-text">Loading live Apex status…</div>
+      </div>
+      <div class="tank-status-text">Log your first readings and Reef Keeper will summarize the tank status here.</div>
+    `;
+    renderHomeLiveApexStatus();
     return;
   }
 
@@ -3997,6 +4097,10 @@ function renderTankStatus() {
   ].filter(Boolean);
 
   container.innerHTML = `
+    <div id="home-live-apex-status" class="tank-status-grid">
+      <div class="tank-status-text">Loading live Apex status…</div>
+    </div>
+
     <div class="tank-status-head">
       <div>
         <div class="tank-status-title">${escapeHtml(level === 'good' ? 'Looking steady' : level === 'critical' ? 'Needs attention' : 'Improving, but go slow')}</div>
@@ -4013,6 +4117,7 @@ function renderTankStatus() {
       ${pills.map(p => `<span class="tank-mini-pill ${p.state}">${escapeHtml(p.label)}</span>`).join('')}
     </div>
   `;
+  renderHomeLiveApexStatus();
 }
 
 // ── Days-off work plan ──────────────────────────────────────────────────────
