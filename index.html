@@ -68,6 +68,78 @@
   }
 </style>
 
+
+<style id="reefkeeper-live-telemetry-final-compact-fix">
+  #home-telemetry-grid.home-telemetry-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-chip {
+    grid-column: auto !important;
+    min-height: auto !important;
+    height: auto !important;
+    padding: 12px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-chip span {
+    display: block !important;
+    margin-bottom: 5px !important;
+    font-size: 0.75rem !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-chip strong {
+    display: block !important;
+    font-size: 1.65rem !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-chip small {
+    display: block !important;
+    margin-top: 4px !important;
+    font-size: 0.78rem !important;
+    line-height: 1.2 !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-chip em {
+    display: none !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-wide {
+    grid-column: 1 / -1 !important;
+    padding: 12px 14px !important;
+    border-radius: 18px !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-wide strong {
+    display: block !important;
+    margin-bottom: 5px !important;
+    font-size: 0.9rem !important;
+  }
+
+  #home-telemetry-grid > .home-telemetry-wide span {
+    display: block !important;
+    font-size: 0.82rem !important;
+    line-height: 1.35 !important;
+  }
+
+  @media (max-width: 430px) {
+    #home-telemetry-grid.home-telemetry-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    #home-telemetry-grid > .home-telemetry-chip strong {
+      font-size: 1.45rem !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 
