@@ -2002,6 +2002,7 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
   };
 }
 
+
 async function renderHomeIntelligenceFallback() {
   const latest = rkHomeLatestLog();
   const reminders = rkHomeParseArray('reef_ai_reminders').filter(r => r && !r.completed);
@@ -2028,117 +2029,23 @@ async function renderHomeIntelligenceFallback() {
   if (statusLabelEl) statusLabelEl.textContent = `${snapshot.status.emoji} Reef Status`;
   if (statusValueEl) statusValueEl.textContent = snapshot.status.label;
   if (lastTestValueEl) lastTestValueEl.textContent = snapshot.lastTest.label;
-  if (monitoringValueEl) monitoringValueEl.textContent = snapshot.watching.length ? `${snapshot.watching.length} Item${snapshot.watching.length === 1 ? '' : 's'}` : 'Nothing New';
-
-  if (todayEl) {
-    todayEl.innerHTML = snapshot.today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
-  }
-
-  if (watchingEl) {
-    watchingEl.innerHTML = snapshot.watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
-  }
-
-  rkHomeRenderBrainExplanation(snapshot);
-  rkHomeRenderDailyAssistant(snapshot);
-  renderHomeTelemetry();
-}
-
-function rkHomeTelemetryStatusLabel(item) {
-  const status = String(item?.status || '').toLowerCase();
-  if (status === 'excellent') return 'Excellent';
-  if (status === 'normal') return 'Normal';
-  if (status === 'watch') return 'Watch';
-  return status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Imported';
-}
-
-function renderHomeIntelligence() {
-  const card = document.getElementById('home-intelligence-card');
-  if (!card) return;
-  const snapshot = window.ReefKeeperBrain?.getSnapshot?.();
-  if (!snapshot) return renderHomeIntelligenceFallback();
-
-  const scoreEl = document.getElementById('home-intel-score');
-  const statusLabelEl = document.getElementById('home-status-label');
-  const statusValueEl = document.getElementById('home-status-value');
-  const monitoringValueEl = document.getElementById('home-monitoring-value');
-  const lastTestValueEl = document.getElementById('home-last-test-value');
-  const todayEl = document.getElementById('home-intel-today');
-  const watchingEl = document.getElementById('home-intel-watching');
-
-  if (scoreEl) scoreEl.textContent = snapshot.score;
-  rkHomeRenderBrainExplanation(snapshot);
-  if (statusLabelEl) statusLabelEl.textContent = `${snapshot.status.emoji} Reef Status`;
-  if (statusValueEl) statusValueEl.textContent = snapshot.status.label;
-  if (lastTestValueEl) lastTestValueEl.textContent = snapshot.lastTest.label;
   if (monitoringValueEl) {
-    const count = snapshot.watching.length;
-    monitoringValueEl.textContent = count ? `${count} Item${count === 1 ? '' : 's'}` : 'Nothing New';
+    monitoringValueEl.textContent = snapshot.watching.length
+      ? `${snapshot.watching.length} Item${snapshot.watching.length === 1 ? '' : 's'}`
+      : 'Nothing New';
   }
 
   if (todayEl) {
     todayEl.innerHTML = snapshot.today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
   }
+
   if (watchingEl) {
     watchingEl.innerHTML = snapshot.watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
   }
+
+  rkHomeRenderBrainExplanation(snapshot);
   rkHomeRenderDailyAssistant(snapshot);
   renderHomeTelemetry();
-}
-
-function renderHomeIntelligenceFallback() {
-  const latest = rkHomeLatestLog();
-  const score = rkHomeScoreFromLog(latest || {});
-  const scoreEl = document.getElementById('home-intel-score');
-  const statusLabelEl = document.getElementById('home-status-label');
-  const statusValueEl = document.getElementById('home-status-value');
-  const monitoringValueEl = document.getElementById('home-monitoring-value');
-  const lastTestValueEl = document.getElementById('home-last-test-value');
-  const todayEl = document.getElementById('home-intel-today');
-  const watchingEl = document.getElementById('home-intel-watching');
-  if (scoreEl) scoreEl.textContent = score;
-  const latestAge = rkDaysAgoLabel(latest?.isoDate || latest?.date);
-  const statusEmoji = score >= 92 ? '🟢' : score >= 84 ? '🟡' : '🔴';
-  const statusText = score >= 92 ? 'Excellent' : score >= 84 ? 'Stable' : 'Needs Attention';
-  if (statusLabelEl) statusLabelEl.textContent = `${statusEmoji} Reef Status`;
-  if (statusValueEl) statusValueEl.textContent = statusText;
-  if (lastTestValueEl) lastTestValueEl.textContent = latestAge;
-
-  let due = [];
-  try { due = window.ReefKeeperMaintenance?.getDueTasks?.({ windowDays: 10 }) || []; } catch(e) { due = []; }
-  const reminders = rkHomeParseArray('reef_ai_reminders').filter(r => r && !r.completed).slice(0, 4);
-  const todayLines = [];
-  due.slice(0, 2).forEach(t => todayLines.push(rkHomeFormatLine(t.title || 'Maintenance due', t.detail || 'Due soon')));
-  reminders.slice(0, 2).forEach(r => todayLines.push(rkHomeFormatLine(`${r.emoji || '⏰'} ${r.title || 'Reminder'}`, r.when || r.repeat || 'Active')));
-  if (!todayLines.length) {
-    todayLines.push(rkHomeFormatLine('Nothing overdue', 'Use Quick Actions to log today\'s work'));
-    todayLines.push(rkHomeFormatLine('Review Alk / PO₄ trend', 'Good default check-in'));
-  }
-  if (todayEl) todayEl.innerHTML = todayLines.slice(0, 4).join('');
-
-  const po4 = rkHomeNumber(latest?.po4 ?? 0.65);
-  const alk = rkHomeNumber(latest?.alk ?? 10.0);
-  const no3 = rkHomeNumber(latest?.no3 ?? 22);
-  const history = rkHomeParseArray('reef_tank_visual_history_v13');
-  const latestPhoto = history.sort((a,b) => new Date(b.createdAt || b.isoDate || b.date || 0) - new Date(a.createdAt || a.isoDate || a.date || 0))[0];
-  const photoAge = rkDaysAgoLabel(latestPhoto?.createdAt || latestPhoto?.isoDate || latestPhoto?.date);
-  const watchLines = [];
-  if (po4 !== null && po4 > 0.12) watchLines.push(rkHomeFormatLine('Phosphate still above target', `${po4} ppm`));
-  if (alk !== null && (alk > 9.7 || alk < 7.8)) watchLines.push(rkHomeFormatLine('Alkalinity needs stability focus', `${alk} dKH`));
-  if (no3 !== null && no3 > 15) watchLines.push(rkHomeFormatLine('Nitrate above preferred range', `${no3} ppm`));
-  if (!latestPhoto) watchLines.push(rkHomeFormatLine('Full-tank photo missing', 'Start Reef Timeline'));
-  else watchLines.push(rkHomeFormatLine('Latest reef photo', photoAge));
-  if (due.length) watchLines.push(rkHomeFormatLine('Maintenance coming due', `${due.length} item${due.length === 1 ? '' : 's'}`));
-  const monitoringCount = watchLines.length;
-  if (monitoringValueEl) monitoringValueEl.textContent = monitoringCount ? `${monitoringCount} Item${monitoringCount === 1 ? '' : 's'}` : 'Nothing New';
-  if (watchingEl) watchingEl.innerHTML = watchLines.slice(0, 4).join('');
-  renderHomeTelemetry();
-  rkHomeRenderDailyAssistant({ dailyAssistant: {
-    headline: score >= 84 ? 'Your reef looks stable today.' : 'Your reef needs attention today.',
-    bullets: [
-      { text: latestAge === 'No log' ? 'Log a fresh water test' : 'Review today’s reef priorities', detail: latestAge === 'No log' ? 'No recent parameter log found.' : `Last parameter log: ${latestAge}.`, action: 'water-test' },
-      { text: watchLines.length ? 'Review AI Watching items' : 'Nothing urgent today', detail: watchLines.length ? `${watchLines.length} item${watchLines.length === 1 ? '' : 's'} to monitor.` : 'Use Quick Actions to log work as you go.', action: watchLines.length ? 'params' : 'maintenance' }
-    ]
-  }});
 }
 
 (function installHomeIntelligenceHooks(){
