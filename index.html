@@ -2026,10 +2026,10 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
 
   if (Number.isFinite(temp)) {
     positives.push(`Temperature available: ${temp}°F.`);
-    if (temp < 75.5 || temp > 80.5) {
+    if (temp < 74 || temp > 82) {
       score -= 10;
       penalties.push({ title:'Temperature', detail:`Live temperature is ${temp}°F.` });
-    } else if (temp < 76.5 || temp > 79.5) {
+    } else if (temp < 75 || temp > 81) {
       score -= 4;
       penalties.push({ title:'Temperature watch', detail:`Live temperature is ${temp}°F.` });
     } else {
