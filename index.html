@@ -2048,6 +2048,52 @@ async function renderHomeIntelligenceFallback() {
   renderHomeTelemetry();
 }
 
+
+function renderHomeIntelligence() {
+  const snapshot = window.ReefKeeperBrain?.getSnapshot?.();
+
+  if (!snapshot) {
+    return renderHomeIntelligenceFallback();
+  }
+
+  const scoreEl = document.getElementById('home-intel-score');
+  const statusLabelEl = document.getElementById('home-status-label');
+  const statusValueEl = document.getElementById('home-status-value');
+  const monitoringValueEl = document.getElementById('home-monitoring-value');
+  const lastTestValueEl = document.getElementById('home-last-test-value');
+  const todayEl = document.getElementById('home-intel-today');
+  const watchingEl = document.getElementById('home-intel-watching');
+
+  if (scoreEl) scoreEl.textContent = snapshot.score ?? '—';
+
+  const status = snapshot.status || {};
+  if (statusLabelEl) statusLabelEl.textContent = `${status.emoji || '🟡'} Reef Status`;
+  if (statusValueEl) statusValueEl.textContent = status.label || 'Review';
+
+  const lastTest = snapshot.lastTest || {};
+  if (lastTestValueEl) lastTestValueEl.textContent = lastTest.label || 'No local tests';
+
+  const watching = Array.isArray(snapshot.watching) ? snapshot.watching : [];
+  if (monitoringValueEl) {
+    monitoringValueEl.textContent = watching.length
+      ? `${watching.length} Item${watching.length === 1 ? '' : 's'}`
+      : 'Nothing New';
+  }
+
+  const today = Array.isArray(snapshot.today) ? snapshot.today : [];
+  if (todayEl) {
+    todayEl.innerHTML = today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+
+  if (watchingEl) {
+    watchingEl.innerHTML = watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+
+  rkHomeRenderBrainExplanation(snapshot);
+  rkHomeRenderDailyAssistant(snapshot);
+  renderHomeTelemetry();
+}
+
 (function installHomeIntelligenceHooks(){
   const run = () => { try { renderHomeIntelligence(); renderHomeTelemetry(); } catch(e) { console.warn('Home intelligence render failed', e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(run, 250));
