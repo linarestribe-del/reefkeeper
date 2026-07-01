@@ -1049,7 +1049,7 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260701-v4-3-7-reefbrain-paused"></script>
+<script src="app.js?v=20260701-v4-3-8-reefbrain-rebuilt"></script>
 <script src="apex-connect.js?v=20260701-v4-3-7-restore-memory-apex"></script>
 <script src="apex-bridge.js?v=20260629-v4-3-4-auto-telemetry-hub"></script>
 <script src="apex-dashboard.js?v=20260629-v4-3-4-auto-telemetry-hub-fix"></script>
@@ -1767,23 +1767,280 @@ function rkHomeRenderBrainExplanation(snapshot) {
   const factorsEl = document.getElementById('home-brain-factors');
   const confidenceValueEl = document.getElementById('home-confidence-value');
   const confidenceDetailEl = document.getElementById('home-confidence-detail');
+
   const explanation = snapshot?.scoreExplanation || {};
-  if (summaryEl) summaryEl.textContent = 'Live Apex is connected. Reef Brain scoring is paused during cleanup.';
+  const positives = Array.isArray(explanation.positives) ? explanation.positives.slice(0, 3).map(x => ({ type:'good', text:x })) : [];
+  const penalties = Array.isArray(explanation.penalties) ? explanation.penalties.slice(0, 3).map(x => ({ type:'watch', text:`${x.title}: ${x.detail}` })) : [];
+  const factors = [...positives, ...penalties].slice(0, 5);
+
+  if (summaryEl) {
+    summaryEl.textContent = explanation.summary || 'Reef Brain is using live Apex telemetry and local app data.';
+  }
+
   if (factorsEl) {
-    const positives = Array.isArray(explanation.positives) ? explanation.positives.slice(0,3).map(x => ({ type:'good', text:x })) : [];
-    const penalties = Array.isArray(explanation.penalties) ? explanation.penalties.slice(0,3).map(x => ({ type:'watch', text:`${x.title}: ${x.detail}` })) : [];
-    const factors = [...positives, ...penalties].slice(0,5);
     factorsEl.innerHTML = factors.length
       ? factors.map(f => `<span class="brain-factor ${f.type}">${f.type === 'good' ? '✓' : '⚠'} ${escapeHtml(f.text)}</span>`).join('')
-      : '<span class="brain-factor good">✓ No major warnings</span>';
+      : '<span class="brain-factor good">✓ Live Apex bridge is connected</span>';
   }
+
   const confidence = snapshot?.confidence || null;
-  if (confidenceValueEl) confidenceValueEl.textContent = confidence ? `${confidence.score}%` : 'Paused';
+  if (confidenceValueEl) confidenceValueEl.textContent = confidence && Number.isFinite(confidence.score) ? `${confidence.score}%` : '—';
+
   if (confidenceDetailEl) {
-    if (!confidence) confidenceDetailEl.textContent = 'Live Apex is working. Confidence scoring will be rebuilt after cleanup.';
-    else if (confidence.missing && confidence.missing.length) confidenceDetailEl.textContent = `Needs: ${confidence.missing.slice(0,3).join(', ')}.`;
-    else confidenceDetailEl.textContent = 'Telemetry, testing, maintenance, and timeline data are current.';
+    if (!confidence) {
+      confidenceDetailEl.textContent = 'Confidence is based on live Apex availability and local app data.';
+    } else if (confidence.missing && confidence.missing.length) {
+      confidenceDetailEl.textContent = `Needs: ${confidence.missing.slice(0, 3).join(', ')}.`;
+    } else {
+      confidenceDetailEl.textContent = 'Live Apex, local logs, and app context are available.';
+    }
   }
+}
+
+function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
+  const now = Date.now();
+  const positives = [];
+  const penalties = [];
+  const missing = [];
+
+  function ageMinutes(value) {
+    const t = new Date(value || 0).getTime();
+    if (!Number.isFinite(t) || !t) return null;
+    return Math.max(0, Math.floor((now - t) / 60000));
+  }
+
+  const inputs = apexStatus?.raw?.istat && Array.isArray(apexStatus.raw.istat.inputs)
+    ? apexStatus.raw.istat.inputs
+    : [];
+
+  const outputs = apexStatus?.raw?.istat && Array.isArray(apexStatus.raw.istat.outputs)
+    ? apexStatus.raw.istat.outputs
+    : [];
+
+  const inputByName = {};
+  inputs.forEach(item => {
+    if (item && item.name) inputByName[item.name] = item;
+  });
+
+  const outputByName = {};
+  outputs.forEach(item => {
+    if (item && item.name) outputByName[item.name] = item;
+  });
+
+  function inputValue(name) {
+    const item = inputByName[name];
+    return item && item.value !== undefined && item.value !== null ? Number(item.value) : null;
+  }
+
+  function outputStatus(name) {
+    const item = outputByName[name];
+    return item && Array.isArray(item.status) ? String(item.status[0] || '') : '';
+  }
+
+  let score = 72;
+
+  if (apexStatus && apexStatus.ok) {
+    score += 12;
+    positives.push('Live Apex bridge is connected.');
+  } else {
+    score -= 18;
+    penalties.push({ title:'Apex bridge', detail:'Live Apex telemetry is not available.' });
+    missing.push('live Apex telemetry');
+  }
+
+  const apexAge = ageMinutes(apexStatus?.receivedAt || apexStatus?.piTimestamp);
+  if (apexAge !== null && apexAge <= 5) {
+    score += 8;
+    positives.push(`Apex data synced ${apexAge < 1 ? 'just now' : apexAge + ' min ago'}.`);
+  } else if (apexAge !== null && apexAge <= 60) {
+    score += 3;
+    positives.push(`Apex data synced ${apexAge} min ago.`);
+  } else {
+    score -= 10;
+    penalties.push({ title:'Apex freshness', detail:'Apex data is stale or missing.' });
+    missing.push('recent Apex sync');
+  }
+
+  const temp = inputValue('Tmp');
+  const ph = inputValue('pH');
+  const orp = inputValue('ORP');
+
+  if (Number.isFinite(temp)) {
+    positives.push(`Temperature available: ${temp}°F.`);
+    if (temp < 75.5 || temp > 80.5) {
+      score -= 10;
+      penalties.push({ title:'Temperature', detail:`Live temperature is ${temp}°F.` });
+    } else if (temp < 76.5 || temp > 79.5) {
+      score -= 4;
+      penalties.push({ title:'Temperature watch', detail:`Live temperature is ${temp}°F.` });
+    } else {
+      score += 4;
+    }
+  } else {
+    score -= 6;
+    missing.push('temperature probe');
+  }
+
+  if (Number.isFinite(ph)) {
+    positives.push(`pH available: ${ph}.`);
+    if (ph < 8.0 || ph > 8.7) {
+      score -= 8;
+      penalties.push({ title:'pH', detail:`Live pH is ${ph}.` });
+    } else {
+      score += 3;
+    }
+  } else {
+    score -= 4;
+    missing.push('pH probe');
+  }
+
+  if (Number.isFinite(orp)) {
+    positives.push(`ORP available: ${orp} mV.`);
+    if (orp < 250) {
+      score -= 5;
+      penalties.push({ title:'ORP watch', detail:`Live ORP is ${orp} mV.` });
+    } else {
+      score += 2;
+    }
+  } else {
+    missing.push('ORP probe');
+  }
+
+  const heat1 = outputStatus('Heat1');
+  const heat2 = outputStatus('Heat2');
+  const ato = outputStatus('ATO');
+
+  if (heat1 || heat2) positives.push(`Heaters reporting: Heat1 ${heat1 || '—'}, Heat2 ${heat2 || '—'}.`);
+  else {
+    score -= 4;
+    missing.push('heater outlet states');
+  }
+
+  if (ato) positives.push(`ATO reporting: ${ato}.`);
+  else {
+    score -= 3;
+    missing.push('ATO outlet state');
+  }
+
+  const latestAge = latest ? ageMinutes(latest.isoDate || latest.date) : null;
+  if (latestAge !== null) {
+    const days = Math.floor(latestAge / 1440);
+    if (days <= 7) {
+      score += 6;
+      positives.push(`Manual parameter log is current: ${days === 0 ? 'today' : days + ' day(s) ago'}.`);
+    } else if (days <= 21) {
+      score += 2;
+      penalties.push({ title:'Testing cadence', detail:`Latest local parameter log is ${days} days old on this device.` });
+    } else {
+      score -= 8;
+      penalties.push({ title:'Testing cadence', detail:`Latest local parameter log is ${days} days old on this device.` });
+      missing.push('recent parameter log');
+    }
+  } else {
+    score -= 10;
+    penalties.push({ title:'Testing cadence', detail:'No local parameter log is available on this device.' });
+    missing.push('parameter logs');
+  }
+
+  if (Array.isArray(reminders) && reminders.length) {
+    score -= Math.min(8, reminders.length * 2);
+    penalties.push({ title:'Active reminders', detail:`${reminders.length} active reminder(s) on this device.` });
+  } else {
+    score += 2;
+    positives.push('No active local reminders requiring attention.');
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  const status = score >= 90
+    ? { emoji:'🟢', label:'Excellent' }
+    : score >= 80
+      ? { emoji:'🟡', label:'Stable' }
+      : score >= 65
+        ? { emoji:'🟠', label:'Watch' }
+        : { emoji:'🔴', label:'Needs Attention' };
+
+  const today = [];
+  if (penalties.length) {
+    penalties.slice(0, 3).forEach(p => today.push({ title:p.title, detail:p.detail }));
+  } else {
+    today.push({ title:'No immediate warnings', detail:'Live Apex telemetry looks usable and current.' });
+  }
+
+  const watching = [
+    Number.isFinite(temp) ? { title:'Temperature', detail:`Live Apex: ${temp}°F` } : null,
+    Number.isFinite(ph) ? { title:'pH', detail:`Live Apex: ${ph}` } : null,
+    Number.isFinite(orp) ? { title:'ORP', detail:`Live Apex: ${orp} mV` } : null,
+    ato ? { title:'ATO', detail:`Outlet state: ${ato}` } : null
+  ].filter(Boolean);
+
+  return {
+    score,
+    status,
+    confidence: {
+      score,
+      missing: [...new Set(missing)].slice(0, 6)
+    },
+    scoreExplanation: {
+      summary: `Reef Brain score ${score}% from live Apex telemetry and local app data.`,
+      positives,
+      penalties
+    },
+    today,
+    watching,
+    lastTest: {
+      label: latest ? rkDaysAgoLabel(latest.isoDate || latest.date) : 'No local tests'
+    },
+    dailyAssistant: {
+      headline: score >= 80 ? 'Tank looks stable from live telemetry.' : 'A few items need review.',
+      bullets: today.slice(0, 3).map(item => ({
+        text: item.title,
+        detail: item.detail,
+        action: 'review'
+      }))
+    }
+  };
+}
+
+async function renderHomeIntelligenceFallback() {
+  const latest = rkHomeLatestLog();
+  const reminders = rkHomeParseArray('reef_ai_reminders').filter(r => r && !r.completed);
+  let apexStatus = null;
+
+  try {
+    const response = await fetch('/api/apex-status', { cache: 'no-store' });
+    apexStatus = await response.json();
+  } catch (error) {
+    apexStatus = { ok:false, error: error && error.message ? error.message : String(error) };
+  }
+
+  const snapshot = rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders);
+
+  const scoreEl = document.getElementById('home-intel-score');
+  const statusLabelEl = document.getElementById('home-status-label');
+  const statusValueEl = document.getElementById('home-status-value');
+  const monitoringValueEl = document.getElementById('home-monitoring-value');
+  const lastTestValueEl = document.getElementById('home-last-test-value');
+  const todayEl = document.getElementById('home-intel-today');
+  const watchingEl = document.getElementById('home-intel-watching');
+
+  if (scoreEl) scoreEl.textContent = snapshot.score;
+  if (statusLabelEl) statusLabelEl.textContent = `${snapshot.status.emoji} Reef Status`;
+  if (statusValueEl) statusValueEl.textContent = snapshot.status.label;
+  if (lastTestValueEl) lastTestValueEl.textContent = snapshot.lastTest.label;
+  if (monitoringValueEl) monitoringValueEl.textContent = snapshot.watching.length ? `${snapshot.watching.length} Item${snapshot.watching.length === 1 ? '' : 's'}` : 'Nothing New';
+
+  if (todayEl) {
+    todayEl.innerHTML = snapshot.today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+
+  if (watchingEl) {
+    watchingEl.innerHTML = snapshot.watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+
+  rkHomeRenderBrainExplanation(snapshot);
+  rkHomeRenderDailyAssistant(snapshot);
+  renderHomeTelemetry();
 }
 
 function rkHomeTelemetryStatusLabel(item) {
