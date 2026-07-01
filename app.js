@@ -6,16 +6,16 @@ EQUIPMENT: 2 Jerboa MDP Smart DC return pumps, 2 Hygger 802 titanium heaters, Bu
 
 LIVESTOCK: 2 clownfish (breeding pair, hosting Duncan coral, laying eggs regularly), yellow corgi wrasse, melanurus wrasse, red head Solon wrasse, banggai cardinal, blue chromis, yellow tang, white tail bristle tooth tang, desjardini sailfin tang, orange banded goby, tiger pistol shrimp, Molly Miller blenny, 2 bubble tip anemones (stationary ~1 year, not hosted by clownfish), 2 Halloween hermit crabs, scarlet red leg hermits, Hawaiian blue leg hermits, sand sifting starfish (new, 1-2 months), serpent starfish, 2 fighting conchs, hammer coral (2 surviving colonies), green candy cane coral, purple stylophora (lost), Ricordea mushrooms (stressed, below BTAs — allelopathy issue), Grube's gorgonia, Duncan coral (healthy, clownfish host).
 
-CURRENT PARAMETERS (latest readings):
-- Phosphate: 0.65 ppm (was 1.88 peak, dropping with GFO — target 0.05-0.10)
-- Alkalinity: 10.0 dKH (was 11.4, target 8.5-9.5, stabilizing)
-- Calcium: 478 mg/L (above target 400-440, do NOT dose kalk yet)
-- Magnesium: not yet logged in app (typical target ~1280-1400 mg/L; use your actual test value when available)
-- Nitrate: 22 ppm (target 5-10)
-- pH: 8.4-8.6 (excellent, outdoor skimmer air)
-- Temperature: 77.8-78.7°F (stable)
-- ORP: 400-423 mV (excellent)
-- ICP elevated: Iodine 0.368 (ref 0.055-0.080), Sulfate low at 2298 (ref 2550-2850), Molybdenum 23.5, Barium 55.6
+PARAMETER CONTEXT:
+- Do not treat this static tank profile as the latest readings.
+- For current live Apex values, use the LIVE APEX STATUS FROM RASPBERRY PI BRIDGE section when present.
+- For current manual test results, use the user's saved parameter logs from local app context.
+- Historical nutrient issue: phosphate previously peaked around 1.88 ppm and has been managed with GFO. Target PO4 is roughly 0.05-0.10 ppm, but avoid dropping it too quickly.
+- Historical alkalinity issue: alkalinity was previously elevated around 11.4 dKH. Preferred working range is about 8.5-9.5 dKH, with stability more important than chasing a number.
+- Kalk rule: do NOT dose kalk until calcium is below 450 mg/L and alkalinity has been stable for at least 3 weeks.
+- Magnesium target context: generally around 1280-1400 mg/L; use the user's actual logged test value when available.
+- Nitrate target context: generally around 5-10 ppm for this system; avoid stripping nutrients suddenly.
+- ICP historical issue: iodine was elevated at 0.368, sulfate low at 2298, molybdenum 23.5, barium 55.6.
 
 ISSUES:
 - ~100 aiptasia spreading — Aiptasia-X treatment planned, then Berghia nudibranch
