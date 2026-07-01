@@ -1054,7 +1054,7 @@
 <script src="reef-ai-context.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="days-off-plan.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="diagnostics.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
-<script src="app.js?v=20260701-v4-3-7-home-live-apex"></script>
+<script src="app.js?v=20260701-v4-3-7-live-telemetry-cleanup"></script>
 <script src="reef-brain.js?v=20260628-v4-0-4-live-telemetry"></script>
 <script src="reef-timeline.js?v=20260628-v3-9-2-polish-performance"></script>
 <script src="apex-connect.js?v=20260628-v4-1-0-native-apex-driver"></script>
@@ -1636,32 +1636,136 @@ function renderHomeTelemetry() {
   const grid = document.getElementById('home-telemetry-grid');
   const subtitle = document.getElementById('home-telemetry-subtitle');
   if (!card || !grid) return;
-  rkHomeRequestCloudTelemetry(!rkHomeTelemetrySnapshot());
-  const snap = rkHomeTelemetrySnapshot();
-  if (!snap) {
-    card.classList.add('empty');
-    if (subtitle) subtitle.textContent = 'Checking Reef Keeper Cloud for Apex telemetry…';
-    grid.innerHTML = '<div class="home-telemetry-empty">No cloud telemetry loaded yet. Run the connector once, then refresh Home.</div>';
-    return;
-  }
+
   card.classList.remove('empty');
-  const p = snap.probes || {};
-  const outlets = Array.isArray(snap.outlets) ? snap.outlets : [];
-  const alarms = Array.isArray(snap.alarms) ? snap.alarms : [];
-  const brain = window.ReefKeeperBrain?.getSnapshot?.() || null;
-  const telemetryInsight = brain?.telemetryInsight || null;
-  if (subtitle) subtitle.textContent = `${rkHomeTelemetryAge(snap.capturedAt || snap.receivedAt)} · ${telemetryInsight?.summary || `${outlets.length} outlet${outlets.length === 1 ? '' : 's'} · ${alarms.length ? alarms.length + ' alarm' + (alarms.length === 1 ? '' : 's') : 'No alarms'}`}`;
-  const insightItems = Array.isArray(telemetryInsight?.items) ? telemetryInsight.items : [];
-  const fallbackItems = [
-    { label:'Temperature', value:p.temp, unit:'°F', status:'Imported', detail:'Bridge value received.' },
-    { label:'pH', value:p.ph, unit:'', status:'Imported', detail:'Bridge value received.' },
-    { label:'ORP', value:p.orp, unit:'mV', status:'Imported', detail:'Bridge value received.' },
-    { label:'Salinity', value:p.salinity, unit:p.salinity == null ? 'optional' : 'ppt/cond', status:'Imported', detail:p.salinity == null ? 'Optional probe not present.' : 'Bridge value received.' }
-  ].filter(i => i.value !== null && i.value !== undefined && i.value !== '');
-  const tiles = (insightItems.length ? insightItems : fallbackItems).slice(0,4);
-  const outletLine = outlets.slice(0, 2).map(o => `${o.name}: ${o.state}`).join(' · ') || 'No outlet states';
-  grid.innerHTML = `${tiles.map(item => `<div class="home-telemetry-chip interpreted ${String(item.status || '').toLowerCase()}"><span>${escapeHtml(item.label)}</span><strong>${rkHomeTelemetryValue(item.value)}</strong><small>${escapeHtml([item.unit, rkHomeTelemetryStatusLabel(item)].filter(Boolean).join(' · '))}</small><em>${escapeHtml(item.detail || '')}</em></div>`).join('')}
-    <div class="home-telemetry-wide"><strong>Outlet status</strong><span>${escapeHtml(outletLine)}</span></div>`;
+  if (subtitle) subtitle.textContent = 'Checking live Apex bridge…';
+  grid.innerHTML = '<div class="home-telemetry-empty">Loading live Apex telemetry…</div>';
+
+  fetch('/api/apex-status', { cache: 'no-store' })
+    .then(response => response.json())
+    .then(status => {
+      if (!status || !status.ok) {
+        card.classList.add('empty');
+        if (subtitle) subtitle.textContent = 'Live Apex bridge unavailable.';
+        grid.innerHTML = `<div class="home-telemetry-empty">No live Apex telemetry available${status && status.error ? `: ${escapeHtml(status.error)}` : '.'}</div>`;
+        return;
+      }
+
+      const inputs = status.raw && status.raw.istat && Array.isArray(status.raw.istat.inputs)
+        ? status.raw.istat.inputs
+        : [];
+
+      const outputs = status.raw && status.raw.istat && Array.isArray(status.raw.istat.outputs)
+        ? status.raw.istat.outputs
+        : [];
+
+      const inputByName = {};
+      inputs.forEach(item => {
+        if (item && item.name) inputByName[item.name] = item;
+      });
+
+      const outputByName = {};
+      outputs.forEach(item => {
+        if (item && item.name) outputByName[item.name] = item;
+      });
+
+      function inputValue(name, fallback = '—') {
+        const item = inputByName[name];
+        if (!item || item.value === undefined || item.value === null || item.value === '') return fallback;
+        return item.value;
+      }
+
+      function outputStatus(name) {
+        const item = outputByName[name];
+        if (!item || !Array.isArray(item.status)) return '—';
+        return item.status[0] || '—';
+      }
+
+      function outputPower(name) {
+        const value = inputValue(name, '—');
+        return value === '—' ? '—' : `${value} W`;
+      }
+
+      function age(value) {
+        const t = new Date(value || 0).getTime();
+        if (!Number.isFinite(t) || !t) return 'Updated just now';
+        const mins = Math.max(0, Math.floor((Date.now() - t) / 60000));
+        if (mins < 1) return 'Updated just now';
+        if (mins < 60) return `Updated ${mins} min ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `Updated ${hrs} hr ago`;
+        const days = Math.floor(hrs / 24);
+        return `Updated ${days} day${days === 1 ? '' : 's'} ago`;
+      }
+
+      const alarmOutputs = outputs.filter(o => {
+        const name = String(o.name || '').toLowerCase();
+        const state = Array.isArray(o.status) ? String(o.status[0] || '').toUpperCase() : '';
+        return /alarm|warn|heaterror/.test(name) && (state === 'ON' || state === 'AON');
+      });
+
+      if (subtitle) {
+        subtitle.textContent = `${age(status.receivedAt || status.piTimestamp)} · Live Apex bridge · ${alarmOutputs.length ? alarmOutputs.length + ' alarm' + (alarmOutputs.length === 1 ? '' : 's') : 'No alarms'}`;
+      }
+
+      const tiles = [
+        {
+          label: 'Temperature',
+          value: inputValue('Tmp'),
+          unit: '°F',
+          status: 'normal',
+          detail: 'Live Apex bridge value.'
+        },
+        {
+          label: 'pH',
+          value: inputValue('pH'),
+          unit: '',
+          status: 'normal',
+          detail: 'Live Apex bridge value.'
+        },
+        {
+          label: 'ORP',
+          value: inputValue('ORP'),
+          unit: 'mV',
+          status: 'normal',
+          detail: 'Live Apex bridge value.'
+        },
+        {
+          label: 'ATO',
+          value: outputStatus('ATO'),
+          unit: outputPower('ATOW'),
+          status: outputStatus('ATO') === 'ON' || outputStatus('ATO') === 'AON' ? 'normal' : 'imported',
+          detail: 'Live outlet state.'
+        }
+      ];
+
+      const outletLine = [
+        `Return1: ${outputStatus('Return1')} / ${outputPower('Return1W')}`,
+        `Return2: ${outputStatus('Return2')} / ${outputPower('Return2W')}`,
+        `UV: ${outputStatus('UVpump')} / ${outputPower('UVpumpW')}`,
+        `Skimmer: ${outputStatus('Skimmer')} / ${outputPower('SkimmerW')}`,
+        `Heat1: ${outputStatus('Heat1')} / ${outputPower('Heat1W')}`,
+        `Heat2: ${outputStatus('Heat2')} / ${outputPower('Heat2W')}`
+      ].join(' · ');
+
+      grid.innerHTML = `${tiles.map(item => `
+        <div class="home-telemetry-chip interpreted ${String(item.status || '').toLowerCase()}">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${rkHomeTelemetryValue(item.value)}</strong>
+          <small>${escapeHtml([item.unit, item.status].filter(Boolean).join(' · '))}</small>
+          <em>${escapeHtml(item.detail || '')}</em>
+        </div>
+      `).join('')}
+      <div class="home-telemetry-wide">
+        <strong>Outlet status</strong>
+        <span>${escapeHtml(outletLine)}</span>
+      </div>`;
+    })
+    .catch(error => {
+      card.classList.add('empty');
+      if (subtitle) subtitle.textContent = 'Could not load live Apex bridge.';
+      grid.innerHTML = `<div class="home-telemetry-empty">Could not load live Apex telemetry: ${escapeHtml(error && error.message ? error.message : String(error))}</div>`;
+    });
 }
 
 
