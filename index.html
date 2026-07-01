@@ -76,15 +76,15 @@
         </div>
         <div class="home-brain-explain" id="home-brain-explain">
           <div class="home-brain-explain-head">
-            <div><strong>Why this score?</strong><span id="home-score-summary">Reef Brain is checking the latest data.</span></div>
+            <div><strong>Why this score?</strong><span id="home-score-summary">Live Apex is connected. Reef Brain scoring is paused during cleanup.</span></div>
             <button type="button" onclick="openHomeReefStatus()">Details</button>
           </div>
           <div class="home-brain-factors" id="home-brain-factors">
-            <span class="muted">Loading score factors…</span>
+            <span class="muted">Reef Brain scoring is paused while cleanup is in progress.</span>
           </div>
           <div class="home-confidence-card" id="home-confidence-card">
-            <div><span>Reef Brain Confidence</span><strong id="home-confidence-value">—</strong></div>
-            <small id="home-confidence-detail">Confidence shows how current the underlying data is.</small>
+            <div><span>Reef Brain Confidence</span><strong id="home-confidence-value">Paused</strong></div>
+            <small id="home-confidence-detail">Live Apex is working. Confidence scoring will be rebuilt after cleanup.</small>
           </div>
         </div>
         <div class="home-daily-assistant" id="home-daily-assistant">
@@ -1054,7 +1054,7 @@
 <script src="reef-ai-context.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="days-off-plan.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
 <script src="diagnostics.js?v=20260627-v3-6-0-daily-reef-assistant"></script>
-<script src="app.js?v=20260701-v4-3-7-live-telemetry-cleanup"></script>
+<script src="app.js?v=20260701-v4-3-7-reefbrain-paused"></script>
 <script src="reef-brain.js?v=20260628-v4-0-4-live-telemetry"></script>
 <script src="reef-timeline.js?v=20260628-v3-9-2-polish-performance"></script>
 <script src="apex-connect.js?v=20260628-v4-1-0-native-apex-driver"></script>
@@ -1584,7 +1584,7 @@ function rkHomeRenderDailyAssistant(snapshot) {
   if (!box || !summaryEl || !listEl) return;
   const daily = snapshot?.dailyAssistant || null;
   if (!daily) {
-    summaryEl.textContent = 'Daily brief will appear after the Reef Brain finishes loading.';
+    summaryEl.textContent = 'Daily brief is paused while Reef Brain scoring is rebuilt.';
     listEl.innerHTML = '<div class="home-intel-line muted">No daily brief yet.</div>';
     return;
   }
@@ -1775,7 +1775,7 @@ function rkHomeRenderBrainExplanation(snapshot) {
   const confidenceValueEl = document.getElementById('home-confidence-value');
   const confidenceDetailEl = document.getElementById('home-confidence-detail');
   const explanation = snapshot?.scoreExplanation || {};
-  if (summaryEl) summaryEl.textContent = explanation.summary || 'Score explanation will improve as more data is logged.';
+  if (summaryEl) summaryEl.textContent = 'Live Apex is connected. Reef Brain scoring is paused during cleanup.';
   if (factorsEl) {
     const positives = Array.isArray(explanation.positives) ? explanation.positives.slice(0,3).map(x => ({ type:'good', text:x })) : [];
     const penalties = Array.isArray(explanation.penalties) ? explanation.penalties.slice(0,3).map(x => ({ type:'watch', text:`${x.title}: ${x.detail}` })) : [];
@@ -1785,9 +1785,9 @@ function rkHomeRenderBrainExplanation(snapshot) {
       : '<span class="brain-factor good">✓ No major warnings</span>';
   }
   const confidence = snapshot?.confidence || null;
-  if (confidenceValueEl) confidenceValueEl.textContent = confidence ? `${confidence.score}%` : '—';
+  if (confidenceValueEl) confidenceValueEl.textContent = confidence ? `${confidence.score}%` : 'Paused';
   if (confidenceDetailEl) {
-    if (!confidence) confidenceDetailEl.textContent = 'Confidence shows how current the underlying data is.';
+    if (!confidence) confidenceDetailEl.textContent = 'Live Apex is working. Confidence scoring will be rebuilt after cleanup.';
     else if (confidence.missing && confidence.missing.length) confidenceDetailEl.textContent = `Needs: ${confidence.missing.slice(0,3).join(', ')}.`;
     else confidenceDetailEl.textContent = 'Telemetry, testing, maintenance, and timeline data are current.';
   }
