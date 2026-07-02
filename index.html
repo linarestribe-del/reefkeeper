@@ -2150,19 +2150,143 @@ function copySystemCheckResults() {
     rkReportDownload(rkReportSafeFilename('doc'), 'application/msword;charset=utf-8', html);
   };
 
+  function rkCloseReportPrintOverlay() {
+    const overlay = document.getElementById('rk-report-print-overlay');
+    if (overlay) overlay.remove();
+    document.body.classList.remove('rk-report-printing');
+  }
+
+  function rkEnsureReportPrintStyles() {
+    if (document.getElementById('rk-report-print-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'rk-report-print-styles';
+    style.textContent = `
+      #rk-report-print-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: rgba(5, 22, 35, 0.62);
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        padding: 14px;
+      }
+      #rk-report-print-panel {
+        width: min(900px, 100%);
+        background: #ffffff;
+        color: #123;
+        border-radius: 18px;
+        box-shadow: 0 20px 70px rgba(0,0,0,.28);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      #rk-report-print-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid rgba(0,0,0,.1);
+        background: #f7fbfd;
+      }
+      #rk-report-print-title {
+        font-weight: 900;
+        color: #075985;
+      }
+      #rk-report-print-actions {
+        display: flex;
+        gap: 8px;
+      }
+      #rk-report-print-actions button {
+        border: 0;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+      #rk-report-print-actions .primary {
+        background: #075985;
+        color: white;
+      }
+      #rk-report-print-actions .secondary {
+        background: #e8f5fb;
+        color: #075985;
+      }
+      #rk-report-print-content {
+        padding: 22px;
+        overflow: auto;
+        line-height: 1.55;
+      }
+      #rk-report-print-content h2,
+      #rk-report-print-content h3 {
+        color: #075985;
+      }
+      @media print {
+        body.rk-report-printing > *:not(#rk-report-print-overlay) {
+          display: none !important;
+        }
+        body.rk-report-printing #rk-report-print-overlay {
+          position: static !important;
+          inset: auto !important;
+          padding: 0 !important;
+          background: white !important;
+          display: block !important;
+        }
+        body.rk-report-printing #rk-report-print-panel {
+          width: 100% !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+        body.rk-report-printing #rk-report-print-head {
+          display: none !important;
+        }
+        body.rk-report-printing #rk-report-print-content {
+          overflow: visible !important;
+          padding: 0 !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   window.downloadSelectedReportPDF = function downloadSelectedReportPDF() {
     const text = rkReportCurrentText();
-    const win = window.open('', '_blank');
-    if (!win) {
-      alert('Popup blocked. Use Download HTML, or allow popups and try PDF again.');
-      return;
-    }
     const title = rkReportTitle(document.getElementById('report-type')?.value || 'monthly');
-    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${rkReportEsc(title)}</title><style>body{font-family:Arial,sans-serif;line-height:1.5;margin:28px;color:#123;}h2,h3{color:#075985;}@media print{button{display:none;}}</style></head><body><button onclick="window.print()">Print / Save as PDF</button>${rkReportRenderTextAsHtml(text)}</body></html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => win.print(), 400);
+
+    rkEnsureReportPrintStyles();
+    rkCloseReportPrintOverlay();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'rk-report-print-overlay';
+    overlay.innerHTML = `
+      <div id="rk-report-print-panel" role="dialog" aria-modal="true" aria-labelledby="rk-report-print-title">
+        <div id="rk-report-print-head">
+          <div>
+            <div id="rk-report-print-title">${rkReportEsc(title)}</div>
+            <div style="font-size:12px;font-weight:700;color:#456;">Use Print / Save as PDF, then Close to return to Reef Keeper.</div>
+          </div>
+          <div id="rk-report-print-actions">
+            <button class="primary" type="button" onclick="document.body.classList.add('rk-report-printing'); setTimeout(() => window.print(), 80);">Print / Save as PDF</button>
+            <button class="secondary" type="button" onclick="document.body.classList.remove('rk-report-printing'); document.getElementById('rk-report-print-overlay')?.remove();">Close</button>
+          </div>
+        </div>
+        <div id="rk-report-print-content">${rkReportRenderTextAsHtml(text)}</div>
+      </div>
+    `;
+
+    overlay.addEventListener('click', event => {
+      if (event.target && event.target.id === 'rk-report-print-overlay') {
+        rkCloseReportPrintOverlay();
+      }
+    });
+
+    document.body.appendChild(overlay);
   };
+
+  window.addEventListener('afterprint', () => {
+    document.body.classList.remove('rk-report-printing');
+  });
 
   document.addEventListener('DOMContentLoaded', () => {
     try {
