@@ -1244,9 +1244,44 @@ function rkSystemCheckReadJson(key, fallback) {
   }
 }
 
+function rkSystemCheckIcon(state) {
+  if (state === 'good') return '✅';
+  if (state === 'warn') return '⚠️';
+  return '❌';
+}
+
 function rkSystemCheckLine(label, state, detail) {
-  const icon = state === 'good' ? '✅' : state === 'warn' ? '⚠️' : '❌';
-  return `${icon} ${label}: ${detail}`;
+  return {
+    label,
+    state,
+    detail,
+    text: `${rkSystemCheckIcon(state)} ${label}: ${detail}`
+  };
+}
+
+function rkSystemCheckSummary(items) {
+  const bad = items.filter(i => i.state === 'bad').length;
+  const warn = items.filter(i => i.state === 'warn').length;
+  const good = items.filter(i => i.state === 'good').length;
+
+  if (bad > 0) {
+    return {
+      headline: '❌ Broken',
+      detail: `${bad} failed, ${warn} warning(s), ${good} passed. Fix failed items first.`
+    };
+  }
+
+  if (warn > 0) {
+    return {
+      headline: '⚠️ Needs attention',
+      detail: `${warn} warning(s), ${good} passed. App is usable, but review warnings.`
+    };
+  }
+
+  return {
+    headline: '✅ All systems good',
+    detail: `${good} checks passed. Reef Keeper looks healthy.`
+  };
 }
 
 async function openSystemCheck() {
@@ -1262,38 +1297,42 @@ async function runSystemCheck() {
 
   box.textContent = 'Running system check…';
 
-  const lines = [];
+  const checks = [];
   const startedAt = new Date();
 
-  lines.push(`Reef Keeper System Check`);
-  lines.push(`Run time: ${startedAt.toLocaleString()}`);
-  lines.push('');
-
-  lines.push(rkSystemCheckLine('App shell', 'good', 'index.html and active scripts loaded.'));
+  checks.push(rkSystemCheckLine('App shell', 'good', 'index.html and active scripts loaded.'));
 
   try {
     const testKey = 'reefkeeper_system_check_test';
     localStorage.setItem(testKey, 'ok');
     const ok = localStorage.getItem(testKey) === 'ok';
     localStorage.removeItem(testKey);
-    lines.push(rkSystemCheckLine('Local storage', ok ? 'good' : 'bad', ok ? 'Read/write works.' : 'Could not verify read/write.'));
+    checks.push(rkSystemCheckLine('Local storage', ok ? 'good' : 'bad', ok ? 'Read/write works.' : 'Could not verify read/write.'));
   } catch (error) {
-    lines.push(rkSystemCheckLine('Local storage', 'bad', error.message || String(error)));
+    checks.push(rkSystemCheckLine('Local storage', 'bad', error.message || String(error)));
   }
 
   try {
     const logs = rkSystemCheckReadJson('reef_logs', []);
-    lines.push(rkSystemCheckLine('Parameter logs', Array.isArray(logs) ? 'good' : 'warn', Array.isArray(logs) ? `${logs.length} user log(s) found.` : 'Could not read reef_logs.'));
+    checks.push(rkSystemCheckLine(
+      'Parameter logs',
+      Array.isArray(logs) ? 'good' : 'warn',
+      Array.isArray(logs) ? `${logs.length} user log(s) found.` : 'Could not read reef_logs.'
+    ));
   } catch (error) {
-    lines.push(rkSystemCheckLine('Parameter logs', 'bad', error.message || String(error)));
+    checks.push(rkSystemCheckLine('Parameter logs', 'bad', error.message || String(error)));
   }
 
   try {
     const reminders = rkSystemCheckReadJson('reef_reminders', []);
     const completed = rkSystemCheckReadJson('reef_completed_reminders', []);
-    lines.push(rkSystemCheckLine('Reminders', 'good', `${Array.isArray(reminders) ? reminders.length : 0} active, ${Array.isArray(completed) ? completed.length : 0} completed.`));
+    checks.push(rkSystemCheckLine(
+      'Reminders',
+      'good',
+      `${Array.isArray(reminders) ? reminders.length : 0} active, ${Array.isArray(completed) ? completed.length : 0} completed.`
+    ));
   } catch (error) {
-    lines.push(rkSystemCheckLine('Reminders', 'bad', error.message || String(error)));
+    checks.push(rkSystemCheckLine('Reminders', 'bad', error.message || String(error)));
   }
 
   try {
@@ -1303,9 +1342,9 @@ async function runSystemCheck() {
       const value = rkSystemCheckReadJson(key, []);
       if (Array.isArray(value)) count += value.length;
     });
-    lines.push(rkSystemCheckLine('Tank Memory / Knowledge', 'good', `${count} stored item(s) across memory keys.`));
+    checks.push(rkSystemCheckLine('Tank Memory / Knowledge', 'good', `${count} stored item(s) across memory keys.`));
   } catch (error) {
-    lines.push(rkSystemCheckLine('Tank Memory / Knowledge', 'bad', error.message || String(error)));
+    checks.push(rkSystemCheckLine('Tank Memory / Knowledge', 'bad', error.message || String(error)));
   }
 
   try {
@@ -1315,13 +1354,16 @@ async function runSystemCheck() {
       const inputs = data.raw?.istat?.inputs || [];
       const temp = inputs.find(i => i.name === 'Tmp' || i.type === 'Temp')?.value;
       const ph = inputs.find(i => i.name === 'pH' || i.type === 'pH')?.value;
-      const age = data.receivedAt ? new Date(data.receivedAt).toLocaleString() : 'unknown sync time';
-      lines.push(rkSystemCheckLine('Apex status endpoint', 'good', `Live data received. Temp ${temp ?? '—'}°F, pH ${ph ?? '—'}, synced ${age}.`));
+      const receivedAt = data.receivedAt || data.piTimestamp || '';
+      const ageMinutes = receivedAt ? Math.floor((Date.now() - new Date(receivedAt).getTime()) / 60000) : null;
+      const state = ageMinutes === null ? 'warn' : ageMinutes <= 10 ? 'good' : ageMinutes <= 30 ? 'warn' : 'bad';
+      const ageText = ageMinutes === null ? 'unknown age' : ageMinutes < 1 ? 'just now' : `${ageMinutes} min ago`;
+      checks.push(rkSystemCheckLine('Apex status endpoint', state, `Temp ${temp ?? '—'}°F, pH ${ph ?? '—'}, synced ${ageText}.`));
     } else {
-      lines.push(rkSystemCheckLine('Apex status endpoint', 'warn', data.error || `HTTP ${response.status}`));
+      checks.push(rkSystemCheckLine('Apex status endpoint', 'warn', data.error || `HTTP ${response.status}`));
     }
   } catch (error) {
-    lines.push(rkSystemCheckLine('Apex status endpoint', 'bad', error.message || String(error)));
+    checks.push(rkSystemCheckLine('Apex status endpoint', 'bad', error.message || String(error)));
   }
 
   try {
@@ -1336,16 +1378,26 @@ async function runSystemCheck() {
     });
     const data = await response.json().catch(() => ({}));
     if (response.ok && typeof data.answer === 'string') {
-      lines.push(rkSystemCheckLine('Ask AI endpoint', 'good', 'API responded successfully.'));
+      checks.push(rkSystemCheckLine('Ask AI endpoint', 'good', 'API responded successfully.'));
     } else {
-      lines.push(rkSystemCheckLine('Ask AI endpoint', 'warn', data.error || `HTTP ${response.status}`));
+      checks.push(rkSystemCheckLine('Ask AI endpoint', 'warn', data.error || `HTTP ${response.status}`));
     }
   } catch (error) {
-    lines.push(rkSystemCheckLine('Ask AI endpoint', 'bad', error.message || String(error)));
+    checks.push(rkSystemCheckLine('Ask AI endpoint', 'bad', error.message || String(error)));
   }
 
-  lines.push('');
-  lines.push('Result: check complete.');
+  const summary = rkSystemCheckSummary(checks);
+  const lines = [
+    summary.headline,
+    summary.detail,
+    '',
+    'Reef Keeper System Check',
+    `Run time: ${startedAt.toLocaleString()}`,
+    '',
+    ...checks.map(item => item.text),
+    '',
+    'Result: check complete.'
+  ];
 
   box.textContent = lines.join('\n');
 }
