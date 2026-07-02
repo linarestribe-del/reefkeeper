@@ -39,7 +39,7 @@
       overlay.style.display = "flex";
 
       if (name === "memory") {
-        renderTankMemoryRecovery();
+        window.renderTankMemoryRecovery?.();
       }
     };
   }
@@ -67,89 +67,6 @@
       if (body) body.scrollTo({ top: 0, behavior: "smooth" });
     };
   }
-
-  function getTankMemory() {
-    try {
-      return JSON.parse(localStorage.getItem("reef_tank_memory_v1") || "[]");
-    } catch (_) {
-      return [];
-    }
-  }
-
-  function setTankMemory(items) {
-    try {
-      localStorage.setItem("reef_tank_memory_v1", JSON.stringify(items || []));
-    } catch (_) {}
-  }
-
-  function renderTankMemoryRecovery() {
-    const box = $("tank-memory-v8");
-    if (!box) return;
-
-    const items = getTankMemory();
-
-    box.innerHTML = `
-      <div class="long-term-intro">
-        Tank Memory stores important reef facts that Reef Keeper should keep using.
-      </div>
-
-      <div class="kb-form">
-        <input class="inventory-input" id="recovery-memory-title" placeholder="Short title, e.g., Chaeto reactor canceled">
-        <textarea class="inventory-notes" id="recovery-memory-note" rows="3" placeholder="Important tank fact, rule, decision, or context..."></textarea>
-        <button class="long-term-btn secondary" type="button" onclick="saveRecoveryTankMemory()">Save Memory</button>
-      </div>
-
-      <div id="recovery-memory-list" class="strategy-list">
-        ${
-          items.length
-            ? items
-                .map(
-                  (item, index) => `
-                    <div class="strategy-item">
-                      <div>
-                        <strong>${esc(item.title || "Tank memory")}</strong>
-                        <span>${esc(item.note || "")}</span>
-                      </div>
-                      <button class="hidden-tasks-btn hidden-tasks-secondary" type="button" onclick="deleteRecoveryTankMemory(${index})">Delete</button>
-                    </div>
-                  `
-                )
-                .join("")
-            : `<div class="muted">No tank memory saved yet.</div>`
-        }
-      </div>
-    `;
-  }
-
-  window.saveRecoveryTankMemory = function saveRecoveryTankMemory() {
-    const title = $("recovery-memory-title")?.value?.trim();
-    const note = $("recovery-memory-note")?.value?.trim();
-
-    if (!title && !note) {
-      showToastSafe("Add a title or note first.");
-      return;
-    }
-
-    const items = getTankMemory();
-    items.unshift({
-      id: Date.now().toString(36),
-      title: title || "Tank memory",
-      note: note || "",
-      createdAt: new Date().toISOString(),
-    });
-
-    setTankMemory(items);
-    renderTankMemoryRecovery();
-    showToastSafe("Tank memory saved");
-  };
-
-  window.deleteRecoveryTankMemory = function deleteRecoveryTankMemory(index) {
-    const items = getTankMemory();
-    items.splice(index, 1);
-    setTankMemory(items);
-    renderTankMemoryRecovery();
-    showToastSafe("Tank memory deleted");
-  };
 
   async function getApexStatus() {
     const res = await fetch("/api/apex-status", { cache: "no-store" });
