@@ -1,5 +1,4 @@
-// Reef Keeper recovery hotfix for Apex Integration + Long-Term tool overlays.
-// Safe to keep until the full original modules are restored.
+// Reef Keeper Apex Integration and Long-Term tool overlay helpers.
 
 (function () {
   function $(id) {
@@ -196,8 +195,7 @@
     } catch (_) {}
   });
 })();
-// Force recovery override for Tank Memory overlay.
-// This runs after the existing app functions and replaces the broken memory opener.
+// Tank Memory overlay handler.
 (function () {
   function $(id) {
     return document.getElementById(id);
