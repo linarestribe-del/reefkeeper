@@ -1857,7 +1857,13 @@ function renderHomeTelemetry() {
       });
 
       if (subtitle) {
-        subtitle.textContent = `${age(status.receivedAt || status.piTimestamp)} · Live Apex bridge · ${alarmOutputs.length ? alarmOutputs.length + ' alarm' + (alarmOutputs.length === 1 ? '' : 's') : 'No alarms'}`;
+        const syncLabel = age(status.receivedAt || status.piTimestamp);
+        const bridgeLabel = 'Pi Bridge: Connected';
+        const apexLabel = 'Apex: Live';
+        const alarmLabel = alarmOutputs.length
+          ? `${alarmOutputs.length} alarm${alarmOutputs.length === 1 ? '' : 's'}`
+          : 'No alarms';
+        subtitle.textContent = `Last Apex Sync: ${syncLabel} · ${bridgeLabel} · ${apexLabel} · ${alarmLabel}`;
       }
 
       const temp = inputValue('Tmp');
