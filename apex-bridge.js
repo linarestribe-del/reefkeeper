@@ -471,8 +471,9 @@
       window.ReefKeeperApex.renderApexSettings = wrapped;
     }
     setTimeout(injectPanel, 80);
-    setTimeout(() => refreshCloudTelemetryIfNeeded({ force:true, silent:true }), 600);
-    setInterval(() => refreshCloudTelemetryIfNeeded({ silent:true }), 60000);
+    // Automatic cloud telemetry polling disabled.
+    // Current live Apex data comes from the Raspberry Pi connector via /api/apex-status.
+    // The manual Fetch Cloud button remains available in the Apex Integration panel.
   }
 
   window.ReefKeeperApexBridge = { version:VERSION, normalizeSnapshot, normalizeNativeApexStatus, saveSnapshot, getSnapshot, getHistory, clearSnapshot, latestSummary, renderBridgePanel, importFromTextarea, loadSample, loadApexSample, getContextLines, getCloudSettings, saveCloudSettings, saveCloudFromForm, fetchCloudTelemetry, refreshCloudTelemetryIfNeeded, install };
