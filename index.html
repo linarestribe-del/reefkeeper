@@ -644,20 +644,18 @@
         </div>
         <div class="backup-note">Exports logs, action history, completed history, reminders, checked-off states, answer style, tank-context setting, inventory, Equipment Guide, Reef Library, Timeline data, Tank Memory, and reports-related data. Keep the backup file somewhere safe before clearing browser data or switching devices. After importing a backup, tap View Backup Contents to confirm what restored on this device.</div>
         <div id="last-backup-export-status" class="backup-note">Last backup export: Not recorded on this device yet.</div>
-
-        <div class="backup-restore-checklist">
-          <div class="backup-restore-title">Restore Safety Checklist</div>
-          <ol>
-            <li>Import the backup file.</li>
-            <li>Refresh or reopen the app after import.</li>
-            <li>Tap View Backup Contents to confirm what restored on this device.</li>
-            <li>Open Equipment Guide and confirm the equipment list appears.</li>
-            <li>Open Reports and confirm the Equipment Guide report shows data.</li>
-            <li>Run System Check if anything looks missing.</li>
-          </ol>
+        <div class="backup-note" style="margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(0,180,216,.07);border:1px solid rgba(0,119,182,.14);">
+          <div style="font-size:13px;line-height:1.25;font-weight:900;color:var(--text-dark);margin-bottom:7px;">Restore Safety Checklist</div>
+          <div style="display:grid;gap:5px;">
+            <div style="display:flex;gap:7px;font-size:12px;line-height:1.3;font-weight:800;color:var(--text-mid);"><strong style="min-width:14px;">1.</strong><span>Import the backup file.</span></div>
+            <div style="display:flex;gap:7px;font-size:12px;line-height:1.3;font-weight:800;color:var(--text-mid);"><strong style="min-width:14px;">2.</strong><span>Refresh or reopen the app after import.</span></div>
+            <div style="display:flex;gap:7px;font-size:12px;line-height:1.3;font-weight:800;color:var(--text-mid);"><strong style="min-width:14px;">3.</strong><span>Tap View Backup Contents to confirm what restored.</span></div>
+            <div style="display:flex;gap:7px;font-size:12px;line-height:1.3;font-weight:800;color:var(--text-mid);"><strong style="min-width:14px;">4.</strong><span>Open Equipment Guide and confirm the list appears.</span></div>
+            <div style="display:flex;gap:7px;font-size:12px;line-height:1.3;font-weight:800;color:var(--text-mid);"><strong style="min-width:14px;">5.</strong><span>Open Reports and confirm Equipment Guide data appears.</span></div>
+            <div style="display:flex;gap:7px;font-size:12px;line-height:1.3;font-weight:800;color:var(--text-mid);"><strong style="min-width:14px;">6.</strong><span>Run System Check if anything looks missing.</span></div>
+          </div>
         </div>
-
-        <div id="backup-contents-summary" class="diagnostics-result">Tap View Backup Contents to see what is currently saved on this device.</div>
+<div id="backup-contents-summary" class="diagnostics-result">Tap View Backup Contents to see what is currently saved on this device.</div>
       </div>
 
       <div class="card">
@@ -2448,7 +2446,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260702-v4-3-21-last-backup-export"></script>
+<script src="app.js?v=20260702-v4-3-22c-restore-safety-inline"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
