@@ -2000,23 +2000,23 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
 
   if (apexStatus && apexStatus.ok) {
     score += 12;
-    positives.push('Live Apex bridge is connected.');
+    positives.push('Pi Bridge is connected and sending Apex data.');
   } else {
     score -= 18;
-    penalties.push({ title:'Apex bridge', detail:'Live Apex telemetry is not available.' });
+    penalties.push({ title:'Apex bridge offline', detail:'Live Apex data is not available right now. Check the Pi bridge before trusting live readings.' });
     missing.push('live Apex telemetry');
   }
 
   const apexAge = ageMinutes(apexStatus?.receivedAt || apexStatus?.piTimestamp);
   if (apexAge !== null && apexAge <= 5) {
     score += 8;
-    positives.push(`Apex data synced ${apexAge < 1 ? 'just now' : apexAge + ' min ago'}.`);
+    positives.push(`Apex data is current: ${apexAge < 1 ? 'synced just now' : 'synced ' + apexAge + ' min ago'}.`);
   } else if (apexAge !== null && apexAge <= 60) {
     score += 3;
-    positives.push(`Apex data synced ${apexAge} min ago.`);
+    positives.push(`Apex data last synced ${apexAge} min ago.`);
   } else {
     score -= 10;
-    penalties.push({ title:'Apex freshness', detail:'Apex data is stale or missing.' });
+    penalties.push({ title:'Apex sync watch', detail:'Apex data is stale or missing. Confirm the Pi bridge is still connected.' });
     missing.push('recent Apex sync');
   }
 
@@ -2025,15 +2025,16 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
   const orp = inputValue('ORP');
 
   if (Number.isFinite(temp)) {
-    positives.push(`Temperature available: ${temp}°F.`);
+    positives.push(`Temperature is available from Apex: ${temp}°F.`);
     if (temp < 74 || temp > 82) {
-      score -= 10;
-      penalties.push({ title:'Temperature', detail:`Live temperature is ${temp}°F.` });
+      score -= 8;
+      penalties.push({ title:'Temperature needs attention', detail:`Live temperature is ${temp}°F. Confirm heaters, fans, and Apex programming.` });
     } else if (temp < 75 || temp > 81) {
-      score -= 4;
-      penalties.push({ title:'Temperature watch', detail:`Live temperature is ${temp}°F.` });
+      score -= 3;
+      penalties.push({ title:'Temperature watch', detail:`Live temperature is ${temp}°F. It is outside your preferred range but not an emergency.` });
     } else {
       score += 4;
+      positives.push(`Temperature is normal at ${temp}°F.`);
     }
   } else {
     score -= 6;
@@ -2041,12 +2042,16 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
   }
 
   if (Number.isFinite(ph)) {
-    positives.push(`pH available: ${ph}.`);
-    if (ph < 8.0 || ph > 8.7) {
-      score -= 8;
-      penalties.push({ title:'pH', detail:`Live pH is ${ph}.` });
+    positives.push(`pH is available from Apex: ${ph}.`);
+    if (ph < 7.8 || ph > 8.6) {
+      score -= 6;
+      penalties.push({ title:'pH needs attention', detail:`Live pH is ${ph}. Confirm the probe reading before making changes.` });
+    } else if (ph < 8.0 || ph > 8.5) {
+      score -= 2;
+      penalties.push({ title:'pH watch', detail:`Live pH is ${ph}. This is worth watching but does not require a quick correction.` });
     } else {
       score += 3;
+      positives.push(`pH is stable at ${ph}.`);
     }
   } else {
     score -= 4;
@@ -2054,10 +2059,10 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
   }
 
   if (Number.isFinite(orp)) {
-    positives.push(`ORP available: ${orp} mV.`);
+    positives.push(`ORP is available from Apex: ${orp} mV.`);
     if (orp < 250) {
       score -= 5;
-      penalties.push({ title:'ORP watch', detail:`Live ORP is ${orp} mV.` });
+      penalties.push({ title:'ORP watch', detail:`Live ORP is ${orp} mV. Look for a trend before reacting to one reading.` });
     } else {
       score += 2;
     }
@@ -2069,13 +2074,13 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
   const heat2 = outputStatus('Heat2');
   const ato = outputStatus('ATO');
 
-  if (heat1 || heat2) positives.push(`Heaters reporting: Heat1 ${heat1 || '—'}, Heat2 ${heat2 || '—'}.`);
+  if (heat1 || heat2) positives.push(`Heater outlets reporting: Heat1 ${heat1 || '—'}, Heat2 ${heat2 || '—'}.`);
   else {
     score -= 4;
     missing.push('heater outlet states');
   }
 
-  if (ato) positives.push(`ATO reporting: ${ato}.`);
+  if (ato) positives.push(`ATO outlet reporting: ${ato}.`);
   else {
     score -= 3;
     missing.push('ATO outlet state');
@@ -2089,7 +2094,7 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
       positives.push(`Manual parameter log is current: ${days === 0 ? 'today' : days + ' day(s) ago'}.`);
     } else if (days <= 21) {
       score += 2;
-      penalties.push({ title:'Testing cadence', detail:`Latest local parameter log is ${days} days old on this device.` });
+      penalties.push({ title:'Testing cadence', detail:`Latest manual parameter log is ${days} days old on this device.` });
     } else {
       score -= 8;
       penalties.push({ title:'Testing cadence', detail:`Latest local parameter log is ${days} days old on this device.` });
@@ -2097,16 +2102,16 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
     }
   } else {
     score -= 10;
-    penalties.push({ title:'Testing cadence', detail:'No local parameter log is available on this device.' });
+    penalties.push({ title:'Testing cadence', detail:'No manual parameter log is available on this device.' });
     missing.push('parameter logs');
   }
 
   if (Array.isArray(reminders) && reminders.length) {
     score -= Math.min(8, reminders.length * 2);
-    penalties.push({ title:'Active reminders', detail:`${reminders.length} active reminder(s) on this device.` });
+    penalties.push({ title:'Active reminders', detail:`${reminders.length} active reminder(s) are still open on this device.` });
   } else {
     score += 2;
-    positives.push('No active local reminders requiring attention.');
+    positives.push('No active local reminders require attention.');
   }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
@@ -2123,7 +2128,7 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
   if (penalties.length) {
     penalties.slice(0, 3).forEach(p => today.push({ title:p.title, detail:p.detail }));
   } else {
-    today.push({ title:'No immediate warnings', detail:'Live Apex telemetry looks usable and current.' });
+    today.push({ title:'No immediate warnings', detail:'Live Apex data looks usable and current.' });
   }
 
   const watching = [
@@ -2141,7 +2146,7 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
       missing: [...new Set(missing)].slice(0, 6)
     },
     scoreExplanation: {
-      summary: `Reef Brain score ${score}% from live Apex telemetry and local app data.`,
+      summary: `Reef Brain score ${score}% based on live Apex data, manual logs, reminders, and local app data.`,
       positives,
       penalties
     },
@@ -2151,7 +2156,7 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
       label: latest ? rkDaysAgoLabel(latest.isoDate || latest.date) : 'No local tests'
     },
     dailyAssistant: {
-      headline: score >= 80 ? 'Tank looks stable from live telemetry.' : 'A few items need review.',
+      headline: score >= 80 ? 'Tank looks stable from live Apex data.' : 'A few items need review.',
       bullets: today.slice(0, 3).map(item => ({
         text: item.title,
         detail: item.detail,
