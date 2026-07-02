@@ -3827,3 +3827,37 @@ html.theme-dark .backup-restore-checklist{
   border-color:rgba(155,216,240,.18);
 }
 
+/* Compact Backup / Restore safety checklist override */
+.backup-restore-checklist{
+  margin-top:10px !important;
+  padding:12px 14px !important;
+  border-radius:16px !important;
+  background:rgba(0,180,216,.07) !important;
+  border:1px solid rgba(0,119,182,.14) !important;
+  overflow:hidden !important;
+}
+.backup-restore-title{
+  font-size:13px !important;
+  line-height:1.25 !important;
+  font-weight:900 !important;
+  color:var(--text-dark) !important;
+  margin:0 0 8px 0 !important;
+}
+.backup-restore-checklist ol{
+  margin:0 !important;
+  padding-left:20px !important;
+  list-style-position:outside !important;
+}
+.backup-restore-checklist li{
+  font-size:12px !important;
+  line-height:1.35 !important;
+  font-weight:800 !important;
+  color:var(--text-mid) !important;
+  margin:5px 0 !important;
+  padding-left:2px !important;
+}
+html.theme-dark .backup-restore-checklist{
+  background:rgba(155,216,240,.08) !important;
+  border-color:rgba(155,216,240,.18) !important;
+}
+
