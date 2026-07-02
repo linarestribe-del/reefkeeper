@@ -361,6 +361,18 @@
       return;
     }
 
+    if (name === "tankhistory") {
+      const overlay = $("tool-tankhistory-overlay");
+      if (overlay) {
+        overlay.classList.add("visible", "open", "active");
+        overlay.style.display = "flex";
+        setTimeout(() => {
+          window.ReefKeeperTimeline?.render?.();
+        }, 50);
+        return;
+      }
+    }
+
     if (typeof oldOpenLongTermTool === "function") {
       return oldOpenLongTermTool.apply(this, arguments);
     }
