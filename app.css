@@ -3556,3 +3556,274 @@ html.theme-dark .equipment-intel-banner.good{background:rgba(82,183,136,.12);}
 .apex-note{font-size:12px;line-height:1.4;font-weight:700;color:var(--text-light);margin-top:10px;}
 html.theme-dark .apex-field input,html.theme-dark .apex-status-box{background:rgba(8,27,42,.92);border-color:rgba(155,216,240,.20);color:var(--text-dark);}
 @media(max-width:390px){.apex-form-grid,.apex-actions{grid-template-columns:1fr;}}
+
+/* v4.0.1 Apex Integration Cleanup */
+.apex-mode-grid{display:grid;grid-template-columns:1fr;gap:10px;margin:12px 0;}
+.apex-mode-card{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:start;border:2px solid rgba(0,180,216,.18);border-radius:18px;background:rgba(255,255,255,.76);padding:12px;cursor:pointer;box-shadow:0 4px 14px rgba(0,119,182,.08);}
+.apex-mode-card input{grid-row:1 / span 3;margin-top:4px;accent-color:var(--ocean-mid);}
+.apex-mode-card>span{font-size:22px;line-height:1;}
+.apex-mode-card strong{display:block;font-size:14px;font-weight:900;color:var(--text-dark);}
+.apex-mode-card small{display:block;grid-column:2;font-size:12px;line-height:1.35;font-weight:700;color:var(--text-mid);}
+.apex-mode-card.active{border-color:rgba(0,180,216,.55);background:rgba(255,255,255,.92);}
+.apex-info-card{border:1px solid rgba(0,180,216,.20);border-radius:16px;background:rgba(255,255,255,.68);padding:12px;margin:10px 0;}
+.apex-info-card strong{display:block;font-size:13px;font-weight:900;color:var(--text-dark);margin-bottom:4px;}
+.apex-info-card p{font-size:12px;line-height:1.45;font-weight:700;color:var(--text-mid);margin:0;}
+.apex-info-card.caution{border-color:rgba(255,183,3,.35);background:rgba(255,248,231,.76);}
+.apex-form-grid.single{display:grid;grid-template-columns:1fr;gap:10px;}
+.apex-switch-row{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(0,180,216,.16);border-radius:16px;background:rgba(255,255,255,.64);padding:12px;margin:9px 0;}
+.apex-switch-row span strong{display:block;font-size:13px;font-weight:900;color:var(--text-dark);}
+.apex-switch-row span small{display:block;font-size:11px;line-height:1.3;font-weight:700;color:var(--text-light);margin-top:2px;}
+.apex-switch-row input{width:22px;height:22px;accent-color:var(--ocean-mid);flex-shrink:0;}
+.apex-status-tips{margin:8px 0 0 18px;color:var(--text-mid);font-size:12px;font-weight:700;line-height:1.35;}
+[data-apex-mode-panel].hidden{display:none!important;}
+html.theme-dark .apex-mode-card,html.theme-dark .apex-info-card,html.theme-dark .apex-switch-row{background:rgba(8,27,42,.86);border-color:rgba(155,216,240,.20);}
+html.theme-dark .apex-mode-card.active{background:rgba(8,27,42,.96);border-color:rgba(112,184,212,.48);}
+html.theme-dark .apex-info-card.caution{background:rgba(44,37,18,.72);border-color:rgba(255,183,3,.28);}
+@media(min-width:430px){.apex-mode-grid{grid-template-columns:1fr 1fr;}}
+
+/* v4.0.2 Apex Live Data Bridge */
+.apex-bridge-panel { margin-top: 14px; }
+.apex-bridge-card {
+  border: 1px solid rgba(0,180,216,0.20);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.74);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+.apex-bridge-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.apex-bridge-head strong {
+  display: block;
+  color: var(--text-dark);
+  font-size: 15px;
+  font-weight: 900;
+}
+.apex-bridge-head span {
+  display: block;
+  color: var(--text-light);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.apex-bridge-head em {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  color: var(--text-mid);
+  background: rgba(0,180,216,0.10);
+  border-radius: 999px;
+  padding: 6px 9px;
+}
+.apex-bridge-probes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.apex-bridge-probes span {
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(0,180,216,0.18);
+  border-radius: 14px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.apex-bridge-probes strong {
+  display: block;
+  color: var(--text-dark);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+}
+.apex-bridge-probes small {
+  display: block;
+  color: var(--text-light);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-top: 5px;
+}
+.apex-bridge-card textarea {
+  width: 100%;
+  min-height: 150px;
+  border: 2px solid rgba(0,180,216,0.22);
+  border-radius: 14px;
+  padding: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-dark);
+  background: rgba(255,255,255,0.92);
+  outline: none;
+  resize: vertical;
+}
+.bridge-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+html.theme-dark .apex-bridge-card,
+html.theme-dark .apex-bridge-probes span,
+html.theme-dark .apex-bridge-card textarea {
+  background: rgba(8,27,42,0.92);
+  border-color: rgba(155,216,240,0.20);
+  color: var(--text-dark);
+}
+html.theme-dark .apex-bridge-head em { background: rgba(155,216,240,0.12); color: var(--text-mid); }
+@media (min-width: 420px) {
+  .bridge-actions { grid-template-columns: 1fr 1fr 1fr; }
+}
+@media (max-width: 380px) {
+  .apex-bridge-probes { grid-template-columns: repeat(2, 1fr); }
+}
+
+
+/* v4.0.4 Live Telemetry */
+.home-telemetry-card { margin-top: 0; }
+.home-telemetry-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.home-telemetry-subtitle { font-size:12px; line-height:1.35; font-weight:800; color:var(--text-light); margin-top:-6px; }
+.home-telemetry-action { border:0; border-radius:999px; padding:8px 12px; background:rgba(0,180,216,.14); color:var(--text-mid); font-family:'Nunito',sans-serif; font-weight:900; cursor:pointer; }
+.home-telemetry-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+.home-telemetry-chip { border:1px solid rgba(0,180,216,.16); border-radius:16px; background:rgba(255,255,255,.68); padding:10px 8px; min-height:70px; display:flex; flex-direction:column; justify-content:center; }
+.home-telemetry-chip span { font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.07em; color:var(--text-light); }
+.home-telemetry-chip strong { font-size:18px; line-height:1; font-weight:900; color:var(--text-dark); margin-top:4px; }
+.home-telemetry-chip small { font-size:10px; font-weight:800; color:var(--text-mid); margin-top:3px; }
+.home-telemetry-wide { grid-column:1/-1; border:1px solid rgba(0,180,216,.16); border-radius:16px; background:rgba(255,255,255,.58); padding:10px 12px; display:grid; gap:3px; }
+.home-telemetry-wide strong { font-size:12px; font-weight:900; color:var(--text-dark); }
+.home-telemetry-wide span, .home-telemetry-empty { font-size:12px; line-height:1.35; font-weight:800; color:var(--text-light); }
+.home-telemetry-empty { grid-column:1/-1; border:1px dashed rgba(0,180,216,.30); border-radius:16px; background:rgba(255,255,255,.52); padding:14px; }
+.apex-bridge-status-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:10px 0; }
+.apex-bridge-status-grid div { background:rgba(255,255,255,.72); border:1px solid rgba(0,180,216,.14); border-radius:14px; padding:9px 8px; display:grid; gap:2px; }
+.apex-bridge-status-grid strong { font-size:13px; font-weight:900; color:var(--text-dark); line-height:1.1; }
+.apex-bridge-status-grid small { font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:var(--text-light); }
+.apex-bridge-empty { border:1px dashed rgba(0,180,216,.28); background:rgba(255,255,255,.56); border-radius:16px; padding:12px; display:grid; gap:4px; margin:10px 0; }
+.apex-bridge-empty strong { color:var(--text-dark); font-weight:900; }
+.apex-bridge-empty span { color:var(--text-light); font-weight:800; font-size:12px; }
+.apex-bridge-outlets { border:1px solid rgba(0,180,216,.14); background:rgba(255,255,255,.58); border-radius:16px; padding:10px; margin:8px 0 2px; display:grid; gap:3px; }
+.apex-bridge-outlets strong { font-size:12px; font-weight:900; color:var(--text-dark); }
+.apex-bridge-outlets span { font-size:12px; font-weight:800; color:var(--text-mid); line-height:1.35; }
+html.theme-dark .home-telemetry-chip, html.theme-dark .home-telemetry-wide, html.theme-dark .home-telemetry-empty, html.theme-dark .apex-bridge-status-grid div, html.theme-dark .apex-bridge-empty, html.theme-dark .apex-bridge-outlets { background:rgba(8,27,42,.86); border-color:rgba(155,216,240,.20); }
+@media(max-width:430px){ .home-telemetry-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .apex-bridge-status-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* v4.0.5 Live Reef Brain */
+.home-brain-explain{margin:10px 0 14px;border:1px solid rgba(0,180,216,.16);border-radius:18px;background:rgba(255,255,255,.58);padding:12px;display:grid;gap:10px;}
+.home-brain-explain-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.home-brain-explain-head strong{display:block;font-size:13px;font-weight:900;color:var(--text-dark);}
+.home-brain-explain-head span{display:block;font-size:12px;line-height:1.35;font-weight:800;color:var(--text-light);margin-top:2px;}
+.home-brain-explain-head button{border:0;border-radius:999px;background:rgba(0,180,216,.14);color:var(--text-mid);font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;padding:8px 12px;cursor:pointer;white-space:nowrap;}
+.home-brain-factors{display:flex;flex-wrap:wrap;gap:7px;}
+.brain-factor{border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900;line-height:1.1;border:1px solid rgba(0,180,216,.14);background:rgba(255,255,255,.62);color:var(--text-mid);}
+.brain-factor.good{background:rgba(82,183,136,.16);color:#24724c;border-color:rgba(82,183,136,.22);}
+.brain-factor.watch{background:rgba(255,183,3,.18);color:#9a6500;border-color:rgba(255,183,3,.26);}
+.home-confidence-card{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:16px;background:linear-gradient(135deg,rgba(0,180,216,.14),rgba(144,224,239,.24));padding:11px 12px;border:1px solid rgba(0,180,216,.16);}
+.home-confidence-card span{display:block;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);}
+.home-confidence-card strong{display:block;font-size:22px;font-weight:900;color:var(--text-dark);line-height:1.05;margin-top:2px;}
+.home-confidence-card small{font-size:11px;line-height:1.3;font-weight:800;color:var(--text-mid);text-align:right;max-width:58%;}
+.home-telemetry-chip.interpreted{min-height:94px;justify-content:flex-start;}
+.home-telemetry-chip.interpreted em{display:block;font-style:normal;font-size:10px;line-height:1.25;font-weight:800;color:var(--text-light);margin-top:6px;}
+.home-telemetry-chip.interpreted.excellent strong,.home-telemetry-chip.interpreted.normal strong{color:#2d6a4f;}
+.home-telemetry-chip.interpreted.watch strong{color:#e85d04;}
+html.theme-dark .home-brain-explain,html.theme-dark .brain-factor,html.theme-dark .home-confidence-card{background:rgba(8,27,42,.86);border-color:rgba(155,216,240,.20);}
+html.theme-dark .brain-factor.good{background:rgba(82,183,136,.14);color:#9de0bd;}
+html.theme-dark .brain-factor.watch{background:rgba(255,183,3,.13);color:#ffd166;}
+@media(max-width:430px){.home-confidence-card{align-items:flex-start;flex-direction:column}.home-confidence-card small{text-align:left;max-width:100%;}}
+
+/* v4.1.0 Native Apex Driver */
+.apex-native-summary{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:10px 0 4px;
+}
+.apex-native-summary span{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid rgba(72,202,228,.35);
+  border-radius:999px;
+  padding:6px 10px;
+  background:rgba(255,255,255,.72);
+  color:var(--text-mid);
+  font-size:12px;
+  font-weight:900;
+}
+.apex-outlet-preview{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:10px 0 12px;
+}
+.apex-outlet-preview span{
+  border:1px solid rgba(72,202,228,.24);
+  border-radius:14px;
+  padding:8px 10px;
+  background:rgba(255,255,255,.66);
+  color:var(--text-mid);
+  font-size:12px;
+  font-weight:800;
+}
+.apex-outlet-preview b{
+  display:block;
+  color:var(--text-dark);
+  font-size:12px;
+  font-weight:900;
+  margin-bottom:2px;
+}
+html.theme-dark .apex-native-summary span,
+html.theme-dark .apex-outlet-preview span{
+  background:rgba(8,27,42,.86);
+  border-color:rgba(155,216,240,.22);
+}
+@media (max-width:420px){
+  .apex-outlet-preview{ grid-template-columns:1fr; }
+}
+
+/* v4.1.1 connector push */
+.apex-cloud-card{
+  margin-top:12px;
+  padding:14px;
+  border:1px solid rgba(0,180,216,.16);
+  border-radius:18px;
+  background:rgba(255,255,255,.58);
+  display:grid;
+  gap:10px;
+}
+.apex-cloud-card .apex-field{margin:0;}
+html.theme-dark .apex-cloud-card{background:rgba(8,27,42,.78);border-color:rgba(155,216,240,.20);}
+
+/* Backup / Restore safety checklist */
+.backup-restore-checklist{
+  margin-top:10px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(0,180,216,.07);
+  border:1px solid rgba(0,119,182,.14);
+}
+.backup-restore-title{
+  font-size:13px;
+  font-weight:900;
+  color:var(--text-dark);
+  margin-bottom:6px;
+}
+.backup-restore-checklist ol{
+  margin:0;
+  padding-left:18px;
+}
+.backup-restore-checklist li{
+  font-size:12px;
+  font-weight:800;
+  line-height:1.45;
+  color:var(--text-mid);
+  margin:4px 0;
+}
+html.theme-dark .backup-restore-checklist{
+  background:rgba(155,216,240,.08);
+  border-color:rgba(155,216,240,.18);
+}
+

@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260628-v3-9-2-polish-performance">
+<link rel="stylesheet" href="css/app.css?v=20260702-v4-3-22-restore-safety">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -644,6 +644,19 @@
         </div>
         <div class="backup-note">Exports logs, action history, completed history, reminders, checked-off states, answer style, tank-context setting, inventory, Equipment Guide, Reef Library, Timeline data, Tank Memory, and reports-related data. Keep the backup file somewhere safe before clearing browser data or switching devices. After importing a backup, tap View Backup Contents to confirm what restored on this device.</div>
         <div id="last-backup-export-status" class="backup-note">Last backup export: Not recorded on this device yet.</div>
+
+        <div class="backup-restore-checklist">
+          <div class="backup-restore-title">Restore Safety Checklist</div>
+          <ol>
+            <li>Import the backup file.</li>
+            <li>Refresh or reopen the app after import.</li>
+            <li>Tap View Backup Contents to confirm what restored on this device.</li>
+            <li>Open Equipment Guide and confirm the equipment list appears.</li>
+            <li>Open Reports and confirm the Equipment Guide report shows data.</li>
+            <li>Run System Check if anything looks missing.</li>
+          </ol>
+        </div>
+
         <div id="backup-contents-summary" class="diagnostics-result">Tap View Backup Contents to see what is currently saved on this device.</div>
       </div>
 
