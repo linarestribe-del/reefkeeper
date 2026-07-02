@@ -2826,18 +2826,39 @@ function showBackupContentsSummary() {
 }
 
 function showImportedBackupSummary(payload) {
-  const box = document.getElementById('backup-contents-summary') || document.getElementById('diagnostics-result');
-  if (!box) return;
+  const data = {};
+  REEF_BACKUP_KEYS.forEach(key => { data[key] = localStorage.getItem(key); });
 
-  const data = payload?.data || payload || {};
-  const exportedAt = payload?.exportedAt ? `Exported: ${new Date(payload.exportedAt).toLocaleString()}` : 'Exported: unknown';
+  const fileData = payload?.data || payload || {};
+  const importedKeys = REEF_BACKUP_KEYS.filter(key =>
+    Object.prototype.hasOwnProperty.call(fileData, key) &&
+    fileData[key] !== null &&
+    fileData[key] !== undefined
+  );
 
-  box.textContent = [
+  const exportedAt = payload?.exportedAt ? `Exported file date: ${new Date(payload.exportedAt).toLocaleString()}` : 'Exported file date: unknown';
+
+  const summary = [
     'Imported Backup Summary',
     exportedAt,
+    `Restored keys from file: ${importedKeys.length}`,
     '',
-    buildBackupContentsSummaryFromData(data, 'Imported File Contents')
-  ].join('\n');
+    buildBackupContentsSummaryFromData(data, 'Current Device Contents After Import')
+  ].join('
+');
+
+  try { localStorage.setItem('reef_last_import_summary', summary); } catch(e) {}
+
+  const updateBox = () => {
+    const box = document.getElementById('backup-contents-summary') || document.getElementById('diagnostics-result');
+    if (!box) return;
+    box.textContent = summary;
+    try { box.scrollIntoView({ behavior:'smooth', block:'nearest' }); } catch(e) {}
+  };
+
+  updateBox();
+  setTimeout(updateBox, 100);
+  setTimeout(updateBox, 500);
 }
 
 
