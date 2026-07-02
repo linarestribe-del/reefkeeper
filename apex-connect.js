@@ -373,6 +373,19 @@
       }
     }
 
+    if (name === "equipment") {
+      const overlay = $("tool-equipment-overlay");
+      if (overlay) {
+        overlay.classList.add("visible", "open", "active");
+        overlay.style.display = "flex";
+        setTimeout(() => {
+          try { renderEquipmentManager?.(); } catch(e) {}
+          try { window.renderEquipmentManager?.(); } catch(e) {}
+        }, 50);
+        return;
+      }
+    }
+
     if (typeof oldOpenLongTermTool === "function") {
       return oldOpenLongTermTool.apply(this, arguments);
     }
