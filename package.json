@@ -1,14 +1,10 @@
 {
-  "name": "reefkeeper-pi-connector",
-  "version": "4.3.5",
+  "name": "reefkeeper-vercel-app",
+  "version": "4.3.9",
   "private": true,
-  "description": "Raspberry Pi Apex connector for Reef Keeper v4.3.5",
-  "main": "connector.js",
+  "description": "Reef Keeper Vercel app with OpenAI, Apex, and telemetry API routes",
+  "type": "module",
   "scripts": {
-    "start": "node connector.js",
-    "once": "RUN_ONCE=true node connector.js"
-  },
-  "dependencies": {
-    "dotenv": "^16.4.7"
+    "start": "vercel dev"
   }
 }
