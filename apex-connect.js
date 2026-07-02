@@ -86,6 +86,29 @@
     return output?.status?.[0] || "—";
   }
 
+  function apexAgeLabel(iso) {
+    if (!iso) return "unknown";
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return "unknown";
+    const minutes = Math.max(0, Math.floor((Date.now() - t) / 60000));
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hr ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+  }
+
+  function apexConnectionState(status) {
+    if (!status || !status.ok) return { label: "Offline", cls: "critical" };
+    const t = new Date(status.receivedAt || status.piTimestamp || 0).getTime();
+    if (!Number.isFinite(t) || !t) return { label: "Connected", cls: "recovery" };
+    const minutes = Math.floor((Date.now() - t) / 60000);
+    if (minutes <= 5) return { label: "Connected", cls: "good" };
+    if (minutes <= 20) return { label: "Stale", cls: "recovery" };
+    return { label: "Offline / stale", cls: "critical" };
+  }
+
   function renderApexPanel(status) {
     const panel = $("apex-settings-panel");
     if (!panel) return;
@@ -93,7 +116,11 @@
     if (!status || !status.ok) {
       panel.innerHTML = `
         <div class="long-term-intro">
-          Apex bridge is configured, but no live Apex status is available yet.
+          <strong>Pi Bridge: Offline</strong><br>
+          No live Apex status is available yet. Check that the Raspberry Pi connector is running and pointed at this Vercel app.
+        </div>
+        <div class="backup-note">
+          ${esc(status && status.error ? status.error : "No Apex status received.")}
         </div>
         <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApex.refresh()">Refresh Apex Status</button>
       `;
@@ -104,23 +131,38 @@
     const ph = findInput(status, "pH")?.value;
     const orp = findInput(status, "ORP")?.value;
 
+    const receivedAt = status.receivedAt || status.piTimestamp || "";
+    const receivedLabel = receivedAt ? new Date(receivedAt).toLocaleString() : "unknown";
+    const age = apexAgeLabel(receivedAt);
+    const state = apexConnectionState(status);
+
     const rows = [
       ["Temp", temp != null ? `${temp} °F` : "—"],
       ["pH", ph ?? "—"],
       ["ORP", orp != null ? `${orp} mV` : "—"],
       ["Return1", outputState(findOutput(status, "Return1"))],
       ["Return2", outputState(findOutput(status, "Return2"))],
-      ["UV pump", outputState(findOutput(status, "UVpump"))],
       ["Skimmer", outputState(findOutput(status, "Skimmer"))],
+      ["UV pump", outputState(findOutput(status, "UVpump"))],
       ["ATO", outputState(findOutput(status, "ATO"))],
       ["Heat1", outputState(findOutput(status, "Heat1"))],
       ["Heat2", outputState(findOutput(status, "Heat2"))],
     ];
 
+    const source = status.source || status.apexSourceUrl || "Apex";
+    const connectorVersion = status.connectorVersion ? `Connector ${status.connectorVersion}` : "Connector version unknown";
+
     panel.innerHTML = `
+      <div class="tank-status-head" style="margin-bottom:12px;">
+        <div>
+          <div class="tank-status-title">Pi Bridge: ${esc(state.label)}</div>
+          <div class="tank-status-subtitle">Last sync: ${esc(age)} · ${esc(receivedLabel)}</div>
+        </div>
+        <div class="tank-status-badge ${esc(state.cls)}">${esc(state.label)}</div>
+      </div>
+
       <div class="long-term-intro">
-        Raspberry Pi Apex bridge is live. Last sync:
-        <strong>${esc(status.receivedAt || "unknown")}</strong>
+        Live Apex data is coming from the Raspberry Pi bridge. Home, Reef Brain, and Ask AI use this live status when available.
       </div>
 
       <div class="status-grid">
@@ -137,7 +179,8 @@
       </div>
 
       <div class="backup-note">
-        Source: ${esc(status.source || status.apexSourceUrl || "Apex")}
+        Source: ${esc(source)}<br>
+        ${esc(connectorVersion)}
       </div>
 
       <button class="long-term-btn secondary" type="button" onclick="ReefKeeperApex.refresh()">Refresh Apex Status</button>
