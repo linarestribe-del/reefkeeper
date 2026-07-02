@@ -2731,6 +2731,116 @@ const REEF_BACKUP_KEYS = [
   'reef_equipment_items'
 ];
 
+
+function reefBackupParseValue(raw) {
+  if (raw === null || raw === undefined || raw === '') return null;
+  try { return JSON.parse(raw); } catch(e) { return raw; }
+}
+
+function reefBackupCountValue(value) {
+  if (value === null || value === undefined || value === '') return { present:false, label:'empty' };
+
+  const parsed = typeof value === 'string' ? reefBackupParseValue(value) : value;
+
+  if (Array.isArray(parsed)) return { present: parsed.length > 0, label: `${parsed.length} item${parsed.length === 1 ? '' : 's'}` };
+  if (parsed && typeof parsed === 'object') {
+    const keys = Object.keys(parsed);
+    return { present: keys.length > 0, label: `${keys.length} field${keys.length === 1 ? '' : 's'}` };
+  }
+  if (typeof parsed === 'boolean') return { present:true, label: String(parsed) };
+  if (typeof parsed === 'number') return { present:true, label: String(parsed) };
+
+  const str = String(parsed || '');
+  return { present: str.trim().length > 0, label: str.trim().length ? `${str.trim().length} chars` : 'empty' };
+}
+
+function reefBackupFriendlyName(key) {
+  const names = {
+    reef_logs: 'Parameter logs',
+    reef_actions: 'Action history',
+    reef_completed_history: 'Completed history',
+    reef_ai_reminders: 'AI reminders',
+    reef_static_reminder_states: 'Static reminder states',
+    reef_days_off_plan_states: 'Days-Off checked states',
+    reef_hidden_static_reminders: 'Hidden static reminders',
+    reef_hidden_plan_tasks: 'Hidden plan tasks',
+    reef_ai_days_off_plans: 'AI Days-Off plans',
+    reef_task_schedule: 'Task schedule',
+    reef_resolved_issues: 'Resolved issues',
+    reef_model_mode: 'AI answer style',
+    reef_use_tank_context: 'Use tank context setting',
+    reef_tank_mode: 'Tank mode',
+    reef_inventory: 'Livestock inventory',
+    reef_inventory_custom: 'Custom inventory',
+    reef_inventory_custom_v2: 'Inventory v2',
+    reef_guardrails: 'Guardrails',
+    reef_monthly_reviews: 'Monthly reviews',
+    reef_chat_conversations: 'Ask AI conversations',
+    reef_tank_knowledge_base: 'Tank knowledge base',
+    reef_tank_history_photos_v1: 'Reef Timeline photos',
+    reef_library_docs: 'Reef Library documents',
+    reef_tank_memory_v1: 'Tank Memory v1',
+    reef_tank_memory: 'Tank Memory',
+    reef_long_term_memory: 'Long-term memory',
+    reef_knowledge_base_v1: 'Knowledge base v1',
+    reef_kb_items_v1: 'Knowledge base items',
+    reef_equipment_v1: 'Equipment Guide',
+    reef_equipment: 'Equipment legacy',
+    reef_equipment_items: 'Equipment items legacy'
+  };
+  return names[key] || key;
+}
+
+function buildBackupContentsSummaryFromData(data, title = 'Backup Contents') {
+  const rows = REEF_BACKUP_KEYS.map(key => {
+    const hasKey = Object.prototype.hasOwnProperty.call(data || {}, key);
+    const raw = hasKey ? data[key] : localStorage.getItem(key);
+    const count = reefBackupCountValue(raw);
+    const icon = count.present ? '✅' : '—';
+    return `${icon} ${reefBackupFriendlyName(key)}: ${count.label}`;
+  });
+
+  const presentCount = rows.filter(row => row.startsWith('✅')).length;
+  const emptyCount = rows.length - presentCount;
+
+  return [
+    `${title}`,
+    `Generated: ${new Date().toLocaleString()}`,
+    ``,
+    `Present: ${presentCount}`,
+    `Empty / unused: ${emptyCount}`,
+    ``,
+    ...rows
+  ].join('\n');
+}
+
+function showBackupContentsSummary() {
+  const box = document.getElementById('backup-contents-summary') || document.getElementById('diagnostics-result');
+  if (!box) return;
+
+  const data = {};
+  REEF_BACKUP_KEYS.forEach(key => { data[key] = localStorage.getItem(key); });
+
+  box.textContent = buildBackupContentsSummaryFromData(data, 'Current Device Backup Contents');
+  try { showToast('Backup contents summarized'); } catch(e) {}
+}
+
+function showImportedBackupSummary(payload) {
+  const box = document.getElementById('backup-contents-summary') || document.getElementById('diagnostics-result');
+  if (!box) return;
+
+  const data = payload?.data || payload || {};
+  const exportedAt = payload?.exportedAt ? `Exported: ${new Date(payload.exportedAt).toLocaleString()}` : 'Exported: unknown';
+
+  box.textContent = [
+    'Imported Backup Summary',
+    exportedAt,
+    '',
+    buildBackupContentsSummaryFromData(data, 'Imported File Contents')
+  ].join('\n');
+}
+
+
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
   REEF_BACKUP_KEYS.forEach(key => { payload.data[key] = localStorage.getItem(key); });

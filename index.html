@@ -640,8 +640,10 @@
           <button class="backup-btn backup-export-btn" onclick="exportReefBackup()">Export Backup</button>
           <label class="backup-btn backup-import-btn" for="backup-import-file">Import Backup</label>
           <input class="hidden-backup-input" id="backup-import-file" type="file" accept=".json,application/json" onchange="importReefBackup(event)">
+          <button class="backup-btn backup-import-btn" type="button" onclick="showBackupContentsSummary()">View Backup Contents</button>
         </div>
-        <div class="backup-note">Exports logs, action history, completed history, reminders, checked-off states, answer style, and tank-context setting. Keep the backup file somewhere safe before clearing browser data or switching devices.</div>
+        <div class="backup-note">Exports logs, action history, completed history, reminders, checked-off states, answer style, tank-context setting, inventory, Equipment Guide, Reef Library, Timeline data, Tank Memory, and reports-related data. Keep the backup file somewhere safe before clearing browser data or switching devices.</div>
+        <div id="backup-contents-summary" class="diagnostics-result">Tap View Backup Contents to see what is currently saved on this device.</div>
       </div>
 
       <div class="card">
@@ -2432,7 +2434,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260701-v4-3-15-direct-backup-keys"></script>
+<script src="app.js?v=20260702-v4-3-18-backup-contents"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
