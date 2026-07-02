@@ -2634,7 +2634,22 @@ function ensureMyTankEquipmentListVisible() {
 
 
 // ── v3.7 Equipment Intelligence ────────────────────────────────────────────
-const RK_EQUIPMENT_STORAGE_KEY = 'reef_equipment_inventory_v1';
+const RK_EQUIPMENT_STORAGE_KEY = 'reef_equipment_v1';
+
+// Migrate older Equipment Guide data into the backup/report key.
+(function migrateEquipmentStorageKeyToBackupKey(){
+  try {
+    const newKey = 'reef_equipment_v1';
+    const oldKey = 'reef_equipment_inventory_v1';
+    const newer = localStorage.getItem(newKey);
+    const older = localStorage.getItem(oldKey);
+
+    if ((!newer || newer === '[]' || newer === 'null') && older && older !== '[]' && older !== 'null') {
+      localStorage.setItem(newKey, older);
+    }
+  } catch(e) {}
+})();
+
 let rkEquipmentFilter = 'All';
 
 function rkEquipmentParseArray(key) {
