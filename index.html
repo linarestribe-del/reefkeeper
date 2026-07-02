@@ -319,10 +319,6 @@
         </button>
       </div>
 
-      <div class="card tank-dashboard-card">
-        <div class="card-title">⭐ AI Tank Dashboard</div>
-        <div id="tank-dashboard-content"></div>
-      </div>
 
       <div class="card">
         <div class="card-title">🕰️ What Changed Recently</div>
@@ -1248,7 +1244,7 @@ function rkScrollAndFlash(target) {
 function openHomeReefStatus() {
   showWorkspace('home');
   setTimeout(() => {
-    const target = document.querySelector('.tank-dashboard-card') || document.getElementById('tank-dashboard-content') || document.getElementById('home-intelligence-card');
+    const target = document.getElementById('home-intelligence-card');
     rkScrollAndFlash(target);
   }, 120);
 }
