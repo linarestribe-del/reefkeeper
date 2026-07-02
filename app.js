@@ -2697,7 +2697,39 @@ function renderLongTermTools() {
 
 
 // ── Backup / restore ───────────────────────────────────────────────────────
-const REEF_BACKUP_KEYS = ['reef_logs', 'reef_actions', 'reef_completed_history', 'reef_ai_reminders', 'reef_static_reminder_states', 'reef_days_off_plan_states', 'reef_hidden_static_reminders', 'reef_hidden_plan_tasks', 'reef_ai_days_off_plans', 'reef_task_schedule', 'reef_resolved_issues', 'reef_model_mode', 'reef_use_tank_context', 'reef_tank_mode', 'reef_inventory', 'reef_inventory_custom', 'reef_guardrails', 'reef_monthly_reviews', 'reef_inventory_custom_v2', 'reef_chat_conversations', 'reef_tank_knowledge_base'];
+const REEF_BACKUP_KEYS = [
+  'reef_logs',
+  'reef_actions',
+  'reef_completed_history',
+  'reef_ai_reminders',
+  'reef_static_reminder_states',
+  'reef_days_off_plan_states',
+  'reef_hidden_static_reminders',
+  'reef_hidden_plan_tasks',
+  'reef_ai_days_off_plans',
+  'reef_task_schedule',
+  'reef_resolved_issues',
+  'reef_model_mode',
+  'reef_use_tank_context',
+  'reef_tank_mode',
+  'reef_inventory',
+  'reef_inventory_custom',
+  'reef_guardrails',
+  'reef_monthly_reviews',
+  'reef_inventory_custom_v2',
+  'reef_chat_conversations',
+  'reef_tank_knowledge_base',
+  'reef_tank_history_photos_v1',
+  'reef_library_docs',
+  'reef_tank_memory_v1',
+  'reef_tank_memory',
+  'reef_long_term_memory',
+  'reef_knowledge_base_v1',
+  'reef_kb_items_v1',
+  'reef_equipment_v1',
+  'reef_equipment',
+  'reef_equipment_items'
+];
 
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
@@ -4500,42 +4532,6 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-
-// Ensure newer Long-Term Reef Tool data is included in backup/export.
-(function ensureReefKeeperBackupKeysForTimelineAndReports(){
-  const requiredKeys = [
-    'reef_tank_history_photos_v1',
-    'reef_library_docs',
-    'reef_inventory_custom_v2',
-    'reef_inventory_custom',
-    'reef_inventory',
-    'reef_actions',
-    'reef_completed_history',
-    'reef_logs',
-    'reef_tank_memory_v1',
-    'reef_tank_memory',
-    'reef_long_term_memory',
-    'reef_knowledge_base_v1',
-    'reef_kb_items_v1'
-  ];
-
-  try {
-    if (Array.isArray(window.REEF_BACKUP_KEYS)) {
-      requiredKeys.forEach(key => {
-        if (!window.REEF_BACKUP_KEYS.includes(key)) window.REEF_BACKUP_KEYS.push(key);
-      });
-      return;
-    }
-  } catch(e) {}
-
-  try {
-    if (typeof REEF_BACKUP_KEYS !== 'undefined' && Array.isArray(REEF_BACKUP_KEYS)) {
-      requiredKeys.forEach(key => {
-        if (!REEF_BACKUP_KEYS.includes(key)) REEF_BACKUP_KEYS.push(key);
-      });
-    }
-  } catch(e) {}
-})();
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 renderQuickQuestions();
