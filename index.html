@@ -2807,6 +2807,190 @@ function rkEquipmentCategories(items = rkEquipmentItems()) {
   return ['All', ...Array.from(new Set(items.map(i => i.category || 'Miscellaneous'))).sort()];
 }
 
+
+// Robust Equipment Guide form handlers.
+function getEquipmentFormValue(id) {
+  return document.getElementById(id)?.value?.trim?.() || '';
+}
+
+function clearEquipmentForm() {
+  [
+    'equipment-edit-id',
+    'equipment-photo-data',
+    'equipment-name',
+    'equipment-brand',
+    'equipment-model',
+    'equipment-installed',
+    'equipment-purchase',
+    'equipment-maintenance-days',
+    'equipment-serial',
+    'equipment-manual',
+    'equipment-parts',
+    'equipment-notes'
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+
+  const category = document.getElementById('equipment-category');
+  if (category) category.value = 'Return Pumps';
+
+  const file = document.getElementById('equipment-photo-input');
+  if (file) file.value = '';
+
+  try { showToast('Equipment form cleared'); } catch(e) {}
+}
+
+function saveEquipmentItem() {
+  const name = getEquipmentFormValue('equipment-name');
+  if (!name) {
+    try { showToast('⚠️ Add an equipment name first'); } catch(e) {}
+    return;
+  }
+
+  const editId = getEquipmentFormValue('equipment-edit-id');
+  const items = rkEquipmentItems().filter(item => item && item.id);
+  const now = new Date().toISOString();
+
+  const existing = editId ? items.find(item => String(item.id) === String(editId)) : null;
+  const id = editId || `equip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+
+  const nextItem = {
+    ...(existing || {}),
+    id,
+    name,
+    category: getEquipmentFormValue('equipment-category') || 'Miscellaneous',
+    brand: getEquipmentFormValue('equipment-brand'),
+    model: getEquipmentFormValue('equipment-model'),
+    installedDate: getEquipmentFormValue('equipment-installed'),
+    purchaseDate: getEquipmentFormValue('equipment-purchase'),
+    maintenanceDays: getEquipmentFormValue('equipment-maintenance-days'),
+    serial: getEquipmentFormValue('equipment-serial'),
+    manual: getEquipmentFormValue('equipment-manual'),
+    parts: getEquipmentFormValue('equipment-parts'),
+    notes: getEquipmentFormValue('equipment-notes'),
+    photoDataUrl: getEquipmentFormValue('equipment-photo-data') || existing?.photoDataUrl || '',
+    status: existing?.status || 'active',
+    createdAt: existing?.createdAt || now,
+    updatedAt: now
+  };
+
+  const next = items.filter(item => String(item.id) !== String(id));
+  next.unshift(nextItem);
+
+  rkSetEquipmentItems(next);
+
+  // Write directly to the backup/report key too, in case any wrapper returned early.
+  try {
+    localStorage.setItem('reef_equipment_v1', JSON.stringify(next));
+  } catch(e) {
+    try { showToast('⚠️ Could not save equipment. Storage may be full.'); } catch(_) {}
+    return;
+  }
+
+  try { renderEquipmentManager(); } catch(e) {}
+  try { updateMyTankSnapshotBadges?.(); } catch(e) {}
+  clearEquipmentForm();
+  try { showToast('✅ Equipment saved'); } catch(e) {}
+}
+
+function editEquipmentItem(id) {
+  const item = rkEquipmentItems().find(i => String(i.id) === String(id));
+  if (!item) {
+    try { showToast('Equipment item not found'); } catch(e) {}
+    return;
+  }
+
+  const values = {
+    'equipment-edit-id': item.id || '',
+    'equipment-photo-data': item.photoDataUrl || '',
+    'equipment-name': item.name || '',
+    'equipment-brand': item.brand || '',
+    'equipment-model': item.model || '',
+    'equipment-installed': item.installedDate || '',
+    'equipment-purchase': item.purchaseDate || '',
+    'equipment-maintenance-days': item.maintenanceDays || '',
+    'equipment-serial': item.serial || '',
+    'equipment-manual': item.manual || '',
+    'equipment-parts': item.parts || '',
+    'equipment-notes': item.notes || ''
+  };
+
+  Object.entries(values).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  });
+
+  const category = document.getElementById('equipment-category');
+  if (category) category.value = item.category || 'Miscellaneous';
+
+  try { scrollToolToTop('equipment'); } catch(e) {}
+  try { showToast('Editing equipment item'); } catch(e) {}
+}
+
+function deleteEquipmentItem(id) {
+  if (!confirm('Delete this equipment item?')) return;
+  const next = rkEquipmentItems().filter(item => String(item.id) !== String(id));
+  rkSetEquipmentItems(next);
+  try { localStorage.setItem('reef_equipment_v1', JSON.stringify(next)); } catch(e) {}
+  try { renderEquipmentManager(); } catch(e) {}
+  try { updateMyTankSnapshotBadges?.(); } catch(e) {}
+  try { showToast('Equipment deleted'); } catch(e) {}
+}
+
+function handleEquipmentPhotoUpload(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 900;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height && width > max) {
+        height = Math.round(height * max / width);
+        width = max;
+      } else if (height > max) {
+        width = Math.round(width * max / height);
+        height = max;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const out = canvas.toDataURL('image/jpeg', 0.72);
+      const photo = document.getElementById('equipment-photo-data');
+      if (photo) photo.value = out;
+
+      try { showToast('📷 Equipment photo ready'); } catch(e) {}
+    };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function aiFillEquipmentItem() {
+  const name = getEquipmentFormValue('equipment-name');
+  if (!name) {
+    try { showToast('Add an equipment name first'); } catch(e) {}
+    return;
+  }
+
+  const notes = document.getElementById('equipment-notes');
+  if (notes && !notes.value.trim()) {
+    notes.value = `Equipment notes for ${name}. Add setup details, normal settings, cleaning steps, failure symptoms, and replacement-part notes.`;
+  }
+
+  try { showToast('AI Fill placeholder added notes'); } catch(e) {}
+}
+
+
 function renderEquipmentManager() {
   const list = document.getElementById('equipment-list');
   const filters = document.getElementById('equipment-filter-row');
