@@ -2055,12 +2055,143 @@ function copySystemCheckResults() {
     return rkReportBuildMonthly();
   }
 
+  function rkEnsureReportPreviewStyles() {
+    if (document.getElementById('rk-report-preview-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'rk-report-preview-styles';
+    style.textContent = `
+      .rk-report-render {
+        display: grid;
+        gap: 12px;
+        color: var(--text-dark, #123);
+      }
+      .rk-report-title-card {
+        background: linear-gradient(135deg, rgba(0,180,216,.16), rgba(255,255,255,.92));
+        border: 1px solid rgba(0,180,216,.22);
+        border-radius: 16px;
+        padding: 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.05);
+      }
+      .rk-report-title-card h2 {
+        margin: 0 0 6px;
+        color: #075985;
+        font-size: 20px;
+        line-height: 1.2;
+      }
+      .rk-report-title-card .rk-report-generated {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text-mid, #456);
+      }
+      .rk-report-section {
+        background: rgba(255,255,255,.78);
+        border: 1px solid rgba(0,180,216,.16);
+        border-radius: 16px;
+        padding: 13px;
+      }
+      .rk-report-section h3 {
+        margin: 0 0 8px;
+        color: #075985;
+        font-size: 15px;
+      }
+      .rk-report-lines {
+        display: grid;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+      .rk-report-line {
+        background: rgba(232,245,251,.62);
+        border-radius: 12px;
+        padding: 8px 10px;
+      }
+      .rk-report-bullet {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        gap: 6px;
+        align-items: start;
+      }
+      .rk-report-bullet::before {
+        content: "•";
+        color: #075985;
+        font-weight: 900;
+      }
+      html.theme-dark .rk-report-title-card,
+      html.theme-dark .rk-report-section {
+        background: rgba(7, 24, 38, .88);
+        border-color: rgba(155,216,240,.22);
+      }
+      html.theme-dark .rk-report-line {
+        background: rgba(155,216,240,.10);
+      }
+      html.theme-dark .rk-report-title-card h2,
+      html.theme-dark .rk-report-section h3 {
+        color: #9bd8f0;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function rkReportRenderTextAsHtml(text) {
-    return rkReportEsc(text)
-      .replace(/^# (.*)$/gm, '<h2>$1</h2>')
-      .replace(/^## (.*)$/gm, '<h3>$1</h3>')
-      .replace(/^- (.*)$/gm, '<div>• $1</div>')
-      .replace(/\n/g, '<br>');
+    rkEnsureReportPreviewStyles();
+
+    const rawLines = String(text || '').replace(/\r/g, '').split('\n');
+    const titleLine = rawLines.find(line => /^# /.test(line)) || '# Reef Keeper Report';
+    const title = titleLine.replace(/^# /, '').trim();
+
+    const generatedLine = rawLines.find(line => /^Generated:/.test(line) || /^Run time:/.test(line)) || '';
+    const sections = [];
+    let current = null;
+
+    rawLines.forEach(line => {
+      const clean = line.trim();
+      if (!clean) return;
+      if (/^# /.test(clean)) return;
+      if (/^Generated:/.test(clean) || /^Run time:/.test(clean)) return;
+
+      if (/^## /.test(clean)) {
+        current = { title: clean.replace(/^## /, '').trim(), lines: [] };
+        sections.push(current);
+        return;
+      }
+
+      if (!current) {
+        current = { title: 'Summary', lines: [] };
+        sections.push(current);
+      }
+
+      current.lines.push(clean);
+    });
+
+    const sectionHtml = sections.length
+      ? sections.map(section => `
+          <div class="rk-report-section">
+            <h3>${rkReportEsc(section.title)}</h3>
+            <div class="rk-report-lines">
+              ${
+                section.lines.length
+                  ? section.lines.map(line => {
+                      const isBullet = /^- /.test(line);
+                      const clean = isBullet ? line.replace(/^- /, '') : line;
+                      return `<div class="rk-report-line ${isBullet ? 'rk-report-bullet' : ''}">${rkReportEsc(clean)}</div>`;
+                    }).join('')
+                  : `<div class="rk-report-line">No entries found.</div>`
+              }
+            </div>
+          </div>
+        `).join('')
+      : `<div class="rk-report-section"><h3>Summary</h3><div class="rk-report-lines"><div class="rk-report-line">No report content generated.</div></div></div>`;
+
+    return `
+      <div class="rk-report-render">
+        <div class="rk-report-title-card">
+          <h2>${rkReportEsc(title)}</h2>
+          <div class="rk-report-generated">${rkReportEsc(generatedLine || 'Generated from Reef Keeper local data.')}</div>
+        </div>
+        ${sectionHtml}
+      </div>
+    `;
   }
 
   window.previewSelectedReport = function previewSelectedReport() {
