@@ -140,6 +140,41 @@
   }
 </style>
 
+
+<style id="reefkeeper-mobile-overflow-fix">
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .app,
+  .app-content,
+  .page,
+  .card,
+  .home-intelligence-card,
+  .home-telemetry-card,
+  .home-telemetry-head,
+  .home-telemetry-head > div {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .home-telemetry-subtitle,
+  #home-telemetry-subtitle,
+  #home-score-summary,
+  .home-brain-explain,
+  .home-brain-factors,
+  .brain-factor {
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+</style>
+
 </head>
 <body>
 
@@ -1858,12 +1893,12 @@ function renderHomeTelemetry() {
 
       if (subtitle) {
         const syncLabel = age(status.receivedAt || status.piTimestamp);
-        const bridgeLabel = 'Pi Bridge: Connected';
-        const apexLabel = 'Apex: Live';
+        const bridgeLabel = 'Bridge connected';
+        const apexLabel = 'Apex live';
         const alarmLabel = alarmOutputs.length
           ? `${alarmOutputs.length} alarm${alarmOutputs.length === 1 ? '' : 's'}`
           : 'No alarms';
-        subtitle.textContent = `Last Apex Sync: ${syncLabel} · ${bridgeLabel} · ${apexLabel} · ${alarmLabel}`;
+        subtitle.textContent = `Last sync: ${syncLabel} · ${bridgeLabel} · ${apexLabel} · ${alarmLabel}`;
       }
 
       const temp = inputValue('Tmp');
