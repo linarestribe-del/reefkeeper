@@ -3036,6 +3036,7 @@ function renderEquipmentManager() {
         <div class="equipment-card-actions">
           <button class="equipment-primary-btn" type="button" onclick="recordEquipmentService('${String(item.id || '').replace(/'/g, "\\'")}')">Log Service</button>
           <button class="equipment-secondary-btn" type="button" onclick="editEquipmentItem && editEquipmentItem('${String(item.id || '').replace(/'/g, "\\'")}')">Edit</button>
+          <button class="equipment-secondary-btn" type="button" onclick="deleteEquipmentItem && deleteEquipmentItem('${String(item.id || '').replace(/'/g, "\\'")}')">Delete</button>
           <button class="equipment-secondary-btn" type="button" onclick="askAiAboutEquipment('${String(item.id || '').replace(/'/g, "\\'")}')">Ask AI</button>
         </div>
       </div>
