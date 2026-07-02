@@ -2841,6 +2841,27 @@ function showImportedBackupSummary(payload) {
 }
 
 
+
+function renderLastBackupExportStatus() {
+  const box = document.getElementById('last-backup-export-status');
+  if (!box) return;
+
+  const raw = localStorage.getItem('reef_last_backup_exported_at');
+  if (!raw) {
+    box.textContent = 'Last backup export: Not recorded on this device yet.';
+    return;
+  }
+
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) {
+    box.textContent = 'Last backup export: Not recorded on this device yet.';
+    return;
+  }
+
+  box.textContent = `Last backup export: ${d.toLocaleString()}`;
+}
+
+
 function exportReefBackup() {
   const payload = { app: 'Reef Keeper', version: 2, exportedAt: new Date().toISOString(), data: {} };
   REEF_BACKUP_KEYS.forEach(key => { payload.data[key] = localStorage.getItem(key); });
@@ -2853,6 +2874,10 @@ function exportReefBackup() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+  try {
+    localStorage.setItem('reef_last_backup_exported_at', new Date().toISOString());
+    renderLastBackupExportStatus();
+  } catch(e) {}
   showToast('✅ Backup exported');
 }
 
