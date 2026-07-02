@@ -4031,12 +4031,8 @@ function renderTankStatus() {
   const latest = getLatestLogForStatus();
   if (!latest) {
     container.innerHTML = `
-      <div id="home-live-apex-status" class="tank-status-grid">
-        <div class="tank-status-text">Loading live Apex status…</div>
-      </div>
       <div class="tank-status-text">Log your first readings and Reef Keeper will summarize the tank status here.</div>
     `;
-    renderHomeLiveApexStatus();
     return;
   }
 
@@ -4100,10 +4096,6 @@ function renderTankStatus() {
   ].filter(Boolean);
 
   container.innerHTML = `
-    <div id="home-live-apex-status" class="tank-status-grid">
-      <div class="tank-status-text">Loading live Apex status…</div>
-    </div>
-
     <div class="tank-status-head">
       <div>
         <div class="tank-status-title">${escapeHtml(level === 'good' ? 'Looking steady' : level === 'critical' ? 'Needs attention' : 'Improving, but go slow')}</div>
@@ -4120,7 +4112,7 @@ function renderTankStatus() {
       ${pills.map(p => `<span class="tank-mini-pill ${p.state}">${escapeHtml(p.label)}</span>`).join('')}
     </div>
   `;
-  renderHomeLiveApexStatus();
+  // Old Home Apex dashboard disabled. The newer Home Reef Brain and Live Telemetry cards now handle Apex status.
 }
 
 // ── Days-off work plan ──────────────────────────────────────────────────────
