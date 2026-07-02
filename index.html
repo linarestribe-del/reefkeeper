@@ -452,6 +452,7 @@
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('report')"><span class="workspace-list-icon">📄</span><span class="workspace-list-main"><strong>Reports</strong><span>Monthly reef report, livestock summary, timeline, and exports.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Native Apex LAN telemetry and Fusion profile setup.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="openSystemCheck()"><span class="workspace-list-icon">✅</span><span class="workspace-list-main"><strong>System Check</strong><span>Check AI, Apex, storage, logs, reminders, and Tank Memory.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('library')"><span class="workspace-list-icon">📚</span><span class="workspace-list-main"><strong>Reef Library</strong><span>Protocols, manuals, ICP files, and reference documents.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
@@ -1144,6 +1145,29 @@
   </div>
 </div>
 
+
+<div class="tool-overlay" id="tool-system-overlay" onclick="handleToolOverlayClick(event, 'system')">
+  <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="system-tool-title">
+    <div class="tool-panel-head">
+      <button class="tool-panel-title" id="system-tool-title" type="button" onclick="scrollToolToTop('system')">System Check</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="tool-top-btn" type="button" onclick="scrollToolToTop('system')" aria-label="Scroll system check to top">⌃</button>
+        <button class="tool-close-btn" type="button" onclick="closeLongTermTool('system')" aria-label="Close system check">×</button>
+      </div>
+    </div>
+    <div class="tool-panel-body" id="tool-system-body">
+      <div class="long-term-panel">
+        <div class="long-term-intro">Run a quick health check for the app, live Apex bridge, Ask AI endpoint, local storage, logs, reminders, and Tank Memory.</div>
+        <div class="report-actions">
+          <button class="long-term-btn" type="button" onclick="runSystemCheck()">Run System Check</button>
+          <button class="long-term-btn secondary" type="button" onclick="copySystemCheckResults()">Copy Results</button>
+        </div>
+        <div id="system-check-results" class="report-preview">Tap Run System Check.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Add menu overlay -->
 <div class="add-menu-overlay" id="add-menu-overlay" onclick="handleAddMenuOverlayClick(event)">
   <div class="add-menu-panel" role="dialog" aria-modal="true" aria-labelledby="add-menu-title">
@@ -1208,6 +1232,133 @@
   </div>
 </div>
 
+
+
+<script>
+function rkSystemCheckReadJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function rkSystemCheckLine(label, state, detail) {
+  const icon = state === 'good' ? '✅' : state === 'warn' ? '⚠️' : '❌';
+  return `${icon} ${label}: ${detail}`;
+}
+
+async function openSystemCheck() {
+  if (typeof openLongTermTool === 'function') {
+    openLongTermTool('system');
+  }
+  setTimeout(() => runSystemCheck(), 80);
+}
+
+async function runSystemCheck() {
+  const box = document.getElementById('system-check-results');
+  if (!box) return;
+
+  box.textContent = 'Running system check…';
+
+  const lines = [];
+  const startedAt = new Date();
+
+  lines.push(`Reef Keeper System Check`);
+  lines.push(`Run time: ${startedAt.toLocaleString()}`);
+  lines.push('');
+
+  lines.push(rkSystemCheckLine('App shell', 'good', 'index.html and active scripts loaded.'));
+
+  try {
+    const testKey = 'reefkeeper_system_check_test';
+    localStorage.setItem(testKey, 'ok');
+    const ok = localStorage.getItem(testKey) === 'ok';
+    localStorage.removeItem(testKey);
+    lines.push(rkSystemCheckLine('Local storage', ok ? 'good' : 'bad', ok ? 'Read/write works.' : 'Could not verify read/write.'));
+  } catch (error) {
+    lines.push(rkSystemCheckLine('Local storage', 'bad', error.message || String(error)));
+  }
+
+  try {
+    const logs = rkSystemCheckReadJson('reef_logs', []);
+    lines.push(rkSystemCheckLine('Parameter logs', Array.isArray(logs) ? 'good' : 'warn', Array.isArray(logs) ? `${logs.length} user log(s) found.` : 'Could not read reef_logs.'));
+  } catch (error) {
+    lines.push(rkSystemCheckLine('Parameter logs', 'bad', error.message || String(error)));
+  }
+
+  try {
+    const reminders = rkSystemCheckReadJson('reef_reminders', []);
+    const completed = rkSystemCheckReadJson('reef_completed_reminders', []);
+    lines.push(rkSystemCheckLine('Reminders', 'good', `${Array.isArray(reminders) ? reminders.length : 0} active, ${Array.isArray(completed) ? completed.length : 0} completed.`));
+  } catch (error) {
+    lines.push(rkSystemCheckLine('Reminders', 'bad', error.message || String(error)));
+  }
+
+  try {
+    const memoryKeys = ['reef_tank_memory_v1', 'reef_tank_memory', 'reef_long_term_memory', 'reef_knowledge_base_v1', 'reef_kb_items_v1'];
+    let count = 0;
+    memoryKeys.forEach(key => {
+      const value = rkSystemCheckReadJson(key, []);
+      if (Array.isArray(value)) count += value.length;
+    });
+    lines.push(rkSystemCheckLine('Tank Memory / Knowledge', 'good', `${count} stored item(s) across memory keys.`));
+  } catch (error) {
+    lines.push(rkSystemCheckLine('Tank Memory / Knowledge', 'bad', error.message || String(error)));
+  }
+
+  try {
+    const response = await fetch('/api/apex-status', { cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && data.ok) {
+      const inputs = data.raw?.istat?.inputs || [];
+      const temp = inputs.find(i => i.name === 'Tmp' || i.type === 'Temp')?.value;
+      const ph = inputs.find(i => i.name === 'pH' || i.type === 'pH')?.value;
+      const age = data.receivedAt ? new Date(data.receivedAt).toLocaleString() : 'unknown sync time';
+      lines.push(rkSystemCheckLine('Apex status endpoint', 'good', `Live data received. Temp ${temp ?? '—'}°F, pH ${ph ?? '—'}, synced ${age}.`));
+    } else {
+      lines.push(rkSystemCheckLine('Apex status endpoint', 'warn', data.error || `HTTP ${response.status}`));
+    }
+  } catch (error) {
+    lines.push(rkSystemCheckLine('Apex status endpoint', 'bad', error.message || String(error)));
+  }
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        modelMode: 'quick',
+        system: 'You are a Reef Keeper system-check endpoint test. Return strict JSON only.',
+        messages: [{ role: 'user', content: 'Reply with {"answer":"ok","reminders":[]}' }]
+      })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok && typeof data.answer === 'string') {
+      lines.push(rkSystemCheckLine('Ask AI endpoint', 'good', 'API responded successfully.'));
+    } else {
+      lines.push(rkSystemCheckLine('Ask AI endpoint', 'warn', data.error || `HTTP ${response.status}`));
+    }
+  } catch (error) {
+    lines.push(rkSystemCheckLine('Ask AI endpoint', 'bad', error.message || String(error)));
+  }
+
+  lines.push('');
+  lines.push('Result: check complete.');
+
+  box.textContent = lines.join('\n');
+}
+
+function copySystemCheckResults() {
+  const text = document.getElementById('system-check-results')?.textContent || '';
+  if (!text.trim()) return;
+  navigator.clipboard?.writeText(text).then(
+    () => { try { showToast('✅ System Check copied'); } catch(e) {} },
+    () => { alert(text); }
+  );
+}
+</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="app.js?v=20260701-v4-3-11-remove-old-home-apex"></script>
