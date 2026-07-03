@@ -5140,3 +5140,45 @@ function installEquipmentSearchPolish() {
 
 installEquipmentSearchPolish();
 
+// ── Log page UI polish: direct backup open + collapsible cards ─────────────
+function toggleUiCard(id) {
+  const body = document.getElementById(id);
+  if (!body) return;
+
+  const isCollapsed = body.classList.toggle('is-collapsed');
+  const btn = document.querySelector(`[onclick="toggleUiCard('${id}')"]`);
+  if (btn) {
+    btn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    const chevron = btn.querySelector('.collapse-chevron');
+    if (chevron) chevron.textContent = isCollapsed ? '›' : '⌄';
+  }
+}
+
+function openUiCard(id) {
+  const body = document.getElementById(id);
+  if (!body) return;
+
+  body.classList.remove('is-collapsed');
+  const btn = document.querySelector(`[onclick="toggleUiCard('${id}')"]`);
+  if (btn) {
+    btn.setAttribute('aria-expanded', 'true');
+    const chevron = btn.querySelector('.collapse-chevron');
+    if (chevron) chevron.textContent = '⌄';
+  }
+}
+
+function openBackupDiagnostics() {
+  showWorkspace('log');
+  setTimeout(() => {
+    const target = document.getElementById('backup-restore-card');
+    if (!target) return;
+
+    openUiCard('completed-history-card');
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    if (typeof rkScrollAndFlash === 'function') {
+      setTimeout(() => rkScrollAndFlash(target), 250);
+    }
+  }, 180);
+}
+

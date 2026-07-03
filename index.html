@@ -258,6 +258,70 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-24-log-collapsible-polish">
+  .collapsible-card-title {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+
+  .collapsible-card-title span:first-child {
+    font-weight: 900;
+  }
+
+  .collapse-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(0, 119, 182, .08);
+    color: var(--text-mid);
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .collapsible-card-body {
+    display: block;
+  }
+
+  .collapsible-card-body.is-collapsed {
+    display: none;
+  }
+
+  .history-collapse-shell {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 119, 182, .12);
+  }
+
+  .compact-history-title {
+    margin-bottom: 0;
+    font-size: 15px;
+  }
+
+  .compact-history-title + .collapsible-card-body {
+    margin-top: 10px;
+  }
+
+  #backup-restore-card {
+    scroll-margin-top: 18px;
+  }
+</style>
+
 </head>
 <body>
 
@@ -536,7 +600,7 @@
         <button class="workspace-list-row" type="button" onclick="openSystemCheck()"><span class="workspace-list-icon">✅</span><span class="workspace-list-main"><strong>System Check</strong><span>Check AI, Apex, storage, logs, reminders, and Tank Memory.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('library')"><span class="workspace-list-icon">📚</span><span class="workspace-list-main"><strong>Reef Library</strong><span>Protocols, manuals, ICP files, and reference documents.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="showWorkspace('log')"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="openBackupDiagnostics()"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
       </div>
     </div>
 
@@ -684,12 +748,22 @@
         </div>
         <textarea class="action-input action-notes" id="action-notes" placeholder="Optional notes: amount changed, media added, coral response, etc."></textarea>
         <button class="log-btn" onclick="saveActionEntry()">➕ Save Action</button>
-        <div id="action-history"></div>
+        <div class="history-collapse-shell">
+          <button class="card-title collapsible-card-title compact-history-title" type="button" onclick="toggleUiCard('maintenance-action-history-card')" aria-expanded="false">
+            <span>🛠️ Maintenance Action History</span><span class="collapse-chevron">›</span>
+          </button>
+          <div class="collapsible-card-body is-collapsed" id="maintenance-action-history-card">
+            <div id="action-history"></div>
+          </div>
+        </div>
       </div>
 
       <div class="card long-term-card">
-        <div class="card-title">🧠 Long-Term Reef Tools</div>
-        <div class="long-term-intro">Tools are tucked into focused pages so the Log tab stays clean.</div>
+        <button class="card-title collapsible-card-title" type="button" onclick="toggleUiCard('long-term-reef-tools-card')" aria-expanded="true">
+          <span>🧠 Long-Term Reef Tools</span><span class="collapse-chevron">⌄</span>
+        </button>
+        <div class="collapsible-card-body" id="long-term-reef-tools-card">
+          <div class="long-term-intro">Tools are tucked into focused pages so the Log tab stays clean.</div>
         <div class="long-term-launch-grid">
           <button class="long-term-launch-btn" onclick="openLongTermTool('memory')" type="button">Tank Memory<span>Review and edit authoritative reef facts used across the app.</span></button>
           <button class="long-term-launch-btn" onclick="openLongTermTool('inventory')" type="button">Livestock & Coral Inventory<span>Add photos, care facts, notes, and catalog entries.</span></button>
@@ -702,20 +776,25 @@
           <button class="long-term-launch-btn" onclick="openLongTermTool('library')" type="button">Reef Library<span>Upload protocols, ICP reports, manuals, and other documents for Ask AI to search.</span></button>
           <button class="long-term-launch-btn" onclick="openLongTermTool('report')" type="button">Generate Reports<span>Create PDF, DOCX, and HTML reef reports from your app data.</span></button>
         </div>
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">✅ Completed History</div>
-        <div class="completed-history-filter-row">
+        <button class="card-title collapsible-card-title" type="button" onclick="toggleUiCard('completed-history-card')" aria-expanded="false">
+          <span>✅ Completed History</span><span class="collapse-chevron">›</span>
+        </button>
+        <div class="collapsible-card-body is-collapsed" id="completed-history-card">
+          <div class="completed-history-filter-row">
           <button class="history-filter-btn active" data-history-filter="all" onclick="setCompletedHistoryFilter('all')">All</button>
           <button class="history-filter-btn" data-history-filter="reminder" onclick="setCompletedHistoryFilter('reminder')">Reminders</button>
           <button class="history-filter-btn" data-history-filter="days-off" onclick="setCompletedHistoryFilter('days-off')">Days-Off Tasks</button>
           <button class="history-clear-btn" onclick="clearCompletedHistory()">Clear History</button>
         </div>
         <div id="completed-history"></div>
+        </div>
       </div>
 
-      <div class="card backup-restore-card">
+      <div class="card backup-restore-card" id="backup-restore-card">
         <div class="card-title backup-restore-title">💾 Backup / Restore</div>
         <div class="backup-row">
           <button class="backup-btn backup-export-btn" onclick="exportReefBackup()">Export Backup</button>
@@ -2532,7 +2611,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260702-v4-3-23-backup-equipment-polish"></script>
+<script src="app.js?v=20260702-v4-3-24-log-collapsible-polish"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
