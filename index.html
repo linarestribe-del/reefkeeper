@@ -625,14 +625,36 @@
   }
 </style>
 
-<style id="reefkeeper-v4-3-41-scroll-nav-reset">
-  /*
-    Clean app shell:
-    - body does not scroll
-    - app-content is the only scroll container
-    - bottom nav stays visible in normal app layout
-    - no fixed-nav experiments
-  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style id="reefkeeper-v4-3-38-restore-original-nav-layout">
   html,
   body {
     height: 100% !important;
@@ -650,92 +672,135 @@
   }
 
   .app-header {
-    flex: 0 0 auto !important;
-    padding-top: 22px !important;
-    padding-bottom: 8px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .app-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 16px !important;
+  }
+
+  .page.active {
+    display: block !important;
+  }
+
+  .page.mytank-page.active {
+    display: block !important;
+  }
+
+  .bottom-nav {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 100 !important;
+  }
+
+  .bottom-nav .nav-btn {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+</style>
+
+
+<style id="reefkeeper-v4-3-39-nav-click-fix">
+  .bottom-nav,
+  .bottom-nav .nav-btn,
+  .bottom-nav .nav-btn * {
+    pointer-events: auto !important;
+  }
+
+  .bottom-nav {
+    z-index: 99999 !important;
+  }
+</style>
+
+
+<style id="reefkeeper-v4-3-40-nonhome-scroll-fix">
+  /* The app-content shell is the only scroll container. */
+  html,
+  body {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app {
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
   .app-content {
     flex: 1 1 auto !important;
     min-height: 0 !important;
     height: auto !important;
-    overflow-y: auto !important;
+    overflow-y: scroll !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 0 16px 16px !important;
-    box-sizing: border-box !important;
+    padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
   }
 
-  .page {
-    display: none !important;
+  /* Non-Home pages must grow naturally inside app-content, not become their own clipped panel. */
+  #page-tank,
+  #page-vision,
+  #page-chat,
+  #page-more,
+  #page-reminders,
+  #page-log,
+  #page-settings {
     min-height: auto !important;
     height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
-    padding-top: 0 !important;
-    margin-top: 0 !important;
-    padding-bottom: 18px !important;
+    overflow-y: visible !important;
+    padding-bottom: 28px !important;
   }
 
-  .page.active,
-  .page.mytank-page.active {
+  #page-tank.page.active,
+  #page-vision.page.active,
+  #page-chat.page.active,
+  #page-more.page.active,
+  #page-reminders.page.active,
+  #page-log.page.active,
+  #page-settings.page.active {
     display: block !important;
   }
 
+  #page-tank *,
+  #page-vision *,
+  #page-chat *,
+  #page-more *,
+  #page-reminders *,
+  #page-log *,
+  #page-settings * {
+    max-height: none;
+  }
+
+  /* Keep the bottom tabs visible and tappable. */
   .bottom-nav {
-    flex: 0 0 auto !important;
-    position: static !important;
-    left: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    transform: none !important;
-
-    display: grid !important;
-    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-    align-items: center !important;
-
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
     width: 100% !important;
     max-width: 480px !important;
-    min-height: 86px !important;
-    padding: 8px 6px calc(8px + env(safe-area-inset-bottom)) !important;
-    box-sizing: border-box !important;
-
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    z-index: 100 !important;
+    z-index: 99999 !important;
   }
 
   .bottom-nav .nav-btn {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 4px !important;
-
+    flex: 1 1 0 !important;
     min-width: 0 !important;
-    width: auto !important;
-    height: 64px !important;
-    padding: 4px 2px !important;
-    margin: 0 !important;
-
     pointer-events: auto !important;
-    box-sizing: border-box !important;
-  }
-
-  .bottom-nav .nav-icon {
-    font-size: 25px !important;
-    line-height: 1 !important;
-  }
-
-  .bottom-nav .nav-label {
-    font-size: 11px !important;
-    line-height: 1 !important;
-    white-space: nowrap !important;
-  }
-
-  .compact-page-bar,
-  .mytank-page-bar {
-    margin-top: 0 !important;
   }
 </style>
 
@@ -3023,7 +3088,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-41-scroll-nav-reset"></script>
+<script src="app.js?v=20260703-v4-3-40-nonhome-scroll-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
