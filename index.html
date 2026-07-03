@@ -496,6 +496,220 @@
     margin-bottom: 10px !important;
   }
 </style>
+
+
+<style id="reefkeeper-v4-3-28-home-mobile-dashboard-fix">
+  /* Keep bottom tabs visible above long Home dashboard cards */
+  .bottom-nav,
+  .tab-bar,
+  .bottom-tabs,
+  .nav-tabs,
+  #bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+  }
+
+  .app-content,
+  .page,
+  #page-home {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Condense Live Apex further so Temperature fits */
+  #page-home .home-telemetry-card {
+    padding: 11px !important;
+  }
+
+  #page-home .home-telemetry-head .card-title {
+    font-size: 13px !important;
+    letter-spacing: .07em !important;
+  }
+
+  #page-home .home-telemetry-subtitle {
+    font-size: 10px !important;
+    line-height: 1.18 !important;
+  }
+
+  #page-home #home-telemetry-grid.home-telemetry-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip {
+    padding: 8px 6px !important;
+    min-height: 56px !important;
+    border-radius: 13px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip span {
+    font-size: 8px !important;
+    letter-spacing: .045em !important;
+    line-height: 1.05 !important;
+    margin-bottom: 3px !important;
+    white-space: nowrap !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip strong {
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip small {
+    font-size: 9px !important;
+    line-height: 1.12 !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-wide {
+    padding: 8px 10px !important;
+    border-radius: 13px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-wide strong {
+    font-size: 12px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-wide span {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+  }
+
+  /* Core Numbers should only be the three water numbers */
+  #page-home .home-core-params-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  /* Coming Up rows with consistent visual check circles */
+  #page-home .home-coming-up-card {
+    padding: 13px 14px !important;
+    margin-bottom: 10px !important;
+  }
+
+  #page-home .home-coming-row {
+    display: grid !important;
+    grid-template-columns: 22px 24px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid rgba(0,119,182,.12);
+  }
+
+  #page-home .home-coming-row:last-child {
+    border-bottom: 0 !important;
+  }
+
+  #page-home .home-coming-check {
+    width: 19px !important;
+    height: 19px !important;
+    border-radius: 999px !important;
+    border: 3px solid rgba(0,119,182,.28) !important;
+    background: rgba(255,255,255,.52) !important;
+    box-sizing: border-box !important;
+  }
+
+  #page-home .home-coming-row .reminder-emoji {
+    font-size: 18px !important;
+  }
+
+  #page-home .home-coming-row .reminder-text {
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+    min-width: 0 !important;
+  }
+
+  #page-home .home-coming-row .reminder-when {
+    font-size: 10.5px !important;
+    white-space: nowrap !important;
+  }
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style id="reefkeeper-v4-3-38-restore-original-nav-layout">
+  html,
+  body {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app {
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-width: 480px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .app-header {
+    flex-shrink: 0 !important;
+  }
+
+  .app-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 16px !important;
+  }
+
+  .page.active {
+    display: block !important;
+  }
+
+  .page.mytank-page.active {
+    display: block !important;
+  }
+
+  .bottom-nav {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 100 !important;
+  }
+
+  .bottom-nav .nav-btn {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  }
+</style>
+
+
 <style id="reefkeeper-v4-3-39-nav-click-fix">
   .bottom-nav,
   .bottom-nav .nav-btn,
@@ -508,7 +722,9 @@
   }
 </style>
 
-<style id="reefkeeper-v4-3-42-minimal-scroll-repair">
+
+<style id="reefkeeper-v4-3-40-nonhome-scroll-fix">
+  /* The app-content shell is the only scroll container. */
   html,
   body {
     height: 100% !important;
@@ -518,33 +734,72 @@
   .app {
     height: 100vh !important;
     height: 100dvh !important;
-    display: flex !important;
-    flex-direction: column !important;
+    min-height: 0 !important;
     overflow: hidden !important;
   }
 
   .app-content {
     flex: 1 1 auto !important;
     min-height: 0 !important;
-    overflow-y: auto !important;
+    height: auto !important;
+    overflow-y: scroll !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
+    padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
   }
 
-  .page.active,
-  .page.mytank-page.active {
+  /* Non-Home pages must grow naturally inside app-content, not become their own clipped panel. */
+  #page-tank,
+  #page-vision,
+  #page-chat,
+  #page-more,
+  #page-reminders,
+  #page-log,
+  #page-settings {
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    padding-bottom: 28px !important;
+  }
+
+  #page-tank.page.active,
+  #page-vision.page.active,
+  #page-chat.page.active,
+  #page-more.page.active,
+  #page-reminders.page.active,
+  #page-log.page.active,
+  #page-settings.page.active {
     display: block !important;
   }
 
+  #page-tank *,
+  #page-vision *,
+  #page-chat *,
+  #page-more *,
+  #page-reminders *,
+  #page-log *,
+  #page-settings * {
+    max-height: none;
+  }
+
+  /* Keep the bottom tabs visible and tappable. */
   .bottom-nav {
     flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    max-width: 480px !important;
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto !important;
+    z-index: 99999 !important;
   }
 
-  .bottom-nav,
-  .bottom-nav * {
+  .bottom-nav .nav-btn {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
     pointer-events: auto !important;
   }
 </style>
@@ -2833,7 +3088,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-42-minimal-scroll-repair"></script>
+<script src="app.js?v=20260703-v4-3-40-nonhome-scroll-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
