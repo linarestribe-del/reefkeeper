@@ -5562,3 +5562,59 @@ window.rkRenderMyTankSummary = function rkRenderMyTankSummary() {
     }, 150);
   };
 })();
+
+
+// v4.3.54: capture Home action buttons and route through direct navigation
+(function rkInstallHomeActionCaptureNav() {
+  function go(name) {
+    if (typeof window.rkDirectGo === 'function') {
+      window.rkDirectGo(name);
+      return;
+    }
+
+    if (typeof window.rkNavigateTo === 'function') {
+      window.rkNavigateTo(name);
+      return;
+    }
+
+    const page = document.getElementById('page-' + name);
+    if (!page) return;
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    page.classList.add('active');
+
+    const navBtn = document.querySelector(`.nav-btn[data-workspace="${name}"]`);
+    if (navBtn) navBtn.classList.add('active');
+
+    const content = document.querySelector('.app-content');
+    if (content) content.scrollTop = 0;
+  }
+
+  document.addEventListener('click', function(event) {
+    const btn = event.target.closest?.('button');
+    if (!btn) return;
+
+    const home = document.getElementById('page-home');
+    if (!home || !home.contains(btn)) return;
+
+    const text = (btn.innerText || btn.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+    let target = null;
+
+    if (text.includes('water test')) target = 'log';
+    else if (text.includes('maintenance')) target = 'log';
+    else if (text.includes('ai vision')) target = 'vision';
+    else if (text.includes('ask ai')) target = 'chat';
+
+    if (!target) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof event.stopImmediatePropagation === 'function') {
+      event.stopImmediatePropagation();
+    }
+
+    go(target);
+  }, true);
+})();
