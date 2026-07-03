@@ -901,7 +901,7 @@
             <div class="card-title">📡 Live Apex</div>
             <div class="home-telemetry-subtitle" id="home-telemetry-subtitle">Waiting for Apex bridge data.</div>
           </div>
-          <button class="home-telemetry-action" type="button" onclick="ReefKeeperApex.openSettings()">Apex</button>
+          <button class="home-telemetry-action" type="button" onclick="rkDirectGo('settings')">Apex</button>
         </div>
         <div class="home-telemetry-grid" id="home-telemetry-grid">
           <div class="home-telemetry-empty">Open More → Apex Integration to check the live Pi bridge connection.</div>
@@ -1085,9 +1085,9 @@
         </div>
 
         <div class="workspace-list-card mytank-secondary-list">
-          <button class="workspace-list-row" type="button" onclick="showPage('settings')"><span class="workspace-list-icon">🎯</span><span class="workspace-list-main"><strong>Targets & scoring</strong><span>Customize your parameter thresholds and dashboard scoring.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="rkDirectGo('settings')"><span class="workspace-list-icon">🎯</span><span class="workspace-list-main"><strong>Targets & scoring</strong><span>Customize your parameter thresholds and dashboard scoring.</span></span><span class="workspace-chevron">›</span></button>
           <button class="workspace-list-row" type="button" onclick="openLongTermTool('tankhistory')"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Reef Timeline</strong><span>Chronological reef history from photos, tests, livestock, equipment, and maintenance.</span></span><span class="workspace-chevron">›</span></button>
-          <button class="workspace-list-row" type="button" onclick="showPage('reminders')"><span class="workspace-list-icon">🗓️</span><span class="workspace-list-main"><strong>Maintenance Planner</strong><span>Days-Off Plan, reminders, overdue tasks, and completed history.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="rkDirectGo('reminders')"><span class="workspace-list-icon">🗓️</span><span class="workspace-list-main"><strong>Maintenance Planner</strong><span>Days-Off Plan, reminders, overdue tasks, and completed history.</span></span><span class="workspace-chevron">›</span></button>
         </div>
 
 
@@ -1125,14 +1125,14 @@
         </div>
       </div>
       <div class="workspace-list-card">
-        <button class="workspace-list-row" type="button" onclick="showPage('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="rkDirectGo('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('report')"><span class="workspace-list-icon">📄</span><span class="workspace-list-main"><strong>Reports</strong><span>Monthly reef report, livestock summary, timeline, and exports.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="showPage('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Native Apex LAN telemetry and Fusion profile setup.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="rkDirectGo('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="rkDirectGo('settings')"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Native Apex LAN telemetry and Fusion profile setup.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openSystemCheck()"><span class="workspace-list-icon">✅</span><span class="workspace-list-main"><strong>System Check</strong><span>Check AI, Apex, storage, logs, reminders, and Tank Memory.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('library')"><span class="workspace-list-icon">📚</span><span class="workspace-list-main"><strong>Reef Library</strong><span>Protocols, manuals, ICP files, and reference documents.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="openBackupDiagnostics()"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="rkDirectGo('log'); setTimeout(function(){ var t=document.getElementById('backup-restore-card') || document.querySelector('[id*=backup i]') || document.querySelector('[class*=backup i]'); if(t) t.scrollIntoView({behavior:'smooth', block:'start'}); }, 150)"><span class="workspace-list-icon">💾</span><span class="workspace-list-main"><strong>Backup / Diagnostics</strong><span>Export backup, import data, and repair common issues.</span></span><span class="workspace-chevron">›</span></button>
       </div>
     </div>
 
@@ -3144,7 +3144,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-49-direct-internal-nav"></script>
+<script src="app.js?v=20260703-v4-3-50-more-buttons-direct-nav"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
