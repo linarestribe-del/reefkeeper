@@ -497,6 +497,134 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-28-home-mobile-dashboard-fix">
+  /* Keep bottom tabs visible above long Home dashboard cards */
+  .bottom-nav,
+  .tab-bar,
+  .bottom-tabs,
+  .nav-tabs,
+  #bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+  }
+
+  .app-content,
+  .page,
+  #page-home {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Condense Live Apex further so Temperature fits */
+  #page-home .home-telemetry-card {
+    padding: 11px !important;
+  }
+
+  #page-home .home-telemetry-head .card-title {
+    font-size: 13px !important;
+    letter-spacing: .07em !important;
+  }
+
+  #page-home .home-telemetry-subtitle {
+    font-size: 10px !important;
+    line-height: 1.18 !important;
+  }
+
+  #page-home #home-telemetry-grid.home-telemetry-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip {
+    padding: 8px 6px !important;
+    min-height: 56px !important;
+    border-radius: 13px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip span {
+    font-size: 8px !important;
+    letter-spacing: .045em !important;
+    line-height: 1.05 !important;
+    margin-bottom: 3px !important;
+    white-space: nowrap !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip strong {
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-chip small {
+    font-size: 9px !important;
+    line-height: 1.12 !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-wide {
+    padding: 8px 10px !important;
+    border-radius: 13px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-wide strong {
+    font-size: 12px !important;
+  }
+
+  #page-home #home-telemetry-grid > .home-telemetry-wide span {
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+  }
+
+  /* Core Numbers should only be the three water numbers */
+  #page-home .home-core-params-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  /* Coming Up rows with consistent visual check circles */
+  #page-home .home-coming-up-card {
+    padding: 13px 14px !important;
+    margin-bottom: 10px !important;
+  }
+
+  #page-home .home-coming-row {
+    display: grid !important;
+    grid-template-columns: 22px 24px minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid rgba(0,119,182,.12);
+  }
+
+  #page-home .home-coming-row:last-child {
+    border-bottom: 0 !important;
+  }
+
+  #page-home .home-coming-check {
+    width: 19px !important;
+    height: 19px !important;
+    border-radius: 999px !important;
+    border: 3px solid rgba(0,119,182,.28) !important;
+    background: rgba(255,255,255,.52) !important;
+    box-sizing: border-box !important;
+  }
+
+  #page-home .home-coming-row .reminder-emoji {
+    font-size: 18px !important;
+  }
+
+  #page-home .home-coming-row .reminder-text {
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+    min-width: 0 !important;
+  }
+
+  #page-home .home-coming-row .reminder-when {
+    font-size: 10.5px !important;
+    white-space: nowrap !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -565,22 +693,30 @@
 
       <div class="card home-coming-up-card" id="home-coming-up-card">
         <div class="card-title">⏰ Coming Up</div>
-        <div class="reminder-item">
+
+        <div class="home-coming-row">
+          <span class="home-coming-check"></span>
           <span class="reminder-emoji">🧪</span>
           <span class="reminder-text">Test phosphate & alkalinity</span>
           <span class="reminder-when reminder-urgent">Today</span>
         </div>
-        <div class="reminder-item">
+
+        <div class="home-coming-row">
+          <span class="home-coming-check"></span>
           <span class="reminder-emoji">💧</span>
           <span class="reminder-text">Water change — 20 gal Fritz RPM</span>
           <span class="reminder-when reminder-urgent days-off-label">Days off</span>
         </div>
-        <div class="reminder-item">
+
+        <div class="home-coming-row">
+          <span class="home-coming-check"></span>
           <span class="reminder-emoji">🦠</span>
           <span class="reminder-text">Aiptasia-X treatment</span>
-          <span class="reminder-when reminder-urgent days-off-label">Days off</span>
+          <span class="reminder-when reminder-urgent days-off-label">Jul 8</span>
         </div>
-        <div class="reminder-item">
+
+        <div class="home-coming-row">
+          <span class="home-coming-check"></span>
           <span class="reminder-emoji">🔬</span>
           <span class="reminder-text">Replace GFO media</span>
           <span class="reminder-when">Mid-June</span>
@@ -2765,7 +2901,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-27-home-tight-final"></script>
+<script src="app.js?v=20260703-v4-3-28-home-mobile-dashboard-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
