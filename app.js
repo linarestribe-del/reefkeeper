@@ -2882,18 +2882,109 @@ function exportReefBackup() {
 }
 
 function importReefBackup(event) {
-  const file = event.target.files && event.target.files[0];
+  const input = event && event.target;
+  const file = input && input.files && input.files[0];
   if (!file) return;
+
+  const previewBox = document.getElementById('backup-import-preview');
   const reader = new FileReader();
+
   reader.onload = () => {
     try {
       const payload = JSON.parse(String(reader.result || '{}'));
-      const data = payload.data || payload;
+      const data = payload && (payload.data || payload);
+
+      if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        throw new Error('Backup file did not contain a readable data object.');
+      }
+
+      const recognizedKeys = REEF_BACKUP_KEYS.filter(key =>
+        Object.prototype.hasOwnProperty.call(data, key)
+      );
+
+      if (!recognizedKeys.length) {
+        throw new Error('Backup file did not contain any recognized Reef Keeper fields.');
+      }
+
+      const populatedKeys = recognizedKeys.filter(key =>
+        data[key] !== null &&
+        data[key] !== undefined &&
+        data[key] !== ''
+      );
+
+      const summaryKeys = populatedKeys.length ? populatedKeys : recognizedKeys;
+      const backupImportValueSummary = value => {
+        const parsedValue = typeof reefBackupParseValue === 'function'
+          ? reefBackupParseValue(value)
+          : value;
+
+        if (parsedValue === null || parsedValue === undefined || parsedValue === '') return 'empty';
+        if (Array.isArray(parsedValue)) return `${parsedValue.length} item${parsedValue.length === 1 ? '' : 's'}`;
+        if (typeof parsedValue === 'object') {
+          const keys = Object.keys(parsedValue);
+          return `${keys.length} saved field${keys.length === 1 ? '' : 's'}`;
+        }
+        if (typeof parsedValue === 'boolean') return parsedValue ? 'on' : 'off';
+
+        const text = String(parsedValue);
+        if (!text.trim()) return 'empty';
+        return text.length > 40 ? `${text.slice(0, 40)}…` : text;
+      };
+
+      const summaryLines = summaryKeys.map(key => {
+        const label = typeof backupKeyDisplayName === 'function'
+          ? backupKeyDisplayName(key)
+          : key.replace(/^reef_/, '').replace(/_/g, ' ');
+
+        return `• ${label}: ${backupImportValueSummary(data[key])}`;
+      });
+
+      const exportedAt = payload && payload.exportedAt
+        ? new Date(payload.exportedAt).toLocaleString()
+        : 'unknown';
+
+      const emptyNote = populatedKeys.length
+        ? ''
+        : '\nNote: This backup file is valid, but it appears to contain no saved laptop/browser data yet. That is normal if you exported from a fresh Chrome test session.';
+
+      const previewText = [
+        'Backup file selected.',
+        `File: ${file.name}`,
+        `Exported: ${exportedAt}`,
+        '',
+        populatedKeys.length
+          ? 'This import will overwrite the matching saved Reef Keeper data on this device:'
+          : 'This file has the Reef Keeper backup structure, but no populated saved fields were found.',
+        ...summaryLines,
+        emptyNote,
+        '',
+        'Cancel now if you are not sure this is the backup you want.'
+      ].filter(line => line !== '').join('\n');
+
+      if (previewBox) {
+        previewBox.hidden = false;
+        previewBox.textContent = previewText;
+      }
+
+      const ok = confirm(
+        previewText +
+        '\n\nImport this backup now? This will overwrite matching saved data in this browser.'
+      );
+
+      if (!ok) {
+        showToast('Import canceled');
+        if (input) input.value = '';
+        return;
+      }
+
       REEF_BACKUP_KEYS.forEach(key => {
         if (Object.prototype.hasOwnProperty.call(data, key) && data[key] !== null && data[key] !== undefined) {
           localStorage.setItem(key, typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]));
         }
       });
+
+      showImportedBackupSummary(payload);
+
       renderLogHistory();
       renderTrendControls();
       renderTrendChart(currentTrendParam);
@@ -2907,12 +2998,26 @@ function importReefBackup(event) {
       initStaticReminderChecks();
       initModelMode();
       initTankContextToggle();
-      showToast('✅ Backup imported');
+
+      if (typeof renderEquipmentManager === 'function') renderEquipmentManager();
+      if (typeof applyEquipmentSearchFilter === 'function') applyEquipmentSearchFilter();
+
+      showToast(populatedKeys.length
+        ? '✅ Backup imported. Refresh or reopen the app, then verify Backup Contents.'
+        : '✅ Backup file checked. It was valid but had no saved data to restore.'
+      );
     } catch(e) {
+      console.error('Backup import failed:', e);
+      if (previewBox) {
+        previewBox.hidden = false;
+        previewBox.textContent = 'Backup import failed. The selected file was not a readable Reef Keeper backup.';
+      }
       showToast('⚠️ Could not import backup');
     }
-    event.target.value = '';
+
+    if (input) input.value = '';
   };
+
   reader.readAsText(file);
 }
 
@@ -4980,3 +5085,58 @@ document.addEventListener('keydown', event => {
 });
 
 try { renderReefLibrary(); } catch(e) {}
+
+// ── Equipment Guide search polish ───────────────────────────────────────────
+// UI-only filter layer. It does not change saved Equipment Guide data.
+let rkEquipmentSearchText = '';
+
+function setEquipmentSearch(value) {
+  rkEquipmentSearchText = String(value || '').trim().toLowerCase();
+  applyEquipmentSearchFilter();
+}
+
+function applyEquipmentSearchFilter() {
+  const list = document.getElementById('equipment-list');
+  if (!list) return;
+
+  const query = String(rkEquipmentSearchText || '').trim().toLowerCase();
+  const cards = Array.from(list.querySelectorAll('.equipment-card'));
+  const oldEmpty = list.querySelector('.equipment-search-no-results');
+  if (oldEmpty) oldEmpty.remove();
+
+  let visibleCount = 0;
+  cards.forEach(card => {
+    const haystack = String(card.textContent || '').toLowerCase();
+    const visible = !query || haystack.includes(query);
+    card.style.display = visible ? '' : 'none';
+    if (visible) visibleCount += 1;
+  });
+
+  if (query && cards.length && visibleCount === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'equipment-search-no-results';
+    empty.textContent = 'No equipment matches that search. Try a brand, model, category, part, or note.';
+    list.appendChild(empty);
+  }
+}
+
+function installEquipmentSearchPolish() {
+  ['renderEquipmentManager', 'renderLongTermTools', 'setEquipmentFilter'].forEach(name => {
+    const original = window[name];
+    if (typeof original !== 'function' || original.__rkSearchPolished) return;
+
+    const wrapped = function(...args) {
+      const result = original.apply(this, args);
+      setTimeout(applyEquipmentSearchFilter, 0);
+      return result;
+    };
+
+    wrapped.__rkSearchPolished = true;
+    window[name] = wrapped;
+  });
+
+  setTimeout(applyEquipmentSearchFilter, 0);
+}
+
+installEquipmentSearchPolish();
+
