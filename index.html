@@ -343,6 +343,50 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-26-home-dashboard-first">
+  #page-home .home-telemetry-card,
+  #page-home .home-core-params-card,
+  #page-home .home-coming-up-card {
+    margin-bottom: 12px !important;
+  }
+
+  #page-home .home-telemetry-head {
+    margin-bottom: 8px !important;
+  }
+
+  #page-home .home-core-params-card {
+    padding: 14px !important;
+  }
+
+  #page-home .home-core-params-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  #page-home .home-core-params-grid .status-chip {
+    min-height: 74px !important;
+    padding: 11px 8px !important;
+  }
+
+  #page-home .home-core-params-grid .status-chip-label {
+    font-size: 10px !important;
+  }
+
+  #page-home .home-core-params-grid .status-chip-val {
+    font-size: 17px !important;
+  }
+
+  #page-home .home-coming-up-card .reminder-item {
+    padding: 8px 0 !important;
+  }
+
+  #page-home .home-intelligence-card {
+    margin-top: 2px !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -377,13 +421,66 @@
     <!-- HOME PAGE -->
     <div class="page active" id="page-home">
       <div class="page-help-row"><button class="help-btn" onclick="openHelp('home')" aria-label="Help for Home tab">?</button></div>
-      <div class="greeting">Welcome back 👋</div>
 
+      <div class="card home-telemetry-card" id="home-telemetry-card">
+        <div class="home-telemetry-head">
+          <div>
+            <div class="card-title">📡 Live Apex</div>
+            <div class="home-telemetry-subtitle" id="home-telemetry-subtitle">Waiting for Apex bridge data.</div>
+          </div>
+          <button class="home-telemetry-action" type="button" onclick="ReefKeeperApex.openSettings()">Apex</button>
+        </div>
+        <div class="home-telemetry-grid" id="home-telemetry-grid">
+          <div class="home-telemetry-empty">Open More → Apex Integration to check the live Pi bridge connection.</div>
+        </div>
+      </div>
+
+      <div class="card home-core-params-card" id="home-core-params-card">
+        <div class="card-title">🧪 Core Numbers</div>
+        <div id="home-params-grid" class="status-grid home-core-params-grid">
+          <div class="status-chip warn">
+            <div class="status-chip-label">Phosphate</div>
+            <div class="status-chip-val">0.65 <span class="status-chip-unit">ppm</span></div>
+          </div>
+          <div class="status-chip warn">
+            <div class="status-chip-label">Alkalinity</div>
+            <div class="status-chip-val">10.0 <span class="status-chip-unit">dKH</span></div>
+          </div>
+          <div class="status-chip warn">
+            <div class="status-chip-label">Nitrate</div>
+            <div class="status-chip-val">22 <span class="status-chip-unit">ppm</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card home-coming-up-card" id="home-coming-up-card">
+        <div class="card-title">⏰ Coming Up</div>
+        <div class="reminder-item">
+          <span class="reminder-emoji">🧪</span>
+          <span class="reminder-text">Test phosphate & alkalinity</span>
+          <span class="reminder-when reminder-urgent">Today</span>
+        </div>
+        <div class="reminder-item">
+          <span class="reminder-emoji">💧</span>
+          <span class="reminder-text">Water change — 20 gal Fritz RPM</span>
+          <span class="reminder-when reminder-urgent days-off-label">Days off</span>
+        </div>
+        <div class="reminder-item">
+          <span class="reminder-emoji">🦠</span>
+          <span class="reminder-text">Aiptasia-X treatment</span>
+          <span class="reminder-when reminder-urgent days-off-label">Days off</span>
+        </div>
+        <div class="reminder-item">
+          <span class="reminder-emoji">🔬</span>
+          <span class="reminder-text">Replace GFO media</span>
+          <span class="reminder-when">Mid-June</span>
+        </div>
+      </div>
 
       <div class="home-intelligence-card" id="home-intelligence-card">
         <div class="home-intel-head">
           <div>
-            <div class="home-intel-eyebrow">Today's Reef Brief</div>
+            <div class="home-intel-eyebrow">Reef Brief</div>
             <div class="home-intel-title">What does the reef need?</div>
           </div>
           <div class="home-score-pill" aria-label="Tank health score">
@@ -451,70 +548,25 @@
         </div>
       </div>
 
-      <div class="card home-telemetry-card" id="home-telemetry-card">
-        <div class="home-telemetry-head">
-          <div>
-            <div class="card-title">📡 Live Telemetry</div>
-            <div class="home-telemetry-subtitle" id="home-telemetry-subtitle">Waiting for Apex bridge data.</div>
-          </div>
-          <button class="home-telemetry-action" type="button" onclick="ReefKeeperApex.openSettings()">Apex</button>
-        </div>
-        <div class="home-telemetry-grid" id="home-telemetry-grid">
-          <div class="home-telemetry-empty">Open More → Apex Integration to check the live Pi bridge connection.</div>
-        </div>
-      </div>
+      <div class="card-title">🕰️ What Changed Recently</div>
+
+
+      
+
+      
 
       <!-- Latest params snapshot -->
-      <div id="home-params-grid" class="status-grid">
-        <div class="status-chip warn">
-          <div class="status-chip-label">Phosphate</div>
-          <div class="status-chip-val">0.65 <span class="status-chip-unit">ppm</span></div>
-        </div>
-        <div class="status-chip warn">
-          <div class="status-chip-label">Alkalinity</div>
-          <div class="status-chip-val">10.0 <span class="status-chip-unit">dKH</span></div>
-        </div>
-        <div class="status-chip warn">
-          <div class="status-chip-label">Nitrate</div>
-          <div class="status-chip-val">22 <span class="status-chip-unit">ppm</span></div>
-        </div>
-        <button class="status-chip catalog-chip" onclick="openLivestockCatalog()" type="button">
-          <div class="status-chip-label">Livestock</div>
-          <div class="status-chip-val">Catalog</div>
-          <span class="catalog-subtitle">Photos, names & notes</span>
-        </button>
-      </div>
+      
 
 
       <div class="card">
-        <div class="card-title">🕰️ What Changed Recently</div>
+        
         <div id="recent-changes-home" class="recent-changes-list"></div>
       </div>
 
 
       <!-- Upcoming reminders -->
-      <div class="card">
-        <div class="card-title">⏰ Coming Up</div>
-        <div class="reminder-item">
-          <span class="reminder-emoji">🧪</span>
-          <span class="reminder-text">Test phosphate & alkalinity</span>
-          <span class="reminder-when reminder-urgent">Today</span>
-        </div>
-        <div class="reminder-item">
-          <span class="reminder-emoji">💧</span>
-          <span class="reminder-text">Water change — 20 gal Fritz RPM</span>
-          <span class="reminder-when reminder-urgent days-off-label">Days off</span>
-        </div>
-        <div class="reminder-item">
-          <span class="reminder-emoji">🦠</span>
-          <span class="reminder-text">Aiptasia-X treatment</span>
-          <span class="reminder-when reminder-urgent days-off-label">Days off</span>
-        </div>
-        <div class="reminder-item">
-          <span class="reminder-emoji">🔬</span>
-          <span class="reminder-text">Replace GFO media</span>
-          <span class="reminder-when">Mid-June</span>
-        </div>
+      
       <!-- Tank status summary -->
       <div class="card tank-status-card">
         <div class="card-title">🧭 Tank Status</div>
@@ -2615,7 +2667,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-25-mytank-top-cleanup"></script>
+<script src="app.js?v=20260703-v4-3-26-home-dashboard-first"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
