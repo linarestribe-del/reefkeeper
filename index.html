@@ -625,6 +625,61 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-30-global-scroll-restore">
+  /* Restore scrolling on all main tabs after Home dashboard/nav polish */
+  html,
+  body {
+    min-height: 100% !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .app,
+  .app-content {
+    min-height: 100vh !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .page {
+    min-height: calc(100vh - 120px) !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .page.active {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  /* Keep bottom navigation visible without trapping page scroll */
+  .bottom-nav,
+  .tab-bar,
+  .bottom-tabs,
+  .nav-tabs,
+  #bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Tool overlays should still scroll internally when open */
+  .tool-overlay,
+  .long-term-tool-overlay,
+  .catalog-overlay,
+  .equipment-overlay {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -2901,7 +2956,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-28-home-mobile-dashboard-fix"></script>
+<script src="app.js?v=20260703-v4-3-30-global-scroll-restore"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
