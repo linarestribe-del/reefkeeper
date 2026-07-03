@@ -5223,3 +5223,39 @@ document.addEventListener('click', function(event) {
   event.preventDefault();
   window.rkNavigateTo(name, btn);
 }, true);
+
+
+// v4.3.44: keep all tab pages inside .app-content so every tab scrolls correctly
+window.rkNormalizePageContainer = function rkNormalizePageContainer() {
+  const app = document.querySelector('.app');
+  const content = document.querySelector('.app-content');
+  if (!app || !content) return;
+
+  const pages = Array.from(app.children).filter(el =>
+    el.classList && el.classList.contains('page')
+  );
+
+  pages.forEach(page => {
+    content.appendChild(page);
+  });
+};
+
+// Run once after the DOM is ready, then again after app startup settles.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.rkNormalizePageContainer();
+    setTimeout(window.rkNormalizePageContainer, 100);
+    setTimeout(window.rkNormalizePageContainer, 500);
+  });
+} else {
+  window.rkNormalizePageContainer();
+  setTimeout(window.rkNormalizePageContainer, 100);
+  setTimeout(window.rkNormalizePageContainer, 500);
+}
+
+// Also normalize before any bottom-tab navigation.
+document.addEventListener('click', function(event) {
+  const btn = event.target.closest?.('.bottom-nav .nav-btn');
+  if (!btn) return;
+  window.rkNormalizePageContainer();
+}, true);
