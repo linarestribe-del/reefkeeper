@@ -804,6 +804,62 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-46-reef-brief-score-fit">
+  #page-home .home-intel-head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  #page-home .home-intel-head > div:first-child {
+    min-width: 0 !important;
+  }
+
+  #page-home .home-score-pill {
+    width: 124px !important;
+    min-width: 124px !important;
+    height: 96px !important;
+    padding: 0 8px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+
+  #page-home .home-score-pill #home-intel-score {
+    font-size: 54px !important;
+    line-height: 1 !important;
+    letter-spacing: -2px !important;
+  }
+
+  #page-home .home-score-pill small {
+    font-size: 22px !important;
+    line-height: 1 !important;
+    margin-left: 1px !important;
+  }
+
+  @media (max-width: 380px) {
+    #page-home .home-score-pill {
+      width: 112px !important;
+      min-width: 112px !important;
+      height: 90px !important;
+    }
+
+    #page-home .home-score-pill #home-intel-score {
+      font-size: 48px !important;
+    }
+
+    #page-home .home-score-pill small {
+      font-size: 19px !important;
+    }
+  }
+</style>
+
 </head>
 <body>
 
@@ -3088,7 +3144,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-44-page-container-normalize"></script>
+<script src="app.js?v=20260703-v4-3-46-home-core-score-cleanup"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

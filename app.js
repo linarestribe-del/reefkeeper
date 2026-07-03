@@ -5259,3 +5259,54 @@ document.addEventListener('click', function(event) {
   if (!btn) return;
   window.rkNormalizePageContainer();
 }, true);
+
+
+// v4.3.46: keep Home Core Numbers limited to water-number chips only
+window.rkCleanHomeCoreNumbers = function rkCleanHomeCoreNumbers() {
+  const grid = document.querySelector('#page-home .home-core-params-grid');
+  if (!grid) return;
+
+  Array.from(grid.children).forEach(child => {
+    const text = (child.innerText || child.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const label = [
+      child.getAttribute?.('aria-label') || '',
+      child.getAttribute?.('title') || ''
+    ].join(' ').toLowerCase();
+
+    if (text.includes('livestock catalog') || label.includes('livestock catalog')) {
+      child.remove();
+    }
+  });
+};
+
+(function rkInstallHomeCoreNumbersCleaner() {
+  const run = () => {
+    if (typeof window.rkCleanHomeCoreNumbers === 'function') {
+      window.rkCleanHomeCoreNumbers();
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+
+  setTimeout(run, 100);
+  setTimeout(run, 500);
+  setTimeout(run, 1500);
+
+  document.addEventListener('click', function(event) {
+    const btn = event.target.closest?.('.bottom-nav .nav-btn');
+    if (!btn) return;
+    if (btn.getAttribute('data-workspace') === 'home') {
+      setTimeout(run, 50);
+    }
+  }, true);
+
+  const home = document.getElementById('page-home');
+  if (home && 'MutationObserver' in window) {
+    const observer = new MutationObserver(run);
+    observer.observe(home, { childList: true, subtree: true });
+  }
+})();
