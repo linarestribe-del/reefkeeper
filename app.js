@@ -5168,12 +5168,11 @@ function openUiCard(id) {
 }
 
 function openBackupDiagnostics() {
-  showWorkspace('log');
+  showPage('log');
   setTimeout(() => {
     const target = document.getElementById('backup-restore-card');
     if (!target) return;
 
-    openUiCard('completed-history-card');
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     if (typeof rkScrollAndFlash === 'function') {

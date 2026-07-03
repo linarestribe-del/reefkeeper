@@ -626,124 +626,23 @@
 </style>
 
 
-<style id="reefkeeper-v4-3-30-global-scroll-restore">
-  /* Restore scrolling on all main tabs after Home dashboard/nav polish */
-  html,
-  body {
-    min-height: 100% !important;
-    height: auto !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  .app,
-  .app-content {
-    min-height: 100vh !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  .page {
-    min-height: calc(100vh - 120px) !important;
-    height: auto !important;
-    overflow: visible !important;
-    padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .page.active {
-    display: block !important;
-    overflow: visible !important;
-  }
-
-  /* Keep bottom navigation visible without trapping page scroll */
-  .bottom-nav,
-  .tab-bar,
-  .bottom-tabs,
-  .nav-tabs,
-  #bottom-nav {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 9999 !important;
-    pointer-events: auto !important;
-  }
-
-  /* Tool overlays should still scroll internally when open */
-  .tool-overlay,
-  .long-term-tool-overlay,
-  .catalog-overlay,
-  .equipment-overlay {
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-</style>
 
 
-<style id="reefkeeper-v4-3-31-nonhome-blank-space-fix">
-  /* Undo the large blank top space on non-Home tabs while keeping page scrolling */
-  #page-tank,
-  #page-vision,
-  #page-chat,
-  #page-more,
-  #page-reminders,
-  #page-log,
-  #page-settings {
-    padding-top: 0 !important;
-    margin-top: 0 !important;
-    min-height: auto !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-
-  #page-tank.page.active,
-  #page-vision.page.active,
-  #page-chat.page.active,
-  #page-more.page.active,
-  #page-reminders.page.active,
-  #page-log.page.active,
-  #page-settings.page.active {
-    display: block !important;
-  }
-
-  #page-tank .mytank-main,
-  #page-vision > *,
-  #page-chat > *,
-  #page-more > *,
-  #page-reminders > *,
-  #page-log > *,
-  #page-settings > * {
-    margin-top: 0 !important;
-  }
-
-  .compact-page-bar,
-  .mytank-page-bar {
-    margin-top: 0 !important;
-  }
-
-  /* Keep enough room for the fixed bottom tabs without pushing content down */
-  .page {
-    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
-  }
-
-  /* Bottom tabs stay visible but do not affect top layout */
-  .bottom-nav,
-  .tab-bar,
-  .bottom-tabs,
-  .nav-tabs,
-  #bottom-nav {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 9999 !important;
-  }
-</style>
 
 
-<style id="reefkeeper-v4-3-32-app-scroll-model-restore">
-  /* Restore the original app scroll model: the app-content area scrolls, not the body/window. */
+
+
+
+
+
+
+
+
+
+
+
+
+<style id="reefkeeper-v4-3-34-showpage-scroll-fix">
   html,
   body {
     height: 100% !important;
@@ -752,14 +651,15 @@
 
   .app {
     height: 100vh !important;
-    min-height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
   }
 
   .app-header {
-    flex-shrink: 0 !important;
+    flex: 0 0 auto !important;
   }
 
   .app-content {
@@ -769,44 +669,38 @@
     overflow-y: auto !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
-    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+    padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
+    scroll-behavior: auto !important;
   }
 
   .page {
-    min-height: auto !important;
+    min-height: 0 !important;
     height: auto !important;
     overflow: visible !important;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    padding-bottom: 24px !important;
   }
 
-  .page.active {
-    display: block !important;
-  }
-
+  .page.active,
   .page.mytank-page.active {
     display: block !important;
   }
 
-  #page-tank,
-  #page-vision,
-  #page-chat,
-  #page-more,
-  #page-reminders,
-  #page-log,
-  #page-settings {
+  .compact-page-bar,
+  .mytank-page-bar {
     margin-top: 0 !important;
-    padding-top: 0 !important;
   }
 
-  /* Bottom nav remains visible while app-content scrolls behind/above it. */
   .bottom-nav {
-    position: fixed !important;
-    left: 50% !important;
+    flex: 0 0 auto !important;
+    position: relative !important;
+    left: auto !important;
     right: auto !important;
-    bottom: 0 !important;
-    transform: translateX(-50%) !important;
-    width: min(480px, 100%) !important;
-    z-index: 9999 !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: auto !important;
+    z-index: 50 !important;
   }
 </style>
 
@@ -928,7 +822,7 @@
             <span class="home-status-label">👀 AI Monitoring</span>
             <strong id="home-monitoring-value">Checking</strong>
           </button>
-          <button class="home-status-chip" type="button" onclick="showWorkspace('log')">
+          <button class="home-status-chip" type="button" onclick="showPage('log')">
             <span class="home-status-label">🧪 Last Test</span>
             <strong id="home-last-test-value">—</strong>
           </button>
@@ -974,8 +868,8 @@
         <div class="home-quick-actions">
           <button type="button" onclick="openWaterTestLog()">+ Water Test</button>
           <button type="button" onclick="openMaintenanceLog()">+ Maintenance</button>
-          <button type="button" onclick="showWorkspace('vision')">📸 AI Vision</button>
-          <button type="button" onclick="showWorkspace('chat')">Ask AI</button>
+          <button type="button" onclick="showPage('vision')">📸 AI Vision</button>
+          <button type="button" onclick="showPage('chat')">Ask AI</button>
         </div>
       </div>
       <div class="card home-recent-card" id="home-recent-card">
@@ -1031,13 +925,13 @@
           <button class="mytank-section-card" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish & Livestock</strong><small>Catalog, photos, health, and notes.</small></button>
           <button class="mytank-section-card" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral Inventory</strong><small>Corals, anemones, growth, and timeline.</small></button>
           <button class="mytank-section-card" type="button" onclick="openMyTankEquipment()"><span>⚙️</span><strong>Equipment Manager</strong><small>Installed gear, service intervals, and history.</small></button>
-          <button class="mytank-section-card" type="button" onclick="showWorkspace('log')"><span>📊</span><strong>Parameters Log</strong><small>Readings, trends, and recent stability.</small></button>
+          <button class="mytank-section-card" type="button" onclick="showPage('log')"><span>📊</span><strong>Parameters Log</strong><small>Readings, trends, and recent stability.</small></button>
         </div>
 
         <div class="workspace-list-card mytank-secondary-list">
-          <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">🎯</span><span class="workspace-list-main"><strong>Targets & scoring</strong><span>Customize your parameter thresholds and dashboard scoring.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="showPage('settings')"><span class="workspace-list-icon">🎯</span><span class="workspace-list-main"><strong>Targets & scoring</strong><span>Customize your parameter thresholds and dashboard scoring.</span></span><span class="workspace-chevron">›</span></button>
           <button class="workspace-list-row" type="button" onclick="openLongTermTool('tankhistory')"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Reef Timeline</strong><span>Chronological reef history from photos, tests, livestock, equipment, and maintenance.</span></span><span class="workspace-chevron">›</span></button>
-          <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">🗓️</span><span class="workspace-list-main"><strong>Maintenance Planner</strong><span>Days-Off Plan, reminders, overdue tasks, and completed history.</span></span><span class="workspace-chevron">›</span></button>
+          <button class="workspace-list-row" type="button" onclick="showPage('reminders')"><span class="workspace-list-icon">🗓️</span><span class="workspace-list-main"><strong>Maintenance Planner</strong><span>Days-Off Plan, reminders, overdue tasks, and completed history.</span></span><span class="workspace-chevron">›</span></button>
         </div>
 
 
@@ -1075,9 +969,9 @@
         </div>
       </div>
       <div class="workspace-list-card">
-        <button class="workspace-list-row" type="button" onclick="showWorkspace('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="showPage('reminders')"><span class="workspace-list-icon">📅</span><span class="workspace-list-main"><strong>Planner</strong><span>Days-Off Plan, reminders, task scheduling, and hidden tasks.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('report')"><span class="workspace-list-icon">📄</span><span class="workspace-list-main"><strong>Reports</strong><span>Monthly reef report, livestock summary, timeline, and exports.</span></span><span class="workspace-chevron">›</span></button>
-        <button class="workspace-list-row" type="button" onclick="showWorkspace('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="showPage('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="ReefKeeperApex.openSettings()"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Native Apex LAN telemetry and Fusion profile setup.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openSystemCheck()"><span class="workspace-list-icon">✅</span><span class="workspace-list-main"><strong>System Check</strong><span>Check AI, Apex, storage, logs, reminders, and Tank Memory.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
@@ -1430,23 +1324,23 @@
 
   <!-- Bottom nav -->
   <div class="bottom-nav">
-    <button class="nav-btn active" data-workspace="home" onclick="showWorkspace('home', this)">
+    <button class="nav-btn active" data-workspace="home" onclick="showPage('home', this)">
       <span class="nav-icon">🏠</span>
       <span class="nav-label">HOME</span>
     </button>
-    <button class="nav-btn" data-workspace="tank" onclick="showWorkspace('tank', this)">
+    <button class="nav-btn" data-workspace="tank" onclick="showPage('tank', this)">
       <span class="nav-icon">🪸</span>
       <span class="nav-label">MY TANK</span>
     </button>
-    <button class="nav-btn" data-workspace="vision" onclick="showWorkspace('vision', this)">
+    <button class="nav-btn" data-workspace="vision" onclick="showPage('vision', this)">
       <span class="nav-icon">📷</span>
       <span class="nav-label">AI VISION</span>
     </button>
-    <button class="nav-btn" data-workspace="chat" onclick="showWorkspace('chat', this)">
+    <button class="nav-btn" data-workspace="chat" onclick="showPage('chat', this)">
       <span class="nav-icon">🤖</span>
       <span class="nav-label">ASK AI</span>
     </button>
-    <button class="nav-btn" data-workspace="more" onclick="showWorkspace('more', this)">
+    <button class="nav-btn" data-workspace="more" onclick="showPage('more', this)">
       <span class="nav-icon">☰</span>
       <span class="nav-label">MORE</span>
     </button>
@@ -1650,7 +1544,7 @@
 
         <div class="equipment-actions">
           <button class="long-term-btn secondary" type="button" onclick="openLongTermTool('strategy')">Open Maintenance Rules</button>
-          <button class="inventory-guide-btn secondary" type="button" onclick="showWorkspace('log'); closeLongTermTool('equipment')">Log General Equipment Work</button>
+          <button class="inventory-guide-btn secondary" type="button" onclick="showPage('log'); closeLongTermTool('equipment')">Log General Equipment Work</button>
         </div>
       </div>
     </div>
@@ -2927,31 +2821,8 @@ function copySystemCheckResults() {
     const text = rkReportCurrentText();
     const title = rkReportTitle(document.getElementById('report-type')?.value || 'monthly');
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>${rkReportEsc(title)}</title><style>body{font-family:Arial,sans-serif;line-height:1.55;max-width:850px;margin:32px auto;padding:0 18px;color:#123;}h2,h3{color:#075985;}</style></head><body>${rkReportRenderTextAsHtml(text)}
-<script id="reefkeeper-v4-3-32-workspace-scroll-reset">
-(function(){
-  const install = () => {
-    if (typeof window.showWorkspace !== 'function' || window.showWorkspace.__rkScrollResetWrapped) return;
-    const originalShowWorkspace = window.showWorkspace;
-    window.showWorkspace = function(name, btn) {
-      const result = originalShowWorkspace.apply(this, arguments);
-      setTimeout(() => {
-        const scroller = document.querySelector('.app-content');
-        if (scroller) scroller.scrollTo({ top: 0, behavior: 'auto' });
-        try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch(e) {}
-      }, 0);
-      return result;
-    };
-    window.showWorkspace.__rkScrollResetWrapped = true;
-  };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', install);
-  } else {
-    install();
-  }
-  setTimeout(install, 250);
-})();
-</script>
+
 
 </body></html>`;
     rkReportDownload(rkReportSafeFilename('html'), 'text/html;charset=utf-8', html);
@@ -3113,11 +2984,11 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-32-app-scroll-model-restore"></script>
+<script src="app.js?v=20260703-v4-3-34-showpage-scroll-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
-function showWorkspace(name, btn) {
+function showPage(name, btn) {
   const pageName = name;
   const directBtn = btn || document.querySelector(`.nav-btn[data-workspace="${pageName}"]`);
   if (typeof showPage === 'function') showPage(pageName, directBtn || null);
@@ -3144,7 +3015,7 @@ function rkScrollAndFlash(target) {
 }
 
 function openHomeReefStatus() {
-  showWorkspace('home');
+  showPage('home');
   setTimeout(() => {
     const target = document.getElementById('home-intelligence-card');
     rkScrollAndFlash(target);
@@ -3152,7 +3023,7 @@ function openHomeReefStatus() {
 }
 
 function openHomeMonitoring() {
-  showWorkspace('home');
+  showPage('home');
   setTimeout(() => {
     const target = document.getElementById('home-intel-watching')?.closest('.home-intel-panel') || document.getElementById('home-intel-watching');
     rkScrollAndFlash(target);
@@ -3160,7 +3031,7 @@ function openHomeMonitoring() {
 }
 
 function openWaterTestLog() {
-  showWorkspace('log');
+  showPage('log');
   setTimeout(() => {
     const input = document.getElementById('log-po4') || document.getElementById('log-alk');
     const card = input?.closest('.card') || input;
@@ -3170,7 +3041,7 @@ function openWaterTestLog() {
 }
 
 function openMaintenanceLog() {
-  showWorkspace('log');
+  showPage('log');
   setTimeout(() => {
     const category = document.getElementById('action-category');
     if (category) category.value = 'maintenance';
@@ -3822,13 +3693,13 @@ function rkHomeFormatLine(text, meta = '') {
 }
 
 function rkHomeOpenLatestPhoto() {
-  try { openLongTermTool('tankhistory'); } catch(e) { showWorkspace('vision'); }
+  try { openLongTermTool('tankhistory'); } catch(e) { showPage('vision'); }
 }
 
 function rkHomeDailyAction(action) {
   if (action === 'water-test' || action === 'params') return openWaterTestLog();
   if (action === 'maintenance') return openMaintenanceLog();
-  if (action === 'vision') return showWorkspace('vision');
+  if (action === 'vision') return showPage('vision');
   return openHomeMonitoring();
 }
 
@@ -4427,7 +4298,7 @@ function renderHomeIntelligence() {
 })();
 
 function startVisionPrompt(prompt, preferCamera) {
-  showWorkspace('chat');
+  showPage('chat');
   const input = document.getElementById('chat-input');
   if (input) { input.value = prompt; input.focus(); try { autoResize(input); } catch(e) {} }
   setTimeout(() => {
