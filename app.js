@@ -5459,23 +5459,28 @@ window.rkRenderMyTankSummary = function rkRenderMyTankSummary() {
 })();
 
 
-// v4.3.48: navigation compatibility bridge for older internal buttons
-(function rkInstallNavigationCompatibilityBridge() {
-  const normalize = () => {
+// v4.3.49: direct internal page navigator, no recursive showPage/rkNavigateTo calls
+(function rkInstallDirectInternalNavigator() {
+  function normalizePages() {
     try {
       if (typeof window.rkNormalizePageContainer === 'function') {
         window.rkNormalizePageContainer();
       }
     } catch (e) {}
-  };
 
-  const go = function(name, btn) {
-    normalize();
+    const app = document.querySelector('.app');
+    const content = document.querySelector('.app-content');
+    if (!app || !content) return;
 
-    if (typeof window.rkNavigateTo === 'function') {
-      window.rkNavigateTo(name, btn || document.querySelector(`.nav-btn[data-workspace="${name}"]`));
-      return;
-    }
+    Array.from(app.children).forEach(el => {
+      if (el.classList && el.classList.contains('page')) {
+        content.appendChild(el);
+      }
+    });
+  }
+
+  function directGo(name, btn) {
+    normalizePages();
 
     const page = document.getElementById('page-' + name);
     if (!page) {
@@ -5485,6 +5490,7 @@ window.rkRenderMyTankSummary = function rkRenderMyTankSummary() {
 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
     page.classList.add('active');
 
     const navBtn = btn || document.querySelector(`.nav-btn[data-workspace="${name}"]`);
@@ -5492,23 +5498,66 @@ window.rkRenderMyTankSummary = function rkRenderMyTankSummary() {
 
     const content = document.querySelector('.app-content');
     if (content) content.scrollTop = 0;
-  };
+
+    try { window.scrollTo(0, 0); } catch (e) {}
+
+    if (name === 'home') {
+      try { if (typeof renderTankStatus === 'function') renderTankStatus(); } catch(e) {}
+      try { if (typeof renderRecentChangesHome === 'function') renderRecentChangesHome(); } catch(e) {}
+      try { if (typeof renderHomeIntelligence === 'function') renderHomeIntelligence(); } catch(e) {}
+      try { if (typeof window.rkCleanHomeCoreNumbers === 'function') window.rkCleanHomeCoreNumbers(); } catch(e) {}
+    }
+
+    if (name === 'tank') {
+      try { if (typeof window.rkRenderMyTankSummary === 'function') window.rkRenderMyTankSummary(); } catch(e) {}
+    }
+
+    if (name === 'log') {
+      try { if (typeof renderLongTermTools === 'function') renderLongTermTools(); } catch(e) {}
+    }
+
+    if (name === 'chat') {
+      try { if (typeof autoRefreshQuickQuestionsOnChatOpen === 'function') autoRefreshQuickQuestionsOnChatOpen(); } catch(e) {}
+    }
+
+    try { if (typeof updateGlobalScrollTopVisibility === 'function') updateGlobalScrollTopVisibility(); } catch(e) {}
+  }
+
+  window.rkDirectGo = directGo;
 
   window.showPage = function(name, btn) {
-    go(name, btn);
+    directGo(name, btn);
   };
 
   window.showWorkspace = function(name, btn) {
-    go(name, btn);
+    directGo(name, btn);
+  };
+
+  window.rkNavigateTo = function(name, btn) {
+    directGo(name, btn);
   };
 
   window.openBackupDiagnostics = function() {
-    go('log');
+    directGo('log');
     setTimeout(() => {
       const target =
         document.getElementById('backup-restore-card') ||
         document.querySelector('[id*="backup" i]') ||
         document.querySelector('[class*="backup" i]');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  };
+
+  const previousApex = window.ReefKeeperApex || {};
+  window.ReefKeeperApex = previousApex;
+
+  window.ReefKeeperApex.openSettings = function() {
+    directGo('settings');
+    setTimeout(() => {
+      const candidates = Array.from(document.querySelectorAll('#page-settings *'));
+      const target = candidates.find(el =>
+        /apex|fusion|telemetry|lan/i.test(el.innerText || el.textContent || '')
+      );
       if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 150);
   };
