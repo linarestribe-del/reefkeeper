@@ -5457,3 +5457,59 @@ window.rkRenderMyTankSummary = function rkRenderMyTankSummary() {
 
   window.addEventListener('storage', run);
 })();
+
+
+// v4.3.48: navigation compatibility bridge for older internal buttons
+(function rkInstallNavigationCompatibilityBridge() {
+  const normalize = () => {
+    try {
+      if (typeof window.rkNormalizePageContainer === 'function') {
+        window.rkNormalizePageContainer();
+      }
+    } catch (e) {}
+  };
+
+  const go = function(name, btn) {
+    normalize();
+
+    if (typeof window.rkNavigateTo === 'function') {
+      window.rkNavigateTo(name, btn || document.querySelector(`.nav-btn[data-workspace="${name}"]`));
+      return;
+    }
+
+    const page = document.getElementById('page-' + name);
+    if (!page) {
+      console.warn('Missing page:', name);
+      return;
+    }
+
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    page.classList.add('active');
+
+    const navBtn = btn || document.querySelector(`.nav-btn[data-workspace="${name}"]`);
+    if (navBtn) navBtn.classList.add('active');
+
+    const content = document.querySelector('.app-content');
+    if (content) content.scrollTop = 0;
+  };
+
+  window.showPage = function(name, btn) {
+    go(name, btn);
+  };
+
+  window.showWorkspace = function(name, btn) {
+    go(name, btn);
+  };
+
+  window.openBackupDiagnostics = function() {
+    go('log');
+    setTimeout(() => {
+      const target =
+        document.getElementById('backup-restore-card') ||
+        document.querySelector('[id*="backup" i]') ||
+        document.querySelector('[class*="backup" i]');
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  };
+})();
