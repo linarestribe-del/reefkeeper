@@ -705,35 +705,12 @@
 </style>
 
 
-<style id="reefkeeper-v4-3-35-bottom-tabs-restore">
-  /* Keep the app scrolling internally, but pin the bottom tabs visibly. */
-  .app-content {
-    padding-bottom: calc(128px + env(safe-area-inset-bottom)) !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
 
-  .bottom-nav {
-    position: fixed !important;
-    left: 50% !important;
-    right: auto !important;
-    bottom: 0 !important;
-    transform: translateX(-50%) !important;
-    width: min(480px, 100%) !important;
-    max-width: 480px !important;
-    z-index: 99999 !important;
-    display: grid !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-  }
 
-  .bottom-nav .nav-btn {
-    visibility: visible !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-  }
-</style>
+
+
+
+
 
 </head>
 <body>
@@ -2855,6 +2832,81 @@ function copySystemCheckResults() {
 
 
 
+
+<style id="reefkeeper-v4-3-37-final-bottom-nav-horizontal">
+  /* Final bottom nav correction: fixed, horizontal, 5 equal tabs */
+  html body .app > .bottom-nav {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 0 !important;
+    transform: translateX(-50%) !important;
+    width: min(480px, 100vw) !important;
+    max-width: 480px !important;
+    height: auto !important;
+    min-height: 86px !important;
+    max-height: 112px !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    justify-content: space-around !important;
+    gap: 0 !important;
+
+    padding: 9px 6px calc(9px + env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box !important;
+    z-index: 999999 !important;
+    overflow: hidden !important;
+  }
+
+  html body .app > .bottom-nav > .nav-btn {
+    flex: 1 1 20% !important;
+    width: 20% !important;
+    max-width: 20% !important;
+    min-width: 0 !important;
+    height: 68px !important;
+    min-height: 68px !important;
+    max-height: 72px !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+
+    padding: 4px 1px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    border: 0 !important;
+    text-align: center !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+
+  html body .app > .bottom-nav > .nav-btn .nav-icon {
+    display: block !important;
+    font-size: 25px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+  }
+
+  html body .app > .bottom-nav > .nav-btn .nav-label {
+    display: block !important;
+    font-size: 11px !important;
+    line-height: 1 !important;
+    letter-spacing: .08em !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  html body .app-content {
+    padding-bottom: calc(116px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+</style>
+
 </body></html>`;
     rkReportDownload(rkReportSafeFilename('html'), 'text/html;charset=utf-8', html);
   };
@@ -3015,7 +3067,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-35-bottom-tabs-restore"></script>
+<script src="app.js?v=20260703-v4-3-37-final-bottom-nav-horizontal"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
