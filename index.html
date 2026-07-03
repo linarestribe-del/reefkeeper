@@ -741,6 +741,75 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-32-app-scroll-model-restore">
+  /* Restore the original app scroll model: the app-content area scrolls, not the body/window. */
+  html,
+  body {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+  }
+
+  .app-header {
+    flex-shrink: 0 !important;
+  }
+
+  .app-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .page {
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .page.active {
+    display: block !important;
+  }
+
+  .page.mytank-page.active {
+    display: block !important;
+  }
+
+  #page-tank,
+  #page-vision,
+  #page-chat,
+  #page-more,
+  #page-reminders,
+  #page-log,
+  #page-settings {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* Bottom nav remains visible while app-content scrolls behind/above it. */
+  .bottom-nav {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 0 !important;
+    transform: translateX(-50%) !important;
+    width: min(480px, 100%) !important;
+    z-index: 9999 !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -2857,7 +2926,34 @@ function copySystemCheckResults() {
   window.downloadSelectedReportHTML = function downloadSelectedReportHTML() {
     const text = rkReportCurrentText();
     const title = rkReportTitle(document.getElementById('report-type')?.value || 'monthly');
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${rkReportEsc(title)}</title><style>body{font-family:Arial,sans-serif;line-height:1.55;max-width:850px;margin:32px auto;padding:0 18px;color:#123;}h2,h3{color:#075985;}</style></head><body>${rkReportRenderTextAsHtml(text)}</body></html>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${rkReportEsc(title)}</title><style>body{font-family:Arial,sans-serif;line-height:1.55;max-width:850px;margin:32px auto;padding:0 18px;color:#123;}h2,h3{color:#075985;}</style></head><body>${rkReportRenderTextAsHtml(text)}
+<script id="reefkeeper-v4-3-32-workspace-scroll-reset">
+(function(){
+  const install = () => {
+    if (typeof window.showWorkspace !== 'function' || window.showWorkspace.__rkScrollResetWrapped) return;
+    const originalShowWorkspace = window.showWorkspace;
+    window.showWorkspace = function(name, btn) {
+      const result = originalShowWorkspace.apply(this, arguments);
+      setTimeout(() => {
+        const scroller = document.querySelector('.app-content');
+        if (scroller) scroller.scrollTo({ top: 0, behavior: 'auto' });
+        try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch(e) {}
+      }, 0);
+      return result;
+    };
+    window.showWorkspace.__rkScrollResetWrapped = true;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install);
+  } else {
+    install();
+  }
+  setTimeout(install, 250);
+})();
+</script>
+
+</body></html>`;
     rkReportDownload(rkReportSafeFilename('html'), 'text/html;charset=utf-8', html);
   };
 
@@ -3017,7 +3113,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-31-nonhome-blank-space-fix"></script>
+<script src="app.js?v=20260703-v4-3-32-app-scroll-model-restore"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
