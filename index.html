@@ -680,6 +680,67 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-31-nonhome-blank-space-fix">
+  /* Undo the large blank top space on non-Home tabs while keeping page scrolling */
+  #page-tank,
+  #page-vision,
+  #page-chat,
+  #page-more,
+  #page-reminders,
+  #page-log,
+  #page-settings {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  #page-tank.page.active,
+  #page-vision.page.active,
+  #page-chat.page.active,
+  #page-more.page.active,
+  #page-reminders.page.active,
+  #page-log.page.active,
+  #page-settings.page.active {
+    display: block !important;
+  }
+
+  #page-tank .mytank-main,
+  #page-vision > *,
+  #page-chat > *,
+  #page-more > *,
+  #page-reminders > *,
+  #page-log > *,
+  #page-settings > * {
+    margin-top: 0 !important;
+  }
+
+  .compact-page-bar,
+  .mytank-page-bar {
+    margin-top: 0 !important;
+  }
+
+  /* Keep enough room for the fixed bottom tabs without pushing content down */
+  .page {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Bottom tabs stay visible but do not affect top layout */
+  .bottom-nav,
+  .tab-bar,
+  .bottom-tabs,
+  .nav-tabs,
+  #bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 9999 !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -2956,7 +3017,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-30-global-scroll-restore"></script>
+<script src="app.js?v=20260703-v4-3-31-nonhome-blank-space-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
