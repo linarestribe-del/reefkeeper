@@ -319,6 +319,30 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-25-mytank-top-cleanup">
+  .mytank-page-bar-clean {
+    margin-bottom: 10px !important;
+  }
+
+  .mytank-page-bar-clean .compact-page-subtitle {
+    max-width: 86%;
+  }
+
+  .mytank-summary-card {
+    padding: 12px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .mytank-summary-card .mytank-summary-strip {
+    margin: 0 !important;
+  }
+
+  .mytank-summary-card + .mytank-section-grid {
+    margin-top: 0 !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -516,22 +540,14 @@
     <!-- MY TANK WORKSPACE -->
     <div class="page mytank-page" id="page-tank">
       <div class="mytank-main">
-        <div class="compact-page-bar mytank-page-bar">
+        <div class="compact-page-bar mytank-page-bar mytank-page-bar-clean">
           <div>
             <div class="compact-page-title">My Tank</div>
             <div class="compact-page-subtitle">Inventory, equipment, parameters, targets, and reef history.</div>
           </div>
-          <button class="compact-page-action" type="button" onclick="showWorkspace('log')">+ Log</button>
         </div>
 
-        <div class="mytank-overview-card" id="mytank-overview-card">
-          <div class="mytank-overview-top">
-            <div>
-              <div class="mytank-eyebrow">Reef control center</div>
-              <div class="mytank-overview-title">Open the section you need</div>
-            </div>
-            <button class="mytank-overview-action" type="button" onclick="showWorkspace('home')">Dashboard</button>
-          </div>
+        <div class="mytank-overview-card mytank-summary-card" id="mytank-overview-card">
           <div class="mytank-summary-strip" id="mytank-summary-strip" aria-label="Tank summary">
             <span><b>🐠</b><strong id="mytank-fish-count">— Fish</strong></span>
             <span><b>🪸</b><strong id="mytank-coral-count">— Coral</strong></span>
@@ -2599,7 +2615,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260702-v4-3-24-log-collapsible-polish"></script>
+<script src="app.js?v=20260703-v4-3-25-mytank-top-cleanup"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
