@@ -722,6 +722,88 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-40-nonhome-scroll-fix">
+  /* The app-content shell is the only scroll container. */
+  html,
+  body {
+    height: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .app {
+    height: 100vh !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow-y: scroll !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Non-Home pages must grow naturally inside app-content, not become their own clipped panel. */
+  #page-tank,
+  #page-vision,
+  #page-chat,
+  #page-more,
+  #page-reminders,
+  #page-log,
+  #page-settings {
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    padding-bottom: 28px !important;
+  }
+
+  #page-tank.page.active,
+  #page-vision.page.active,
+  #page-chat.page.active,
+  #page-more.page.active,
+  #page-reminders.page.active,
+  #page-log.page.active,
+  #page-settings.page.active {
+    display: block !important;
+  }
+
+  #page-tank *,
+  #page-vision *,
+  #page-chat *,
+  #page-more *,
+  #page-reminders *,
+  #page-log *,
+  #page-settings * {
+    max-height: none;
+  }
+
+  /* Keep the bottom tabs visible and tappable. */
+  .bottom-nav {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    max-width: 480px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    z-index: 99999 !important;
+  }
+
+  .bottom-nav .nav-btn {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    pointer-events: auto !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -3006,7 +3088,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-39-nav-click-fix"></script>
+<script src="app.js?v=20260703-v4-3-40-nonhome-scroll-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
