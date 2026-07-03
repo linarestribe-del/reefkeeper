@@ -709,6 +709,19 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-39-nav-click-fix">
+  .bottom-nav,
+  .bottom-nav .nav-btn,
+  .bottom-nav .nav-btn * {
+    pointer-events: auto !important;
+  }
+
+  .bottom-nav {
+    z-index: 99999 !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -1329,23 +1342,23 @@
 
   <!-- Bottom nav -->
   <div class="bottom-nav">
-    <button class="nav-btn active" data-workspace="home" onclick="showPage('home', this)">
+    <button class="nav-btn active" data-workspace="home" onclick="rkNavigateTo('home', this)">
       <span class="nav-icon">🏠</span>
       <span class="nav-label">HOME</span>
     </button>
-    <button class="nav-btn" data-workspace="tank" onclick="showPage('tank', this)">
+    <button class="nav-btn" data-workspace="tank" onclick="rkNavigateTo('tank', this)">
       <span class="nav-icon">🪸</span>
       <span class="nav-label">MY TANK</span>
     </button>
-    <button class="nav-btn" data-workspace="vision" onclick="showPage('vision', this)">
+    <button class="nav-btn" data-workspace="vision" onclick="rkNavigateTo('vision', this)">
       <span class="nav-icon">📷</span>
       <span class="nav-label">AI VISION</span>
     </button>
-    <button class="nav-btn" data-workspace="chat" onclick="showPage('chat', this)">
+    <button class="nav-btn" data-workspace="chat" onclick="rkNavigateTo('chat', this)">
       <span class="nav-icon">🤖</span>
       <span class="nav-label">ASK AI</span>
     </button>
-    <button class="nav-btn" data-workspace="more" onclick="showPage('more', this)">
+    <button class="nav-btn" data-workspace="more" onclick="rkNavigateTo('more', this)">
       <span class="nav-icon">☰</span>
       <span class="nav-label">MORE</span>
     </button>
@@ -2993,7 +3006,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-38-restore-original-nav-layout"></script>
+<script src="app.js?v=20260703-v4-3-39-nav-click-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

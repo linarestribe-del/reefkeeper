@@ -5181,3 +5181,45 @@ function openBackupDiagnostics() {
   }, 180);
 }
 
+
+
+// v4.3.39: guaranteed global bottom-tab navigator
+window.rkNavigateTo = function rkNavigateTo(name, btn) {
+  const page = document.getElementById('page-' + name);
+  if (!page) {
+    console.warn('Missing page:', name);
+    if (typeof showToast === 'function') showToast('⚠️ Page not found');
+    return;
+  }
+
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  page.classList.add('active');
+
+  const actualBtn = btn || document.querySelector(`.nav-btn[data-workspace="${name}"]`);
+  if (actualBtn) actualBtn.classList.add('active');
+
+  const content = document.querySelector('.app-content');
+  if (content) content.scrollTop = 0;
+
+  try { window.scrollTo(0, 0); } catch(e) {}
+
+  if (typeof updateGlobalScrollTopVisibility === 'function') updateGlobalScrollTopVisibility();
+  if (name === 'chat' && typeof autoRefreshQuickQuestionsOnChatOpen === 'function') autoRefreshQuickQuestionsOnChatOpen();
+  if (name === 'home') {
+    if (typeof renderTankStatus === 'function') renderTankStatus();
+    if (typeof renderRecentChangesHome === 'function') renderRecentChangesHome();
+  }
+  if (name === 'log' && typeof renderLongTermTools === 'function') renderLongTermTools();
+};
+
+// Also catch taps even if inline onclick is ignored.
+document.addEventListener('click', function(event) {
+  const btn = event.target.closest?.('.bottom-nav .nav-btn');
+  if (!btn) return;
+  const name = btn.getAttribute('data-workspace');
+  if (!name) return;
+  event.preventDefault();
+  window.rkNavigateTo(name, btn);
+}, true);
