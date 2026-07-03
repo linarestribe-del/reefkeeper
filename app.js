@@ -5310,3 +5310,150 @@ window.rkCleanHomeCoreNumbers = function rkCleanHomeCoreNumbers() {
     observer.observe(home, { childList: true, subtree: true });
   }
 })();
+
+
+// v4.3.47: render My Tank summary strip from saved inventory and action data
+window.rkRenderMyTankSummary = function rkRenderMyTankSummary() {
+  const fishEl = document.getElementById('mytank-fish-count');
+  const coralEl = document.getElementById('mytank-coral-count');
+  const gearEl = document.getElementById('mytank-equipment-count');
+  const logEl = document.getElementById('mytank-latest-log-age');
+
+  if (!fishEl && !coralEl && !gearEl && !logEl) return;
+
+  const safeParse = (key, fallback) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    } catch (e) {
+      return fallback;
+    }
+  };
+
+  const inventory = safeParse('reef_inventory', []);
+  const actions = safeParse('reef_actions', []);
+
+  const norm = (value) => String(value || '').toLowerCase();
+
+  const itemText = (item) => [
+    item.category,
+    item.type,
+    item.group,
+    item.kind,
+    item.section,
+    item.tab,
+    item.name,
+    item.commonName,
+    item.notes
+  ].map(norm).join(' ');
+
+  const isCoral = item => {
+    const t = itemText(item);
+    return (
+      t.includes('coral') ||
+      t.includes('zoa') ||
+      t.includes('zoanthid') ||
+      t.includes('mushroom') ||
+      t.includes('anemone') ||
+      t.includes('bta') ||
+      t.includes('gorgonia') ||
+      t.includes('gsp') ||
+      t.includes('monti') ||
+      t.includes('satosa')
+    );
+  };
+
+  const isGear = item => {
+    const t = itemText(item);
+    return (
+      t.includes('equipment') ||
+      t.includes('gear') ||
+      t.includes('pump') ||
+      t.includes('skimmer') ||
+      t.includes('reactor') ||
+      t.includes('light') ||
+      t.includes('heater') ||
+      t.includes('uv') ||
+      t.includes('apex') ||
+      t.includes('return') ||
+      t.includes('roller') ||
+      t.includes('ato')
+    );
+  };
+
+  const isFish = item => {
+    const t = itemText(item);
+    return (
+      t.includes('fish') ||
+      t.includes('wrasse') ||
+      t.includes('clown') ||
+      t.includes('goby') ||
+      t.includes('blenny') ||
+      t.includes('tang') ||
+      t.includes('anthias') ||
+      t.includes('chromis')
+    ) && !isCoral(item) && !isGear(item);
+  };
+
+  const fishCount = Array.isArray(inventory) ? inventory.filter(isFish).length : 0;
+  const coralCount = Array.isArray(inventory) ? inventory.filter(isCoral).length : 0;
+  const gearCount = Array.isArray(inventory) ? inventory.filter(isGear).length : 0;
+
+  if (fishEl) fishEl.textContent = `${fishCount} Fish`;
+  if (coralEl) coralEl.textContent = `${coralCount} Coral`;
+  if (gearEl) gearEl.textContent = `${gearCount} Gear`;
+
+  if (logEl) {
+    const dates = Array.isArray(actions)
+      ? actions
+          .map(a => a.date || a.createdAt || a.completedAt || a.updatedAt || a.timestamp)
+          .filter(Boolean)
+          .map(d => {
+            const parsed = new Date(d);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+          })
+          .filter(Boolean)
+          .sort((a, b) => b - a)
+      : [];
+
+    if (!dates.length) {
+      logEl.textContent = 'Last log: —';
+    } else {
+      const latest = dates[0];
+      const diffMs = Date.now() - latest.getTime();
+      const diffDays = Math.max(0, Math.floor(diffMs / 86400000));
+
+      if (diffDays === 0) logEl.textContent = 'Last log: today';
+      else if (diffDays === 1) logEl.textContent = 'Last log: 1 day ago';
+      else logEl.textContent = `Last log: ${diffDays} days ago`;
+    }
+  }
+};
+
+(function rkInstallMyTankSummaryRenderer() {
+  const run = () => {
+    if (typeof window.rkRenderMyTankSummary === 'function') {
+      window.rkRenderMyTankSummary();
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', run);
+  } else {
+    run();
+  }
+
+  setTimeout(run, 100);
+  setTimeout(run, 500);
+  setTimeout(run, 1500);
+
+  document.addEventListener('click', function(event) {
+    const btn = event.target.closest?.('.bottom-nav .nav-btn, [onclick*="tank"], [onclick*="Tank"]');
+    if (!btn) return;
+    setTimeout(run, 50);
+    setTimeout(run, 300);
+  }, true);
+
+  window.addEventListener('storage', run);
+})();
