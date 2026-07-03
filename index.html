@@ -175,9 +175,6 @@
   }
 </style>
 
-
-
-
 <style id="reefkeeper-v4-3-23-backup-equipment-polish">
   .backup-restore-card {
     padding-top: 16px !important;
@@ -516,8 +513,6 @@
       </div>
     </div>
 
-
-
     <!-- MY TANK WORKSPACE -->
     <div class="page mytank-page" id="page-tank">
       <div class="mytank-main">
@@ -757,31 +752,8 @@
           </div>
         </div>
       </div>
-
-      
-
-      <div class="card-title backup-restore-title">💾 Backup / Restore</div>
-
-      <div class="card-title">🩺 Diagnostics</div>
-
-
-      
-
-      
-
-      
-
-
-      
-
-    
-
-      <div class="card-title">📊 Log Parameters</div>
-
-      <div class="card-title">🛠️ Maintenance / Action History</div>
-
       <div class="card backup-restore-card" id="backup-restore-card">
-        
+        <div class="card-title backup-restore-title">💾 Backup / Restore</div>
         <div class="backup-row">
           <button class="backup-btn backup-export-btn" onclick="exportReefBackup()">Export Backup</button>
           <label class="backup-btn backup-import-btn" for="backup-import-file">Import Backup</label>
@@ -806,7 +778,7 @@
       </div>
 
       <div class="card">
-        
+        <div class="card-title">🩺 Diagnostics</div>
         <div class="diagnostics-row">
           <button class="diagnostics-btn diagnostics-run-btn" onclick="runDiagnostics()">Run Diagnostics</button>
           <button class="diagnostics-btn diagnostics-fix-btn" onclick="repairDiagnosticsIssues()">Repair Common Issues</button>
@@ -922,8 +894,6 @@
           </label>
         </div>
       </div>
-
-
 
       <div class="settings-card" id="apex-settings-card">
         <div class="settings-section-title">Apex Integration</div>
@@ -1276,8 +1246,6 @@
   </div>
 </div>
 
-
-
 <div class="tool-overlay" id="tool-library-overlay" onclick="handleToolOverlayClick(event, 'library')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="library-tool-title">
     <div class="tool-panel-head">
@@ -1433,8 +1401,6 @@
     <div id="livestock-catalog-list" class="catalog-modal-grid"></div>
   </div>
 </div>
-
-
 
 <script>
 function rkSystemCheckReadJson(key, fallback) {
@@ -3969,8 +3935,6 @@ window.addEventListener('load', function () {
   }, 800);
 });
 </script>
-
-
 
 </body>
 </html>
