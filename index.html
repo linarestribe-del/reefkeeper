@@ -704,6 +704,37 @@
   }
 </style>
 
+
+<style id="reefkeeper-v4-3-35-bottom-tabs-restore">
+  /* Keep the app scrolling internally, but pin the bottom tabs visibly. */
+  .app-content {
+    padding-bottom: calc(128px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .bottom-nav {
+    position: fixed !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: 0 !important;
+    transform: translateX(-50%) !important;
+    width: min(480px, 100%) !important;
+    max-width: 480px !important;
+    z-index: 99999 !important;
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .bottom-nav .nav-btn {
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -2984,7 +3015,7 @@ function copySystemCheckResults() {
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="app.js?v=20260703-v4-3-34-showpage-scroll-fix"></script>
+<script src="app.js?v=20260703-v4-3-35-bottom-tabs-restore"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
