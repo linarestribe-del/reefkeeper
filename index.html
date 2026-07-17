@@ -1081,7 +1081,7 @@
           <button class="mytank-section-card" type="button" onclick="openLivestockCatalog('fish')"><span>🐠</span><strong>Fish & Livestock</strong><small>Catalog, photos, health, and notes.</small></button>
           <button class="mytank-section-card" type="button" onclick="openLivestockCatalog('coral')"><span>🪸</span><strong>Coral Inventory</strong><small>Corals, anemones, growth, and timeline.</small></button>
           <button class="mytank-section-card" type="button" onclick="openMyTankEquipment()"><span>⚙️</span><strong>Equipment Manager</strong><small>Installed gear, service intervals, and history.</small></button>
-          <button class="mytank-section-card" type="button" onclick="showPage('log')"><span>📊</span><strong>Parameters Log</strong><small>Readings, trends, and recent stability.</small></button>
+          <button class="mytank-section-card" type="button" onclick="rkDirectGo('log')"><span>📊</span><strong>Parameters Log</strong><small>Readings, trends, and recent stability.</small></button>
         </div>
 
         <div class="workspace-list-card mytank-secondary-list">
@@ -3148,10 +3148,24 @@ function copySystemCheckResults() {
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
+// v4.3.55: route legacy showPage calls through the non-recursive navigator.
 function showPage(name, btn) {
   const pageName = name;
   const directBtn = btn || document.querySelector(`.nav-btn[data-workspace="${pageName}"]`);
-  if (typeof showPage === 'function') showPage(pageName, directBtn || null);
+
+  if (typeof window.rkDirectGo === 'function') {
+    window.rkDirectGo(pageName, directBtn || null);
+  } else if (typeof window.rkNavigateTo === 'function') {
+    window.rkNavigateTo(pageName, directBtn || null);
+  } else {
+    const page = document.getElementById('page-' + pageName);
+    if (!page) return;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    page.classList.add('active');
+    if (directBtn) directBtn.classList.add('active');
+  }
+
   if (!directBtn && ['log','reminders','settings'].includes(pageName)) {
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     const more = document.querySelector('.nav-btn[data-workspace="more"]');
