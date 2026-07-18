@@ -26,7 +26,7 @@ Any change that affects AI context, retrieval, confidence, source weighting, rec
 - update the changelog;
 - pass the standard regression checklist.
 
-Do not solve architecture problems by adding another large prompt block to `app.js`.
+Do not solve architecture problems by adding ad hoc prompt prose to `app.js`. Build 1B may serialize the normalized evidence contract for compatibility, but normalization, weighting, freshness, selection, and conflict logic must remain in `ai/evidence-engine.js` until Build 1C moves the contract server-side.
 
 ## Evidence Rule
 
@@ -162,3 +162,11 @@ knowledge/library-store.js     source storage and metadata
 vision/observer.js             camera and photo observations
 maintenance-engine.js         due tasks and planning
 ```
+
+## Build 1B Compatibility Rule
+
+- The evidence module must fail open to the existing legacy context so Ask AI remains available.
+- Evidence normalization must not mutate parameter logs, actions, reminders, inventory, equipment, or Tank Knowledge records.
+- Reef Library migration may add metadata fields but must retain document IDs, text, dates, and existing fields.
+- Any new static folder must be explicitly routed in `vercel.json`.
+- Parameter Log navigation is a release-blocking regression test.

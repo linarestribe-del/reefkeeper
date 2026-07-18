@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Reef Keeper">
@@ -14,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app-build-2-6.css">
+<link rel="stylesheet" href="css/app.css?v=20260702-v4-3-23-backup-equipment-polish">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -863,60 +860,6 @@
   }
 </style>
 
-
-<style id="reefkeeper-build-2-6-native-why-style">
-  #latest-ai-why-wrap {
-    display:block !important;
-    margin:12px 0 14px;
-    padding:0;
-    border:2px solid rgba(0,180,216,.25);
-    border-radius:18px;
-    background:rgba(255,255,255,.86);
-    box-shadow:0 5px 16px rgba(0,80,130,.10);
-    overflow:hidden;
-  }
-  #latest-ai-why-wrap > summary {
-    display:flex;
-    align-items:center;
-    min-height:46px;
-    padding:10px 16px;
-    color:#005b96;
-    font-family:'Nunito',sans-serif;
-    font-size:15px;
-    font-weight:900;
-    cursor:pointer;
-    list-style:none;
-    -webkit-tap-highlight-color:transparent;
-  }
-  #latest-ai-why-wrap > summary::-webkit-details-marker { display:none; }
-  #latest-ai-why-wrap > summary::after {
-    content:'›';
-    margin-left:auto;
-    font-size:24px;
-    line-height:1;
-    transform:rotate(90deg);
-    transition:transform .18s ease;
-  }
-  #latest-ai-why-wrap[open] > summary::after { transform:rotate(-90deg); }
-  #latest-ai-why-build { margin-left:8px; font-size:10px; font-weight:900; color:rgba(0,91,150,.58); }
-  #latest-ai-why-panel {
-    display:block !important;
-    margin:0 12px 12px;
-    padding:12px;
-    border-radius:14px;
-    background:rgba(236,248,253,.96);
-    color:#16425b;
-    font-size:12px;
-    font-weight:700;
-    line-height:1.5;
-  }
-  html.theme-dark #latest-ai-why-wrap,
-  html.theme-dark #latest-ai-why-panel {
-    background:rgba(8,27,42,.96);
-    color:#d8f3ff;
-    border-color:rgba(155,216,240,.20);
-  }
-</style>
 </head>
 <body>
 
@@ -1210,10 +1153,6 @@
             <div class="msg-bubble">Hey! I'm your Reef Keeper AI assistant. I know all about your 120 gallon tank — your current parameters, your livestock, your equipment, and your recovery plan. Ask me anything!</div>
           </div>
         </div>
-        <details id="latest-ai-why-wrap" aria-live="polite">
-          <summary>Why?<span id="latest-ai-why-build">Build 2.6</span></summary>
-          <div id="latest-ai-why-panel">Send a tank-context question to see the evidence, confidence limits, and missing information behind the latest answer.</div>
-        </details>
         <div class="model-selector-wrap">
           <span class="model-selector-label">Answer</span>
           <select class="model-selector" id="chat-model-select" onchange="setModelMode(this.value)">
@@ -3207,8 +3146,7 @@ function copySystemCheckResults() {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="ai/evidence-engine.js?v=20260717-build-1b"></script>
 <script src="ai/decision-engine.js?v=20260718-build-1c"></script>
-<script src="ai/trend-engine.js?v=20260718-build-2"></script>
-<script src="app-build-2-6.js"></script>
+<script src="app.js?v=20260717-build-1b-structured-evidence"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
@@ -4566,68 +4504,5 @@ window.addEventListener('load', function () {
 });
 </script>
 
-
-<script id="reefkeeper-build-2-6-native-why-controller">
-(function () {
-  'use strict';
-  function esc(value) { return String(value == null ? '' : value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
-  function arr(value, limit) { return Array.isArray(value) ? value.slice(0, limit || 3) : []; }
-  function contextEnabledNow() {
-    try {
-      if (typeof window.getUseTankContext === 'function') return Boolean(window.getUseTankContext());
-      var toggle = document.querySelector('.tank-context-toggle');
-      return toggle ? Boolean(toggle.checked) : true;
-    } catch (_) { return true; }
-  }
-  function detailsHtml() {
-    var used = contextEnabledNow();
-    var review = window.__reefLastDecisionReview || null;
-    var context = window.__reefLastStructuredEvidenceContext || null;
-    var reviewError = window.__reefLastDecisionReviewError || '';
-    var html = '<div><strong>Build:</strong> 2.6</div>';
-    html += '<div style="margin-top:6px"><strong>Tank context:</strong> ' + (used ? 'Enabled' : 'Disabled') + '</div>';
-    if (!used) {
-      html += '<div style="margin-top:6px">This was a general reef answer. Saved tank records and live Apex context were not requested.</div>';
-      return html;
-    }
-    if (!review || !context) {
-      html += '<div style="margin-top:6px">The latest answer used available tank context, but a complete structured confidence review was not available.</div>';
-      if (reviewError) html += '<div style="margin-top:6px"><strong>Review note:</strong> ' + esc(reviewError) + '</div>';
-      html += '<div style="margin-top:6px">Verify current measurements before dosing or making equipment changes.</div>';
-      return html;
-    }
-    var confidence = review && typeof review.confidence === 'object' ? review.confidence : {};
-    var evidence = (Array.isArray(context.evidence) ? context.evidence : []).slice().sort(function(a,b){ return Number((b&&b.effectiveWeight)||0)-Number((a&&a.effectiveWeight)||0); }).slice(0,4);
-    var missing = arr(review.missingOrStaleData,3);
-    var concerns = arr(review.skepticReview && review.skepticReview.concerns,3);
-    var scoreNum = Number(confidence.score);
-    var score = Number.isFinite(scoreNum) ? Math.round(scoreNum) : '—';
-    var label = confidence.label || 'unrated';
-    var ceiling = String((review.decisionPolicy && review.decisionPolicy.actionCeiling) || 'not set').replace(/_/g,' ');
-    html += '<div style="margin-top:6px"><strong>Confidence:</strong> ' + esc(score) + '% (' + esc(label) + ')</div>';
-    if (evidence.length) html += '<div style="margin-top:6px"><strong>Strongest evidence</strong>' + evidence.map(function(e){ var claim=(e&&(e.claim||e.summary||e.type))||'Evidence'; var weight=Math.round(Number((e&&e.effectiveWeight)||0)*100); return '<div>• '+esc(claim)+' ('+esc(weight)+'%)</div>'; }).join('') + '</div>';
-    if (missing.length) html += '<div style="margin-top:6px"><strong>Missing or stale</strong>' + missing.map(function(e){ return '<div>• '+esc((e&&(e.reason||e.label||e.metric))||'Additional current data needed')+'</div>'; }).join('') + '</div>';
-    if (concerns.length) html += '<div style="margin-top:6px"><strong>Skeptic check</strong>' + concerns.map(function(e){ return '<div>• '+esc(e)+'</div>'; }).join('') + '</div>';
-    html += '<div style="margin-top:6px"><strong>Action ceiling:</strong> ' + esc(ceiling) + '</div>';
-    return html;
-  }
-  function refresh() {
-    var panel=document.getElementById('latest-ai-why-panel');
-    var messages=document.getElementById('chat-messages');
-    if(!panel||!messages)return;
-    var nodes=Array.prototype.filter.call(messages.children,function(node){return node.classList&&node.classList.contains('msg');});
-    var hasUser=nodes.some(function(node){return node.classList.contains('user');});
-    var hasAnswer=nodes.some(function(node){return node.classList.contains('ai') && node.id!=='typing-indicator';});
-    if(hasUser&&hasAnswer) panel.innerHTML=detailsHtml();
-  }
-  function init() {
-    var messages=document.getElementById('chat-messages');
-    if(!messages)return;
-    new MutationObserver(function(){window.requestAnimationFrame(refresh);}).observe(messages,{childList:true,subtree:true});
-    refresh();
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init); else init();
-})();
-</script>
 </body>
 </html>

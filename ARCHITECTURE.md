@@ -1,7 +1,7 @@
 # Reef Keeper Architecture
 
 **Last updated:** July 17, 2026  
-**Current runtime family:** v4.3.x  
+**Current runtime family:** v4.3.10 / Build 1B  
 **Target architecture:** v5.x evidence-based AI engine
 
 ## Core Philosophy
@@ -14,9 +14,12 @@ The complete AI design is defined in [`AI_ENGINE.md`](AI_ENGINE.md).
 
 ```text
 Browser / iPhone app
-  -> app.js assembles fixed tank profile, local history, Reef Library excerpts,
-     reminders, inventory, and live Apex context
-  -> /api/chat.js selects the model profile and requests an answer/reminders
+  -> `ai/evidence-engine.js` normalizes local records and live Apex data into
+     timestamped observations, evidence weights, current state, conflicts,
+     source metadata, and data-quality limitations
+  -> `app.js` retains the legacy context during migration and appends the
+     structured evidence contract before calling `/api/chat.js`
+  -> `/api/chat.js` selects the model profile and requests an answer/reminders
   -> response is rendered in Ask AI
 ```
 
@@ -27,6 +30,22 @@ Additional flows:
 - `maintenance-engine.js` supports maintenance and Days-Off planning.
 - Reef Timeline owns historical event presentation.
 - Browser storage currently owns most persistent app data.
+
+## Build 1B Runtime Modules
+
+### `ai/evidence-engine.js`
+
+- Dependency-free browser normalization layer.
+- Does not mutate user tank records.
+- Assigns stable observation/evidence IDs.
+- Selects authoritative current values by source authority, freshness, and timestamp.
+- Preserves live and manual measurements separately when they conflict.
+- Excludes superseded, retracted, and historical Reef Library sources from normal retrieval.
+- Exposes a structured prompt contract while Build 1C is still pending.
+
+### Compatibility boundary
+
+The legacy text context remains active in Build 1B so existing Ask AI behavior and reminders continue to work. The structured evidence block is authoritative when it conflicts with legacy prose. Build 1C will move observations, inferences, confidence, and recommendations into a server response contract.
 
 ## Target Architecture
 

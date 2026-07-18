@@ -400,6 +400,7 @@ async function buildLiveApexContextForAI() {
   try {
     const response = await fetch('/api/apex-status', { cache: 'no-store' });
     const status = await response.json();
+    try { window.__reefLastApexStatusForAI = status || null; } catch(e) {}
 
     if (!status || !status.ok) {
       return `
@@ -498,8 +499,37 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
 
   const useTankContext = getUseTankContext();
   const liveApexContext = useTankContext ? await buildLiveApexContextForAI() : '';
+  let structuredEvidenceContext = '';
+  let decisionReviewContext = '';
+  if (useTankContext && window.ReefKeeperAIContext) {
+    try {
+      const evidenceContext = window.ReefKeeperAIContext.collectContext({
+        question: userMsg,
+        apexStatus: window.__reefLastApexStatusForAI || null,
+        logs: typeof memoryArray === 'function' ? memoryArray('reef_logs') : [],
+        actions: typeof getActionEntries === 'function' ? getActionEntries() : [],
+        completedHistory: typeof getCompletedHistoryEntries === 'function' ? getCompletedHistoryEntries() : [],
+        reminders: typeof getSavedReminders === 'function' ? getSavedReminders() : [],
+        inventory: typeof getInventoryItems === 'function' ? getInventoryItems() : [],
+        equipment: typeof window.rkEquipmentItems === 'function' ? window.rkEquipmentItems() : [],
+        knowledge: typeof getTankKnowledgeItems === 'function' ? getTankKnowledgeItems() : [],
+        library: typeof getReefLibraryDocs === 'function' ? getReefLibraryDocs() : []
+      });
+      structuredEvidenceContext = window.ReefKeeperAIContext.toPromptBlock(evidenceContext);
+      try { window.__reefLastStructuredEvidenceContext = evidenceContext; } catch(e) {}
+
+      if (window.ReefKeeperDecisionEngine) {
+        const decisionReview = window.ReefKeeperDecisionEngine.evaluate(evidenceContext);
+        decisionReviewContext = window.ReefKeeperDecisionEngine.toPromptBlock(decisionReview);
+        try { window.__reefLastDecisionReview = decisionReview; } catch(e) {}
+      }
+    } catch (error) {
+      console.warn('Structured evidence context unavailable; using legacy tank context.', error);
+    }
+  }
+
   const selectedSystem = useTankContext
-    ? `${TANK_CONTEXT}${getLocalTankMemorySummary(userMsg)}${liveApexContext}`
+    ? `${TANK_CONTEXT}${getLocalTankMemorySummary(userMsg)}${liveApexContext}${structuredEvidenceContext}${decisionReviewContext}`
     : GENERAL_REEF_CONTEXT;
 
   const response = await fetch(API_URL, {
@@ -4820,13 +4850,13 @@ const REEF_LIBRARY_KEY = 'reef_library_docs';
 function getReefLibraryDocs() {
   try {
     const docs = JSON.parse(localStorage.getItem(REEF_LIBRARY_KEY) || '[]');
-    return Array.isArray(docs) ? docs : [];
+    return Array.isArray(docs) ? docs.map(normalizeLibraryDoc) : [];
   } catch(e) { return []; }
 }
 
 function setReefLibraryDocs(docs) {
   try {
-    localStorage.setItem(REEF_LIBRARY_KEY, JSON.stringify((docs || []).slice(0, 80)));
+    localStorage.setItem(REEF_LIBRARY_KEY, JSON.stringify((docs || []).map(normalizeLibraryDoc).slice(0, 80)));
     return true;
   } catch(e) {
     console.warn('Could not save Reef Library', e);
@@ -4841,16 +4871,58 @@ function reefLibraryDateLabel(iso) {
 }
 
 function normalizeLibraryDoc(doc) {
+  const now = new Date().toISOString();
+  const validSourceClasses = new Set(['peer_reviewed','expert','manufacturer','community_expert','community','anecdote','user_rule','unknown']);
+  const validStatuses = new Set(['current','review_due','superseded','historical','retracted','unknown']);
+  const sourceClass = validSourceClasses.has(doc?.sourceClass) ? doc.sourceClass : 'unknown';
+  const status = validStatuses.has(doc?.status) ? doc.status : 'unknown';
+  const detectedTopics = window.ReefKeeperAIContext?.detectTopics?.(`${doc?.title || ''} ${doc?.fileName || ''} ${doc?.category || ''} ${doc?.text || ''}`) || [];
+  const topics = Array.from(new Set([...(Array.isArray(doc?.topics) ? doc.topics : []), ...detectedTopics])).map(String).filter(Boolean);
+  const defaultWeight = window.ReefKeeperAIContext?.sourceWeights?.[sourceClass] ?? 0.30;
+  const suppliedWeight = Number(doc?.trust?.baseWeight);
+
   return {
+    ...doc,
+    schemaVersion: String(doc?.schemaVersion || '1.0'),
     id: doc?.id || `doc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,
     title: String(doc?.title || doc?.fileName || 'Untitled document').trim(),
     fileName: String(doc?.fileName || doc?.title || 'document').trim(),
     category: String(doc?.category || 'Other Documents').trim(),
     type: String(doc?.type || '').trim(),
     text: String(doc?.text || '').replace(/\u0000/g, '').slice(0, 65000),
-    createdAt: doc?.createdAt || new Date().toISOString(),
-    updatedAt: doc?.updatedAt || doc?.createdAt || new Date().toISOString()
+    createdAt: doc?.createdAt || doc?.updatedAt || now,
+    updatedAt: doc?.updatedAt || doc?.createdAt || now,
+    sourceClass,
+    publisher: String(doc?.publisher || '').trim(),
+    authors: Array.isArray(doc?.authors) ? doc.authors.map(String).map(v => v.trim()).filter(Boolean) : [],
+    publishedAt: doc?.publishedAt || null,
+    reviewedAt: doc?.reviewedAt || null,
+    validFrom: doc?.validFrom || null,
+    validUntil: doc?.validUntil || null,
+    status,
+    topics,
+    equipmentModels: Array.isArray(doc?.equipmentModels) ? doc.equipmentModels.map(String).filter(Boolean) : [],
+    firmwareVersions: Array.isArray(doc?.firmwareVersions) ? doc.firmwareVersions.map(String).filter(Boolean) : [],
+    trust: {
+      baseWeight: Number.isFinite(suppliedWeight) ? Math.max(0, Math.min(1, suppliedWeight)) : defaultWeight,
+      reason: String(doc?.trust?.reason || (sourceClass === 'unknown' ? 'Source has not been classified yet.' : `Default ${sourceClass} weighting.`)).trim()
+    },
+    supersededBy: Array.isArray(doc?.supersededBy) ? doc.supersededBy.map(String) : []
   };
+}
+
+
+function migrateReefLibraryMetadata() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(REEF_LIBRARY_KEY) || '[]');
+    if (!Array.isArray(raw) || !raw.length) return;
+    const normalized = raw.map(normalizeLibraryDoc);
+    if (JSON.stringify(raw) !== JSON.stringify(normalized)) {
+      localStorage.setItem(REEF_LIBRARY_KEY, JSON.stringify(normalized.slice(0, 80)));
+    }
+  } catch(e) {
+    console.warn('Could not migrate Reef Library metadata', e);
+  }
 }
 
 function saveReefLibraryDoc(doc) {
@@ -5073,6 +5145,8 @@ getLocalTankMemorySummary = function(userMsg = '') {
   const libraryLines = getReefLibraryMemoryLines(userMsg);
   return `${base}\n\nREEF LIBRARY DOCUMENTS RELEVANT TO THIS QUESTION:\n${libraryLines.length ? libraryLines.join('\n\n') : 'No relevant Reef Library documents found for this question.'}`;
 };
+
+try { migrateReefLibraryMetadata(); } catch(e) {}
 
 // Ensure library is in backup list even if this build's constant was defined earlier.
 try {

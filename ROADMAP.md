@@ -19,14 +19,16 @@
 - [x] Update architecture, development guidelines, test plan, and changelog.
 - [x] Make no runtime changes in this documentation build.
 
-## Build 1B — Structured Context and Evidence
+## Build 1B — Structured Context and Evidence — Complete in v4.3.10
 
-- [ ] Add normalized tank-observation and evidence-record modules.
-- [ ] Wrap existing parameter, action, reminder, inventory, Tank Memory, Reef Library, and Apex inputs.
-- [ ] Add data freshness and quality labels.
-- [ ] Add source class, publication/review dates, status, and topic metadata to Reef Library records.
-- [ ] Preserve all legacy data and backup compatibility.
-- [ ] Add deterministic fixtures and context-selection tests.
+- [x] Add normalized tank-observation and evidence-record module in `ai/evidence-engine.js`.
+- [x] Wrap existing parameter, action, completed-task, reminder, inventory, equipment, Tank Knowledge, Reef Library, and Apex inputs.
+- [x] Add source, timestamp, freshness, authority, reliability, and data-quality labels.
+- [x] Add current-state selection, trend evidence, stale-data warnings, and explicit live/manual pH conflicts.
+- [x] Add source class, publication/review dates, status, topics, trust weight, equipment/firmware scope, and supersession metadata to Reef Library records.
+- [x] Preserve legacy data and backup compatibility through in-place metadata migration.
+- [x] Keep the legacy context path as a fallback during migration.
+- [x] Add deterministic evidence and Parameter Log navigation regression tests.
 
 ## Build 1C — Decision, Skeptic, Confidence, and Journal
 

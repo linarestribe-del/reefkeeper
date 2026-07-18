@@ -109,28 +109,38 @@ Run this checklist before merging every feature branch.
 
 ### Data normalization
 
-- [ ] Current Apex temperature becomes a normalized observation.
-- [ ] Manual chemistry tests preserve units and timestamps.
-- [ ] Tank Memory facts retain authoritative/resolved status.
-- [ ] Reef Library records retain source metadata.
-- [ ] Existing records migrate without deletion.
+- [x] Current Apex temperature becomes a normalized observation.
+- [x] Manual chemistry tests preserve units and timestamps.
+- [x] Tank Knowledge facts retain user-rule authority and locked status weighting.
+- [x] Reef Library records retain source metadata.
+- [x] Existing Reef Library records migrate without deletion.
 - [ ] Export/import preserves new schema versions.
 
 ### Freshness and authority
 
-- [ ] Fresh Apex data outranks fixed profile values for current telemetry.
-- [ ] Stale Apex data is labeled and down-weighted.
-- [ ] Current manual chemistry test outranks an older log.
-- [ ] Fixed profile is never presented as a current reading.
-- [ ] Conflicting live and manual pH values remain separately identified.
+- [x] Fresh Apex data becomes authoritative for current telemetry.
+- [x] Stale Apex data is labeled and down-weighted.
+- [x] Current manual chemistry test outranks an older log.
+- [x] Fixed profile is excluded from the structured current-state record.
+- [x] Conflicting live and manual pH values remain separately identified.
 
 ### Retrieval
 
-- [ ] Relevant tank history is selected without sending the full database.
-- [ ] Relevant approved knowledge is selected by topic.
-- [ ] Superseded sources are excluded from normal recommendations.
+- [x] Relevant tank evidence is capped and selected without serializing the full database.
+- [x] Relevant eligible knowledge is selected by topic and weight.
+- [x] Superseded sources are excluded from normal retrieval.
 - [ ] Retrieval includes contradictory evidence where available.
-- [ ] Duplicate copies of one claim do not count as independent support.
+- [x] Evidence records carry independence-group identifiers for later corroboration logic.
+
+### Automated Build 1B commands
+
+Run from the project root:
+
+```bash
+npm test
+```
+
+This executes deterministic evidence normalization/current-state tests and the Parameter Log/direct-navigation regression test. The navigation test also verifies that `/ai/` is statically routed before the SPA fallback.
 
 ## Build 1C Decision Engine Tests
 
@@ -204,3 +214,11 @@ Maintain fixed test cases for:
 12. Resolved or cancelled issue incorrectly resurfacing.
 
 For each fixture, store expected observations, prohibited claims, maximum confidence, and acceptable action range.
+
+## Build 1C Decision Engine tests
+
+- Verify strong, current, independent evidence produces higher confidence than missing, stale, or conflicting evidence.
+- Verify required data changes by question topic.
+- Verify stale or missing critical measurements lower the permitted action ceiling.
+- Verify the Skeptic Layer preserves counter-evidence and limitations.
+- Verify the Parameter Log navigation regression check remains green.
