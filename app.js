@@ -1512,10 +1512,33 @@ function initTrendChartInteractions(container, model, param) {
     if (point) updateTrendInspector(point.index);
   };
 
-  svg.addEventListener('pointerdown', (event) => inspectClientX(event.clientX));
-  svg.addEventListener('pointermove', (event) => {
-    if (event.pointerType === 'mouse') inspectClientX(event.clientX);
+  let activePointerId = null;
+
+  svg.addEventListener('pointerdown', (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    activePointerId = event.pointerId;
+    if (event.pointerType !== 'mouse' && typeof svg.setPointerCapture === 'function') {
+      try { svg.setPointerCapture(event.pointerId); } catch(e) {}
+    }
+    inspectClientX(event.clientX);
   });
+
+  svg.addEventListener('pointermove', (event) => {
+    const isActiveDrag = activePointerId !== null && event.pointerId === activePointerId;
+    if (event.pointerType === 'mouse' || isActiveDrag) inspectClientX(event.clientX);
+  });
+
+  const endPointerDrag = (event) => {
+    if (activePointerId !== event.pointerId) return;
+    if (typeof svg.hasPointerCapture === 'function' && svg.hasPointerCapture(event.pointerId)) {
+      try { svg.releasePointerCapture(event.pointerId); } catch(e) {}
+    }
+    activePointerId = null;
+  };
+
+  svg.addEventListener('pointerup', endPointerDrag);
+  svg.addEventListener('pointercancel', endPointerDrag);
+  svg.addEventListener('lostpointercapture', () => { activePointerId = null; });
   svg.addEventListener('click', (event) => inspectClientX(event.clientX));
   svg.addEventListener('keydown', (event) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;

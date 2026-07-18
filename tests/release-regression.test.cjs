@@ -13,7 +13,7 @@ assert(html.includes('ai/evidence-engine.js?v=20260717-build-1b'));
 assert(html.includes('ai/decision-engine.js?v=20260718-build-1c'));
 assert(html.includes('ai/trend-engine.js?v=20260718-build-2a'));
 assert(html.includes('ai/trend-chart.js?v=20260718-build-2b'));
-assert(html.includes('app.js?v=20260718-build-2b-graphs'));
+assert(html.includes('app.js?v=20260718-build-2b1-drag'));
 assert(app.includes('window.ReefKeeperDecisionEngine.evaluate(evidenceContext)'));
 assert(app.includes('window.ReefKeeperTrendEngine'));
 assert(app.includes('Relevant logged events in this period'));
@@ -21,8 +21,13 @@ assert(css.includes('Build 2A: deterministic parameter analytics'));
 assert(css.includes('Build 2B: touch-friendly parameter graph presentation'));
 assert(app.includes('window.ReefKeeperTrendChart'));
 assert(app.includes('Tap or drag across the graph to inspect'));
+
+assert(app.includes('let activePointerId = null;'));
+assert(app.includes("svg.addEventListener('pointerup', endPointerDrag)"));
+assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
+assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
-assert.equal(pkg.version, '4.3.12');
+assert.equal(pkg.version, '4.3.13');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert(vercel.routes.some((route) => route.src === '/ai/(.*)' && route.dest === '/ai/$1'));
 

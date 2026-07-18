@@ -1,3 +1,10 @@
+## Unreleased – Build 2B.1: Touch Drag Repair
+
+- Fixed iPhone parameter-chart dragging so pointer movement updates the inspected reading while a finger remains on the chart.
+- Added pointer capture and pointer end/cancel cleanup so dragging remains reliable across the graph surface.
+- Preserved vertical page scrolling through the existing `touch-action: pan-y` chart rule.
+- No changes to Ask AI, navigation, saved data, Apex integration, or parameter analytics.
+
 ## v4.3.12 — Build 2B: Graph Display and Touch Inspection
 
 ### Added
