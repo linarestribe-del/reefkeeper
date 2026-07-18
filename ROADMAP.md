@@ -1,6 +1,6 @@
 # Reef Keeper Roadmap
 
-**Last updated:** July 17, 2026
+**Last updated:** July 18, 2026
 
 ## Current Stable Line — v4.3.x
 
@@ -30,26 +30,42 @@
 - [x] Keep the legacy context path as a fallback during migration.
 - [x] Add deterministic evidence and Parameter Log navigation regression tests.
 
-## Build 1C — Decision, Skeptic, Confidence, and Journal
+## Build 1C — Decision, Skeptic, and Confidence — Complete
 
-- [ ] Add structured server response contract.
-- [ ] Separate observation, inference, recommendation, monitoring, and confidence.
-- [ ] Add alternative-explanation skeptic pass.
-- [ ] Enforce confidence caps and conservative action ladder.
-- [ ] Add opt-in Decision Journal records and outcome dates.
-- [ ] Preserve existing chat modes and reminder proposals.
+- [x] Add deterministic evidence review before Ask AI.
+- [x] Detect missing, stale, and conflicting evidence.
+- [x] Add alternative-explanation skeptic checks.
+- [x] Enforce confidence caps and a conservative action ladder.
+- [x] Preserve existing chat modes and the Build 1B fallback path.
+- [ ] Add opt-in Decision Journal records and outcome dates in a later isolated build.
 
-## Build 2 — Graphs, Trends, and ICP
+## Build 2A — Manual Parameter Analytics — Complete in v4.3.11
+
+- [x] Add deterministic trend calculations for manual chemistry logs.
+- [x] Classify rising, falling, stable, oscillating, and insufficient-data patterns.
+- [x] Show rate of change, target-range status, trend strength, and cautious estimates.
+- [x] Correlate relevant maintenance/completed events without claiming causation.
+- [x] Preserve the existing chart, log storage, chat UI, and core asset filenames.
+
+## Build 2B — Graph Display and Event Overlays
+
+- [ ] Add explicit target bands and maintenance markers to manual chemistry graphs.
+- [ ] Add selectable time windows and honest gap display.
+- [ ] Improve touch inspection of individual readings and events.
+- [ ] Keep analytics deterministic and independently testable.
+
+## Build 2C — Apex History and ICP
 
 - [ ] Persist Apex telemetry history without overwhelming storage.
 - [ ] Add 24-hour, 7-day, 30-day, 90-day, 1-year, and all-history views.
 - [ ] Add temperature, pH, ORP, and supported Apex state graphs.
-- [ ] Add manual chemistry trend graphs.
-- [ ] Add maintenance, media, dosing, treatment, and calibration event overlays.
-- [ ] Display gaps and data completeness honestly.
-- [ ] Add trend calculations and AI annotations.
 - [ ] Add ICP report import, user verification, element history, and comparisons.
-- [ ] Connect all trend findings to the Evidence Engine.
+- [ ] Connect trend findings to the Evidence Engine.
+
+## Later Explainability UI
+
+- [ ] Add recommendation explanations only after the parameter and chat paths are independently stable.
+- [ ] Begin with a normal in-answer evidence section before adding expandable controls.
 
 ## Build 3 — Aquarium Observer
 

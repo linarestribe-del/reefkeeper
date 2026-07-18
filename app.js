@@ -1422,6 +1422,33 @@ function trendXAxisLabels(points, x, yBase) {
   }).join('');
 }
 
+function getTrendAnalysisEvents() {
+  const actions = typeof getActionEntries === 'function' ? getActionEntries() : [];
+  const completed = typeof getCompletedHistoryEntries === 'function' ? getCompletedHistoryEntries() : [];
+  return [...actions, ...completed];
+}
+
+function trendMetricValue(value, param) {
+  if (!Number.isFinite(value)) return '—';
+  const decimals = param.key === 'sal' ? 3 : (param.key === 'po4' || param.key === 'ph' ? 2 : (param.key === 'alk' || param.key === 'no3' ? 1 : 0));
+  return `${Number(value).toFixed(decimals)}${param.unit ? ` ${param.unit}` : ''}`;
+}
+
+function trendSpanLabel(days) {
+  if (!Number.isFinite(days) || days <= 0) return 'same day';
+  const rounded = Math.max(1, Math.round(days));
+  return `${rounded} day${rounded === 1 ? '' : 's'}`;
+}
+
+function trendStatusClass(status) {
+  return String(status || 'unknown').toLowerCase().replace(/[^a-z]+/g, '-');
+}
+
+function trendEventDate(event) {
+  const d = new Date(event?.time || 0);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
 function renderTrendChart(paramKey = currentTrendParam) {
   currentTrendParam = paramKey;
   renderTrendControls();
@@ -1429,9 +1456,29 @@ function renderTrendChart(paramKey = currentTrendParam) {
   if (!container) return;
 
   const param = TREND_PARAMS.find(p => p.key === paramKey) || TREND_PARAMS[0];
-  const points = getAllLogsForCharts()
-    .map((log, index) => ({ index, date: log.date || '', shortDate: shortTrendDate(log), value: parseFloat(log[param.key]) }))
-    .filter(p => Number.isFinite(p.value));
+  const rawPoints = getAllLogsForCharts()
+    .map(log => ({
+      date: log.date || '',
+      isoDate: log.isoDate || log.date || '',
+      value: parseFloat(log[param.key]),
+      raw: log
+    }))
+    .filter(point => Number.isFinite(point.value));
+
+  const engine = window.ReefKeeperTrendEngine;
+  const analysis = engine && typeof engine.analyze === 'function'
+    ? engine.analyze({ paramKey, points: rawPoints, events: getTrendAnalysisEvents() })
+    : null;
+
+  const points = analysis
+    ? analysis.points.map((point, index) => ({
+        index,
+        date: point.date || new Date(point.time).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
+        shortDate: new Date(point.time).toLocaleDateString('en-US', { month:'short', day:'numeric' }),
+        value: point.value,
+        time: point.time
+      }))
+    : rawPoints.map((point, index) => ({ ...point, index, shortDate: shortTrendDate(point) }));
 
   if (points.length < 2) {
     container.innerHTML = `<div class="trend-chart-title">${param.label}</div><div class="trend-empty">Log at least two ${param.label.toLowerCase()} readings to see a trend.</div>`;
@@ -1441,32 +1488,67 @@ function renderTrendChart(paramKey = currentTrendParam) {
   const width = 320, height = 180, padL = 38, padR = 14, padT = 18, padB = 34;
   const minValRaw = Math.min(...points.map(p => p.value));
   const maxValRaw = Math.max(...points.map(p => p.value));
-  const spread = Math.max(maxValRaw - minValRaw, Math.abs(maxValRaw) * 0.08, 0.1);
+  const minimumSpread = param.key === 'sal' ? 0.002 : (param.key === 'po4' || param.key === 'ph' ? 0.10 : 0.1);
+  const spread = Math.max(maxValRaw - minValRaw, Math.abs(maxValRaw) * 0.08, minimumSpread);
   const minVal = minValRaw - spread * 0.18;
   const maxVal = maxValRaw + spread * 0.18;
   const x = i => padL + (points.length === 1 ? 0 : (i / (points.length - 1)) * (width - padL - padR));
   const y = v => padT + ((maxVal - v) / (maxVal - minVal)) * (height - padT - padB);
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
+  const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
   const latest = points[points.length - 1];
   const previous = points[points.length - 2];
   const delta = latest.value - previous.value;
-  const trendWord = Math.abs(delta) < 0.0001 ? 'flat' : delta > 0 ? 'up' : 'down';
-  const subtitle = `Latest: ${latest.value}${param.unit ? ' ' + param.unit : ''} · ${trendWord} ${Math.abs(delta).toFixed(param.key === 'sal' ? 3 : param.key === 'po4' || param.key === 'ph' ? 2 : 1)} since last log`;
-  const labelMin = minValRaw.toFixed(param.key === 'sal' ? 3 : param.key === 'po4' || param.key === 'ph' ? 2 : 1);
-  const labelMax = maxValRaw.toFixed(param.key === 'sal' ? 3 : param.key === 'po4' || param.key === 'ph' ? 2 : 1);
+  const fallbackTrend = Math.abs(delta) < 0.0001 ? 'stable' : delta > 0 ? 'rising' : 'falling';
+  const trend = analysis?.trend || fallbackTrend;
+  const subtitle = analysis
+    ? `${analysis.summary} Based on ${points.length} readings across ${trendSpanLabel(analysis.spanDays)}.`
+    : `Latest: ${trendMetricValue(latest.value, param)} · ${fallbackTrend}`;
+  const labelMin = trendMetricValue(minValRaw, { ...param, unit:'' });
+  const labelMax = trendMetricValue(maxValRaw, { ...param, unit:'' });
+
+  const config = analysis?.config;
+  const targetText = config ? `${trendMetricValue(config.target[0], param)}–${trendMetricValue(config.target[1], param)}` : '—';
+  const eventsHtml = analysis?.events?.length ? `
+    <div class="trend-events">
+      <div class="trend-events-title">Relevant logged events in this period</div>
+      ${analysis.events.slice(-4).map(event => `
+        <div class="trend-event-row">
+          <span>${escapeHtml(trendEventDate(event))}</span>
+          <strong>${escapeHtml(event.title)}</strong>
+        </div>`).join('')}
+      <div class="trend-events-note">These events occurred during the trend period; timing alone does not prove they caused the change.</div>
+    </div>` : '';
+
+  const analyticsHtml = analysis ? `
+    <div class="trend-analytics" data-trend-version="${escapeHtml(analysis.version || '2A')}">
+      <div class="trend-analytics-heading">
+        <span class="trend-status-badge ${trendStatusClass(analysis.trend)}">${escapeHtml(analysis.trend)}</span>
+        <span class="trend-strength">${escapeHtml(analysis.strength)} trend · ${Math.round((analysis.r2 || 0) * 100)}% fit</span>
+      </div>
+      <div class="trend-metrics-grid">
+        <div class="trend-metric"><span>Latest</span><strong>${escapeHtml(trendMetricValue(analysis.latest?.value, param))}</strong></div>
+        <div class="trend-metric"><span>Rate</span><strong>${escapeHtml(analysis.rateDisplay || '—')}</strong></div>
+        <div class="trend-metric"><span>Working range</span><strong>${escapeHtml(targetText)}</strong></div>
+        <div class="trend-metric"><span>Status</span><strong>${escapeHtml(analysis.status)}</strong></div>
+      </div>
+      <div class="trend-interpretation${analysis.rapidChange ? ' warning' : ''}">${escapeHtml(analysis.interpretation)}</div>
+      ${analysis.projection ? `<div class="trend-projection">Directional estimate: approximately ${analysis.projection.days} days to reach the nearest working-range boundary if the current rate continues. This is not a dosing target.</div>` : ''}
+      ${eventsHtml}
+    </div>` : '';
 
   container.innerHTML = `
     <div class="trend-chart-title">${param.label}</div>
-    <div class="trend-chart-subtitle">${subtitle}</div>
-    <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${param.label} trend chart">
+    <div class="trend-chart-subtitle">${escapeHtml(subtitle)}</div>
+    <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(param.label)} trend chart">
       <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${height-padB}" stroke="rgba(0,119,182,0.18)" stroke-width="2" />
       <line x1="${padL}" y1="${height-padB}" x2="${width-padR}" y2="${height-padB}" stroke="rgba(0,119,182,0.18)" stroke-width="2" />
-      <text x="4" y="${padT+4}" font-size="10" font-weight="800" fill="#0077b6">${labelMax}</text>
-      <text x="4" y="${height-padB+4}" font-size="10" font-weight="800" fill="#0077b6">${labelMin}</text>
-      <path d="${path}" fill="none" stroke="#0077b6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-      ${points.map((p,i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="5" fill="#ffffff" stroke="#0077b6" stroke-width="3"><title>${escapeHtml(p.date)}: ${p.value}</title></circle>`).join('')}
+      <text x="4" y="${padT+4}" font-size="10" font-weight="800" fill="#0077b6">${escapeHtml(labelMax)}</text>
+      <text x="4" y="${height-padB+4}" font-size="10" font-weight="800" fill="#0077b6">${escapeHtml(labelMin)}</text>
+      <path d="${pathData}" fill="none" stroke="#0077b6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      ${points.map((p,i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="5" fill="#ffffff" stroke="#0077b6" stroke-width="3"><title>${escapeHtml(p.date)}: ${escapeHtml(trendMetricValue(p.value, param))}</title></circle>`).join('')}
       ${trendXAxisLabels(points, x, height - 10)}
-    </svg>`;
+    </svg>
+    ${analyticsHtml}`;
 }
 
 // ── Maintenance / action history ───────────────────────────────────────────

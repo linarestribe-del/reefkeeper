@@ -1,3 +1,26 @@
+## v4.3.11 — Build 2A: Parameter Analytics
+
+### Added
+
+- Added `ai/trend-engine.js`, a deterministic parameter-analysis module.
+- Added rising, falling, stable, oscillating, and insufficient-data classification.
+- Added rate-of-change, target-range status, trend strength, cautious directional estimates, and rapid-change warnings.
+- Added parameter-relevant maintenance and completed-task correlation with a clear non-causation disclaimer.
+- Added automated Trend Engine and release regression tests.
+
+### Updated
+
+- Expanded the existing Parameter Trends card with a compact analytics summary while retaining the current SVG chart and saved-log format.
+- Kept the production asset names `app.js` and `css/app.css`; only cache query labels changed.
+- Left Ask AI, Decision Engine behavior, and chat UI unchanged.
+
+### Safety and compatibility
+
+- No localStorage schema changes.
+- No existing parameter, maintenance, reminder, or completed-history records are rewritten.
+- No Why button, experimental chat renderer, or Build 2 asset renaming is included.
+- The Parameter Log navigation repair remains covered by regression tests.
+
 ## Unreleased — Build 1C: Decision Engine
 
 - Added deterministic evidence confidence scoring based on relevance-weighted evidence, freshness, completeness, conflicts, and data-quality limitations.
