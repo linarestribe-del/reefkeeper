@@ -175,3 +175,8 @@ Sensors and records
 6. Run targeted and full regression tests.
 7. Preview deploy before production.
 8. Update `CHANGELOG.md`, `ROADMAP.md`, `TEST_PLAN.md`, and this document.
+
+
+### Build 2B graph presentation
+
+`ai/trend-chart.js` converts deterministic trend results into a time-scaled chart model. It owns chart coordinates, readable axis ticks, target-band geometry, event-marker positions, and nearest-point inspection. `app.js` remains responsible for rendering that model into the existing Parameter Trends card. No graph code changes saved-record schemas or AI context.

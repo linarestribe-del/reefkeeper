@@ -170,3 +170,12 @@ maintenance-engine.js         due tasks and planning
 - Reef Library migration may add metadata fields but must retain document IDs, text, dates, and existing fields.
 - Any new static folder must be explicitly routed in `vercel.json`.
 - Parameter Log navigation is a release-blocking regression test.
+
+
+### Graph presentation rules
+
+- Preserve proportional time spacing; do not imply evenly spaced tests when logs have gaps.
+- Keep working ranges visually distinct from measured data.
+- Show maintenance markers as temporal context only, never as proof of causation.
+- Keep point inspection usable by touch and keyboard.
+- Do not rewrite saved logs to support a chart-only feature.

@@ -1410,18 +1410,6 @@ function shortTrendDate(log) {
   return String(log?.date || '').replace(/,\s*\d{4}/, '').slice(0, 8) || 'Log';
 }
 
-function trendXAxisLabels(points, x, yBase) {
-  if (!points.length) return '';
-  const wanted = new Set([0, points.length - 1]);
-  if (points.length > 2) wanted.add(Math.floor((points.length - 1) / 2));
-  if (points.length <= 5) points.forEach((_, i) => wanted.add(i));
-  return points.map((p, i) => {
-    if (!wanted.has(i)) return '';
-    const label = escapeHtml(p.shortDate || p.date || 'Log');
-    return `<text x="${x(i).toFixed(1)}" y="${yBase}" font-size="9" font-weight="800" fill="#48cae4" text-anchor="middle">${label}</text>`;
-  }).join('');
-}
-
 function getTrendAnalysisEvents() {
   const actions = typeof getActionEntries === 'function' ? getActionEntries() : [];
   const completed = typeof getCompletedHistoryEntries === 'function' ? getCompletedHistoryEntries() : [];
@@ -1432,6 +1420,12 @@ function trendMetricValue(value, param) {
   if (!Number.isFinite(value)) return '—';
   const decimals = param.key === 'sal' ? 3 : (param.key === 'po4' || param.key === 'ph' ? 2 : (param.key === 'alk' || param.key === 'no3' ? 1 : 0));
   return `${Number(value).toFixed(decimals)}${param.unit ? ` ${param.unit}` : ''}`;
+}
+
+function trendAxisValue(value, param, decimals) {
+  if (!Number.isFinite(value)) return '—';
+  const places = Number.isFinite(decimals) ? decimals : (param.key === 'sal' ? 3 : (param.key === 'po4' || param.key === 'ph' ? 2 : (param.key === 'alk' || param.key === 'no3' ? 1 : 0)));
+  return Number(value).toFixed(places);
 }
 
 function trendSpanLabel(days) {
@@ -1447,6 +1441,92 @@ function trendStatusClass(status) {
 function trendEventDate(event) {
   const d = new Date(event?.time || 0);
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+function trendChartDateLabel(time, spanDays, includeYear = false) {
+  const date = new Date(time);
+  if (Number.isNaN(date.getTime())) return '';
+  const options = spanDays > 330 || includeYear
+    ? { month:'short', day:'numeric', year:'2-digit' }
+    : { month:'short', day:'numeric' };
+  return date.toLocaleDateString('en-US', options);
+}
+
+function trendChangeText(point, index, points, param) {
+  if (!point || index <= 0) return 'First reading in this view';
+  const prior = points[index - 1];
+  const delta = point.value - prior.value;
+  const sign = delta > 0 ? '+' : '';
+  return `${sign}${trendMetricValue(delta, param)} since ${trendChartDateLabel(prior.time, 0)}`;
+}
+
+let activeTrendChart = null;
+
+function updateTrendInspector(pointIndex) {
+  if (!activeTrendChart) return;
+  const { container, model, param } = activeTrendChart;
+  const index = Math.max(0, Math.min(model.points.length - 1, Number(pointIndex) || 0));
+  const point = model.points[index];
+  const inspector = container.querySelector('.trend-inspector');
+  if (!inspector || !point) return;
+
+  container.querySelectorAll('.trend-point').forEach((circle) => {
+    const isActive = Number(circle.dataset.pointIndex) === index;
+    circle.classList.toggle('active', isActive);
+    circle.setAttribute('r', isActive ? '7' : '5');
+  });
+
+  const guide = container.querySelector('.trend-inspector-guide');
+  if (guide) {
+    guide.setAttribute('x1', point.x.toFixed(1));
+    guide.setAttribute('x2', point.x.toFixed(1));
+    guide.classList.add('visible');
+  }
+
+  const nearbyWindow = Math.max(86400000, (model.endTime - model.startTime) / 20);
+  const nearbyEvents = model.events.filter((event) => Math.abs(event.time - point.time) <= nearbyWindow);
+  const eventText = nearbyEvents.length
+    ? `Nearby: ${nearbyEvents.map((event) => event.title).join(' · ')}`
+    : 'No nearby logged maintenance event';
+
+  inspector.innerHTML = `
+    <div class="trend-inspector-main">
+      <span>${escapeHtml(trendChartDateLabel(point.time, model.spanDays, true))}</span>
+      <strong>${escapeHtml(trendMetricValue(point.value, param))}</strong>
+    </div>
+    <div class="trend-inspector-change">${escapeHtml(trendChangeText(point, index, model.points, param))}</div>
+    <div class="trend-inspector-event">${escapeHtml(eventText)}</div>`;
+  inspector.dataset.pointIndex = String(index);
+}
+
+function initTrendChartInteractions(container, model, param) {
+  const svg = container.querySelector('.trend-svg');
+  if (!svg || !model) return;
+  activeTrendChart = { container, model, param };
+
+  const inspectClientX = (clientX) => {
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width) return;
+    const svgX = ((clientX - rect.left) / rect.width) * model.width;
+    const point = model.nearestPointByX(svgX);
+    if (point) updateTrendInspector(point.index);
+  };
+
+  svg.addEventListener('pointerdown', (event) => inspectClientX(event.clientX));
+  svg.addEventListener('pointermove', (event) => {
+    if (event.pointerType === 'mouse') inspectClientX(event.clientX);
+  });
+  svg.addEventListener('click', (event) => inspectClientX(event.clientX));
+  svg.addEventListener('keydown', (event) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const current = Number(container.querySelector('.trend-inspector')?.dataset.pointIndex || model.points.length - 1);
+    if (event.key === 'Home') updateTrendInspector(0);
+    else if (event.key === 'End') updateTrendInspector(model.points.length - 1);
+    else updateTrendInspector(current + (event.key === 'ArrowRight' ? 1 : -1));
+  });
+
+  updateTrendInspector(model.points.length - 1);
 }
 
 function renderTrendChart(paramKey = currentTrendParam) {
@@ -1478,33 +1558,44 @@ function renderTrendChart(paramKey = currentTrendParam) {
         value: point.value,
         time: point.time
       }))
-    : rawPoints.map((point, index) => ({ ...point, index, shortDate: shortTrendDate(point) }));
+    : rawPoints.map((point, index) => ({
+        ...point,
+        index,
+        time: new Date(point.isoDate || point.date || 0).getTime(),
+        shortDate: shortTrendDate(point)
+      })).filter(point => Number.isFinite(point.time));
 
   if (points.length < 2) {
+    activeTrendChart = null;
     container.innerHTML = `<div class="trend-chart-title">${param.label}</div><div class="trend-empty">Log at least two ${param.label.toLowerCase()} readings to see a trend.</div>`;
     return;
   }
 
-  const width = 320, height = 180, padL = 38, padR = 14, padT = 18, padB = 34;
-  const minValRaw = Math.min(...points.map(p => p.value));
-  const maxValRaw = Math.max(...points.map(p => p.value));
-  const minimumSpread = param.key === 'sal' ? 0.002 : (param.key === 'po4' || param.key === 'ph' ? 0.10 : 0.1);
-  const spread = Math.max(maxValRaw - minValRaw, Math.abs(maxValRaw) * 0.08, minimumSpread);
-  const minVal = minValRaw - spread * 0.18;
-  const maxVal = maxValRaw + spread * 0.18;
-  const x = i => padL + (points.length === 1 ? 0 : (i / (points.length - 1)) * (width - padL - padR));
-  const y = v => padT + ((maxVal - v) / (maxVal - minVal)) * (height - padT - padB);
-  const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ');
-  const latest = points[points.length - 1];
-  const previous = points[points.length - 2];
+  const chartEngine = window.ReefKeeperTrendChart;
+  const model = chartEngine && typeof chartEngine.buildModel === 'function'
+    ? chartEngine.buildModel({
+        paramKey,
+        points,
+        target: analysis?.config?.target || null,
+        events: analysis?.events || [],
+        width: 360,
+        height: 224,
+        padding: { left: 52, right: 16, top: 24, bottom: 42 }
+      })
+    : null;
+
+  if (!model) {
+    container.innerHTML = `<div class="trend-chart-title">${param.label}</div><div class="trend-empty">The chart could not be prepared from the saved readings.</div>`;
+    return;
+  }
+
+  const latest = model.points[model.points.length - 1];
+  const previous = model.points[model.points.length - 2];
   const delta = latest.value - previous.value;
   const fallbackTrend = Math.abs(delta) < 0.0001 ? 'stable' : delta > 0 ? 'rising' : 'falling';
-  const trend = analysis?.trend || fallbackTrend;
   const subtitle = analysis
-    ? `${analysis.summary} Based on ${points.length} readings across ${trendSpanLabel(analysis.spanDays)}.`
+    ? `${analysis.summary} Based on ${model.points.length} readings across ${trendSpanLabel(analysis.spanDays)}.`
     : `Latest: ${trendMetricValue(latest.value, param)} · ${fallbackTrend}`;
-  const labelMin = trendMetricValue(minValRaw, { ...param, unit:'' });
-  const labelMax = trendMetricValue(maxValRaw, { ...param, unit:'' });
 
   const config = analysis?.config;
   const targetText = config ? `${trendMetricValue(config.target[0], param)}–${trendMetricValue(config.target[1], param)}` : '—';
@@ -1536,19 +1627,64 @@ function renderTrendChart(paramKey = currentTrendParam) {
       ${eventsHtml}
     </div>` : '';
 
+  const targetBandSvg = model.targetBand ? `
+      <rect class="trend-target-band" x="${model.padding.left}" y="${model.targetBand.yTop.toFixed(1)}" width="${model.plotWidth.toFixed(1)}" height="${Math.max(2, model.targetBand.yBottom - model.targetBand.yTop).toFixed(1)}" rx="4"></rect>
+      <text class="trend-target-label" x="${model.width - model.padding.right - 4}" y="${Math.max(model.padding.top + 10, model.targetBand.yTop - 4).toFixed(1)}" text-anchor="end">working range</text>` : '';
+
+  const valueGridSvg = model.valueTicks.map(tick => `
+      <line class="trend-grid-line" x1="${model.padding.left}" y1="${tick.y.toFixed(1)}" x2="${model.width - model.padding.right}" y2="${tick.y.toFixed(1)}"></line>
+      <text class="trend-axis-label trend-axis-value" x="${model.padding.left - 7}" y="${(tick.y + 3.5).toFixed(1)}" text-anchor="end">${escapeHtml(trendAxisValue(tick.value, param, model.valueScale.decimals))}</text>`).join('');
+
+  const dateTicksSvg = model.dateTicks.map(tick => `
+      <line class="trend-date-tick" x1="${tick.x.toFixed(1)}" y1="${model.height - model.padding.bottom}" x2="${tick.x.toFixed(1)}" y2="${model.height - model.padding.bottom + 5}"></line>
+      <text class="trend-axis-label trend-axis-date" x="${tick.x.toFixed(1)}" y="${model.height - 13}" text-anchor="middle">${escapeHtml(trendChartDateLabel(tick.time, model.spanDays))}</text>`).join('');
+
+  const eventMarkersSvg = model.events.map((event, index) => {
+    const markerY = model.padding.top + 5 + ((index % 2) * 8);
+    return `
+      <g class="trend-event-marker">
+        <line x1="${event.x.toFixed(1)}" y1="${markerY}" x2="${event.x.toFixed(1)}" y2="${model.height - model.padding.bottom}"></line>
+        <circle cx="${event.x.toFixed(1)}" cy="${markerY}" r="4"><title>${escapeHtml(trendChartDateLabel(event.time, model.spanDays, true))}: ${escapeHtml(event.title)}</title></circle>
+      </g>`;
+  }).join('');
+
+  const pathData = model.points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ');
+  const pointSvg = model.points.map((point, index) => `
+      <circle class="trend-point${index === model.points.length - 1 ? ' latest' : ''}" data-point-index="${index}" cx="${point.x.toFixed(1)}" cy="${point.y.toFixed(1)}" r="5">
+        <title>${escapeHtml(trendChartDateLabel(point.time, model.spanDays, true))}: ${escapeHtml(trendMetricValue(point.value, param))}</title>
+      </circle>`).join('');
+
+  const legendHtml = `
+    <div class="trend-chart-legend">
+      ${model.targetBand ? '<span><i class="trend-legend-target"></i>Working range</span>' : ''}
+      ${model.events.length ? '<span><i class="trend-legend-event"></i>Logged event</span>' : ''}
+      <span class="trend-inspect-hint">Tap or drag across the graph to inspect</span>
+    </div>`;
+
   container.innerHTML = `
-    <div class="trend-chart-title">${param.label}</div>
+    <div class="trend-chart-title-row">
+      <div class="trend-chart-title">${param.label}</div>
+      <div class="trend-chart-count">${model.points.length} readings</div>
+    </div>
     <div class="trend-chart-subtitle">${escapeHtml(subtitle)}</div>
-    <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(param.label)} trend chart">
-      <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${height-padB}" stroke="rgba(0,119,182,0.18)" stroke-width="2" />
-      <line x1="${padL}" y1="${height-padB}" x2="${width-padR}" y2="${height-padB}" stroke="rgba(0,119,182,0.18)" stroke-width="2" />
-      <text x="4" y="${padT+4}" font-size="10" font-weight="800" fill="#0077b6">${escapeHtml(labelMax)}</text>
-      <text x="4" y="${height-padB+4}" font-size="10" font-weight="800" fill="#0077b6">${escapeHtml(labelMin)}</text>
-      <path d="${pathData}" fill="none" stroke="#0077b6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-      ${points.map((p,i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="5" fill="#ffffff" stroke="#0077b6" stroke-width="3"><title>${escapeHtml(p.date)}: ${escapeHtml(trendMetricValue(p.value, param))}</title></circle>`).join('')}
-      ${trendXAxisLabels(points, x, height - 10)}
-    </svg>
+    <div class="trend-svg-shell">
+      <svg class="trend-svg" viewBox="0 0 ${model.width} ${model.height}" role="img" tabindex="0" aria-label="${escapeHtml(param.label)} trend chart. Use left and right arrow keys to inspect readings.">
+        ${targetBandSvg}
+        ${valueGridSvg}
+        ${dateTicksSvg}
+        ${eventMarkersSvg}
+        <path class="trend-data-line-shadow" d="${pathData}"></path>
+        <path class="trend-data-line" d="${pathData}"></path>
+        <line class="trend-inspector-guide" x1="${latest.x.toFixed(1)}" y1="${model.padding.top}" x2="${latest.x.toFixed(1)}" y2="${model.height - model.padding.bottom}"></line>
+        ${pointSvg}
+        <rect class="trend-touch-layer" x="${model.padding.left}" y="${model.padding.top}" width="${model.plotWidth}" height="${model.plotHeight}"></rect>
+      </svg>
+    </div>
+    ${legendHtml}
+    <div class="trend-inspector" aria-live="polite"></div>
     ${analyticsHtml}`;
+
+  initTrendChartInteractions(container, model, param);
 }
 
 // ── Maintenance / action history ───────────────────────────────────────────

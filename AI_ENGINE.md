@@ -1173,3 +1173,8 @@ The foundation is complete when:
 ## 34. Governing Rule
 
 When implementation convenience conflicts with trustworthy reasoning, trustworthy reasoning wins. When a feature does not improve observation, evidence quality, decision safety, or learning, it should not be added to the AI engine.
+
+
+## Build 2B implementation note
+
+Manual parameter graphs now use a deterministic chart model with proportional time spacing, working-range bands, event markers, and point inspection. These visual elements explain existing evidence; they do not infer causation or modify Decision Engine confidence.

@@ -1,3 +1,24 @@
+## v4.3.12 — Build 2B: Graph Display and Touch Inspection
+
+### Added
+
+- Added `ai/trend-chart.js`, a deterministic presentation model for time-scaled parameter charts.
+- Added explicit working-range bands, readable value-grid lines, improved date labels, and maintenance-event markers.
+- Added touch, mouse, and keyboard inspection of individual readings with date, value, change from the prior reading, and nearby logged events.
+- Added automated chart-model and release regression tests.
+
+### Updated
+
+- Changed graph spacing from equal-by-reading to proportional-by-time so long gaps are visually honest.
+- Improved the latest-reading highlight, chart legend, dark-mode presentation, and compact iPhone layout.
+- Retained the Build 2A analytics panel and non-causation language for event correlations.
+
+### Safety and compatibility
+
+- No Ask AI, navigation, Apex, or saved-data schema changes.
+- No core asset renaming; production remains on `app.js` and `css/app.css`.
+- Existing manual logs, maintenance records, reminders, and completed history remain unchanged.
+
 ## v4.3.11 — Build 2A: Parameter Analytics
 
 ### Added

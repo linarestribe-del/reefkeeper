@@ -222,3 +222,14 @@ For each fixture, store expected observations, prohibited claims, maximum confid
 - Verify stale or missing critical measurements lower the permitted action ceiling.
 - Verify the Skeptic Layer preserves counter-evidence and limitations.
 - Verify the Parameter Log navigation regression check remains green.
+
+
+## Build 2B Graph Display Regression
+
+- Verify graph x positions are proportional to elapsed time rather than reading index.
+- Verify working-range bands are included in the chart domain and rendered for every supported parameter.
+- Verify relevant logged events receive markers only within the displayed trend period.
+- Verify tapping or dragging across the graph selects the nearest reading.
+- Verify keyboard Left/Right/Home/End inspection works when the graph is focused.
+- Verify value/date labels remain readable on narrow iPhone layouts and in Night Reef mode.
+- Verify no Ask AI, navigation, Apex, or localStorage schema changes are introduced.

@@ -47,12 +47,13 @@
 - [x] Correlate relevant maintenance/completed events without claiming causation.
 - [x] Preserve the existing chart, log storage, chat UI, and core asset filenames.
 
-## Build 2B — Graph Display and Event Overlays
+## Build 2B — Graph Display and Event Overlays — Complete in v4.3.12
 
-- [ ] Add explicit target bands and maintenance markers to manual chemistry graphs.
-- [ ] Add selectable time windows and honest gap display.
-- [ ] Improve touch inspection of individual readings and events.
-- [ ] Keep analytics deterministic and independently testable.
+- [x] Add explicit target bands and maintenance markers to manual chemistry graphs.
+- [x] Use proportional date spacing so gaps between tests remain visually honest.
+- [x] Improve touch, mouse, and keyboard inspection of individual readings and nearby events.
+- [x] Keep graph calculations deterministic and independently testable.
+- [ ] Add selectable time windows later when sufficient manual history makes them useful.
 
 ## Build 2C — Apex History and ICP
 
