@@ -1,0 +1,12 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const html = fs.readFileSync('index.html','utf8');
+const vercel = JSON.parse(fs.readFileSync('vercel.json','utf8'));
+assert.match(html, /<details id="latest-ai-why-wrap"/);
+assert.match(html, /<summary>Why\?<span id="latest-ai-why-build">Build 2\.6<\/span><\/summary>/);
+assert.match(html, /id="reefkeeper-build-2-6-native-why-controller"/);
+assert.doesNotMatch(html, /#latest-ai-why-wrap\s*\{[^}]*display\s*:\s*none/is);
+assert.match(html, /<script src="app-build-2-6\.js"><\/script>/);
+assert(vercel.headers.some(item => item.source === '/index.html'));
+assert(vercel.headers.some(item => item.source === '/app-build-2-6.js'));
+console.log('Why renderer tests passed.');
