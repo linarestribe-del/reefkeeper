@@ -8,13 +8,21 @@ const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const rootCss = fs.readFileSync('app.css', 'utf8');
 
-assert(html.includes('css/app.css?v=20260718-build-2b-graphs'));
+assert(html.includes('css/app.css?v=20260718-build-2c-explainability'));
 assert(html.includes('ai/evidence-engine.js?v=20260717-build-1b'));
 assert(html.includes('ai/decision-engine.js?v=20260718-build-1c'));
+assert(html.includes('ai/explainability.js?v=20260718-build-2c'));
 assert(html.includes('ai/trend-engine.js?v=20260718-build-2a'));
 assert(html.includes('ai/trend-chart.js?v=20260718-build-2b'));
-assert(html.includes('app.js?v=20260718-build-2b1-drag'));
+assert(html.includes('app.js?v=20260718-build-2c-explainability'));
 assert(app.includes('window.ReefKeeperDecisionEngine.evaluate(evidenceContext)'));
+assert(app.includes('window.ReefKeeperExplainability.build'));
+assert(app.includes('Evidence review'));
+assert(app.includes('Strongest evidence'));
+assert(app.includes('Missing or stale'));
+assert(app.includes('Skeptic check'));
+assert(app.includes('Action limit'));
+assert(css.includes('Build 2C: deterministic evidence review inside Ask AI responses'));
 assert(app.includes('window.ReefKeeperTrendEngine'));
 assert(app.includes('Relevant logged events in this period'));
 assert(css.includes('Build 2A: deterministic parameter analytics'));
@@ -27,11 +35,12 @@ assert(app.includes("svg.addEventListener('pointerup', endPointerDrag)"));
 assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
-assert.equal(pkg.version, '4.3.13');
+assert(fs.existsSync('ai/explainability.js'));
+assert.equal(pkg.version, '4.3.14');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert(vercel.routes.some((route) => route.src === '/ai/(.*)' && route.dest === '/ai/$1'));
 
-// Build 2B must not reintroduce the experimental Why control or rename core assets.
+// Build 2C must not reintroduce the experimental Why control or rename core assets.
 assert(!html.includes('Why? Build'));
 assert(!html.includes('app-build-'));
 assert(fs.existsSync('app.js'));

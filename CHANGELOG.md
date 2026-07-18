@@ -1,3 +1,20 @@
+## v4.3.14 — Build 2C: In-Answer Explainability
+
+### Added
+
+- Added `ai/explainability.js`, a deterministic presentation layer for Evidence and Decision Engine results.
+- Added a compact Evidence Review directly inside each new Ask AI response when tank context is enabled.
+- The review shows calculated confidence, strongest evidence, missing or stale data, Skeptic Layer notes, and the permitted action ceiling.
+- Saved conversations retain the optional explainability record for new assistant messages.
+- Added automated explainability and release-regression tests.
+
+### Safety and compatibility
+
+- No separate Why button or expandable control.
+- No core asset renaming; production remains on `app.js` and `css/app.css`.
+- No navigation, Apex, parameter-log, or existing saved-data migration changes.
+- Chat history is sanitized to `role` and `content` before being sent to the API, so local explainability metadata is never sent as an unsupported message field.
+
 ## Unreleased – Build 2B.1: Touch Drag Repair
 
 - Fixed iPhone parameter-chart dragging so pointer movement updates the inspected reading while a finger remains on the chart.

@@ -493,17 +493,23 @@ Unavailable. Error while fetching /api/apex-status: ${error && error.message ? e
 
 // ── Backend AI call ─────────────────────────────────────────────────────────
 async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
-  const messages = history.length > 0
-    ? [...history, { role: 'user', content: userMsg }]
+  const cleanHistory = (Array.isArray(history) ? history : [])
+    .map(item => ({ role: item && item.role, content: item && item.content }))
+    .filter(item => (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string');
+  const messages = cleanHistory.length > 0
+    ? [...cleanHistory, { role: 'user', content: userMsg }]
     : [{ role: 'user', content: userMsg }];
 
   const useTankContext = getUseTankContext();
   const liveApexContext = useTankContext ? await buildLiveApexContextForAI() : '';
   let structuredEvidenceContext = '';
   let decisionReviewContext = '';
+  let evidenceContext = null;
+  let decisionReview = null;
+  let contextReviewError = '';
   if (useTankContext && window.ReefKeeperAIContext) {
     try {
-      const evidenceContext = window.ReefKeeperAIContext.collectContext({
+      evidenceContext = window.ReefKeeperAIContext.collectContext({
         question: userMsg,
         apexStatus: window.__reefLastApexStatusForAI || null,
         logs: typeof memoryArray === 'function' ? memoryArray('reef_logs') : [],
@@ -519,11 +525,12 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
       try { window.__reefLastStructuredEvidenceContext = evidenceContext; } catch(e) {}
 
       if (window.ReefKeeperDecisionEngine) {
-        const decisionReview = window.ReefKeeperDecisionEngine.evaluate(evidenceContext);
+        decisionReview = window.ReefKeeperDecisionEngine.evaluate(evidenceContext);
         decisionReviewContext = window.ReefKeeperDecisionEngine.toPromptBlock(decisionReview);
         try { window.__reefLastDecisionReview = decisionReview; } catch(e) {}
       }
     } catch (error) {
+      contextReviewError = error && error.message ? error.message : String(error);
       console.warn('Structured evidence context unavailable; using legacy tank context.', error);
     }
   }
@@ -550,9 +557,24 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
     throw new Error(data.error || `Backend error ${response.status}`);
   }
 
+  let explainability = null;
+  if (useTankContext && window.ReefKeeperExplainability) {
+    try {
+      explainability = window.ReefKeeperExplainability.build({
+        useTankContext,
+        evidenceContext,
+        decisionReview,
+        error: contextReviewError
+      });
+    } catch (error) {
+      console.warn('Explainability summary unavailable.', error);
+    }
+  }
+
   return {
     answer: data.answer || '',
-    reminders: Array.isArray(data.reminders) ? data.reminders : []
+    reminders: Array.isArray(data.reminders) ? data.reminders : [],
+    explainability
   };
 }
 
@@ -771,7 +793,11 @@ function renderChatFromHistory(messages) {
   const box = document.getElementById('chat-messages');
   if (!box) return;
   box.innerHTML = initialChatMessageHtml();
-  (messages || []).forEach(m => appendMsg(m.role === 'assistant' ? 'ai' : 'user', m.content || ''));
+  (messages || []).forEach(m => appendMsg(
+    m.role === 'assistant' ? 'ai' : 'user',
+    m.content || '',
+    { explainability: m && m.explainability || null }
+  ));
   scrollChatToBottom();
 }
 
@@ -879,12 +905,45 @@ function sendQuickQ(btn) {
   sendChat();
 }
 
-function appendMsg(role, text) {
+function explainabilityListHtml(items, emptyText) {
+  const values = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!values.length) return `<div class="ai-explainability-empty">${escapeHtml(emptyText)}</div>`;
+  return `<ul>${values.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
+}
+
+function renderAIExplainability(summary) {
+  if (!summary || typeof summary !== 'object') return '';
+  const confidence = summary.confidence || {};
+  const score = Number.isFinite(Number(confidence.score)) ? `${Math.round(Number(confidence.score))}%` : 'Not calculated';
+  const label = confidence.label ? ` · ${escapeHtml(confidence.label)}` : '';
+  return `<section class="ai-explainability" aria-label="Evidence review">
+    <div class="ai-explainability-header">
+      <span>Evidence review</span>
+      <strong>${escapeHtml(score)}${label}</strong>
+    </div>
+    <div class="ai-explainability-row">
+      <div class="ai-explainability-label">Strongest evidence</div>
+      ${explainabilityListHtml(summary.strongestEvidence, 'No question-specific tank evidence was available.')}
+    </div>
+    <div class="ai-explainability-row">
+      <div class="ai-explainability-label">Missing or stale</div>
+      ${explainabilityListHtml(summary.missingOrStale, 'No material missing or stale evidence was identified.')}
+    </div>
+    <div class="ai-explainability-row">
+      <div class="ai-explainability-label">Skeptic check</div>
+      ${explainabilityListHtml(summary.skepticNotes, 'No major contradiction was identified; continue monitoring outcomes.')}
+    </div>
+    <div class="ai-explainability-action"><span>Action limit</span><strong>${escapeHtml(summary.actionLabel || 'Use a conservative, monitored next step')}</strong></div>
+  </section>`;
+}
+
+function appendMsg(role, text, options = {}) {
   const msgs = document.getElementById('chat-messages');
   const div = document.createElement('div');
   div.className = 'msg ' + role;
   const avatar = role === 'ai' ? '<div class="msg-avatar">🐠</div>' : '';
-  div.innerHTML = `${avatar}<div class="msg-bubble">${text.replace(/\n/g, '<br>')}</div>`;
+  const explainabilityHtml = role === 'ai' ? renderAIExplainability(options.explainability) : '';
+  div.innerHTML = `${avatar}<div class="msg-bubble">${String(text || '').replace(/\n/g, '<br>')}${explainabilityHtml}</div>`;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
   return div;
@@ -1180,9 +1239,10 @@ async function sendChat(event) {
   try {
     const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode());
     removeTyping();
-    appendMsg('ai', result.answer || 'I received your question, but the answer came back empty.');
+    const assistantAnswer = result.answer || 'I received your question, but the answer came back empty.';
+    appendMsg('ai', assistantAnswer, { explainability: result.explainability || null });
     appendSuggestedReminders(result.reminders);
-    chatHistory.push({ role: 'assistant', content: result.answer || '' });
+    chatHistory.push({ role: 'assistant', content: assistantAnswer, explainability: result.explainability || null });
     if (chatHistory.length > 80) chatHistory = chatHistory.slice(-80);
     saveCurrentConversation();
     if (attachedFileContext) clearAttachment();

@@ -1178,3 +1178,8 @@ When implementation convenience conflicts with trustworthy reasoning, trustworth
 ## Build 2B implementation note
 
 Manual parameter graphs now use a deterministic chart model with proportional time spacing, working-range bands, event markers, and point inspection. These visual elements explain existing evidence; they do not infer causation or modify Decision Engine confidence.
+
+
+## In-Answer Explainability
+
+Build 2C presents deterministic Decision Engine metadata directly inside new tank-context Ask AI responses. The presentation includes calculated confidence, strongest weighted evidence, missing or stale evidence, Skeptic Layer notes, and the current action ceiling. This section is generated from structured data, not from a language-model self-critique.

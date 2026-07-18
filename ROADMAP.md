@@ -55,7 +55,15 @@
 - [x] Keep graph calculations deterministic and independently testable.
 - [ ] Add selectable time windows later when sufficient manual history makes them useful.
 
-## Build 2C — Apex History and ICP
+## Build 2C — In-Answer Explainability — Complete in v4.3.14
+
+- [x] Show deterministic confidence inside new tank-context Ask AI responses.
+- [x] Show the strongest evidence used by the Decision Engine.
+- [x] Identify missing or stale evidence and Skeptic Layer limitations.
+- [x] Show the conservative action ceiling directly inside the answer.
+- [x] Avoid a separate Why button, asset renaming, navigation changes, and saved-data migration.
+
+## Build 2D — Apex History and ICP
 
 - [ ] Persist Apex telemetry history without overwhelming storage.
 - [ ] Add 24-hour, 7-day, 30-day, 90-day, 1-year, and all-history views.
@@ -65,8 +73,8 @@
 
 ## Later Explainability UI
 
-- [ ] Add recommendation explanations only after the parameter and chat paths are independently stable.
-- [ ] Begin with a normal in-answer evidence section before adding expandable controls.
+- [x] Begin with a normal in-answer evidence section after the parameter and chat paths proved stable.
+- [ ] Consider optional progressive disclosure only after the in-answer review has been used successfully in production.
 
 ## Build 3 — Aquarium Observer
 

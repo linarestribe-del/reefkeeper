@@ -180,3 +180,8 @@ Sensors and records
 ### Build 2B graph presentation
 
 `ai/trend-chart.js` converts deterministic trend results into a time-scaled chart model. It owns chart coordinates, readable axis ticks, target-band geometry, event-marker positions, and nearest-point inspection. `app.js` remains responsible for rendering that model into the existing Parameter Trends card. No graph code changes saved-record schemas or AI context.
+
+
+## Build 2C presentation layer
+
+`ai/explainability.js` converts Evidence and Decision Engine output into a compact record displayed directly inside new tank-context Ask AI responses. It does not make decisions or ask the language model to justify itself.

@@ -233,3 +233,14 @@ For each fixture, store expected observations, prohibited claims, maximum confid
 - Verify keyboard Left/Right/Home/End inspection works when the graph is focused.
 - Verify value/date labels remain readable on narrow iPhone layouts and in Night Reef mode.
 - Verify no Ask AI, navigation, Apex, or localStorage schema changes are introduced.
+
+## Build 2C — In-Answer Explainability
+
+- Confirm tank-context responses include an Evidence Review inside the AI message bubble.
+- Confirm general-chat responses do not show tank-specific explainability.
+- Confirm confidence is taken from the deterministic Decision Engine and is never invented by the language model.
+- Confirm strongest evidence is ordered by effective evidence weight.
+- Confirm missing/stale evidence, Skeptic Layer notes, and action ceiling are rendered safely.
+- Confirm new saved conversations retain explainability metadata and older conversations remain readable.
+- Confirm only `role` and `content` are sent to `/api/chat`.
+- Confirm no Why button, renamed core asset, navigation change, or saved-data migration is introduced.

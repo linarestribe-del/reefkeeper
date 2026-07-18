@@ -4149,3 +4149,85 @@ html.theme-dark .trend-inspector {
   .trend-axis-label { font-size: 8.5px; }
   .trend-inspect-hint { width: 100%; margin-left: 0; }
 }
+
+/* Build 2C: deterministic evidence review inside Ask AI responses */
+.ai-explainability {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0,119,182,0.16);
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+.ai-explainability-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--ocean-deep);
+}
+.ai-explainability-header span {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 900;
+}
+.ai-explainability-header strong {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ai-explainability-row {
+  margin-top: 9px;
+}
+.ai-explainability-label {
+  color: var(--text-light);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.ai-explainability ul {
+  margin: 0;
+  padding-left: 17px;
+}
+.ai-explainability li {
+  margin: 2px 0;
+}
+.ai-explainability-empty {
+  color: var(--text-light);
+  font-style: italic;
+}
+.ai-explainability-action {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: rgba(0,119,182,0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-explainability-action span {
+  color: var(--text-light);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ai-explainability-action strong {
+  color: var(--text-dark);
+  font-size: 12px;
+}
+html.theme-dark .ai-explainability {
+  border-top-color: rgba(155,216,240,0.18);
+}
+html.theme-dark .ai-explainability-header {
+  color: #8fd8f4;
+}
+html.theme-dark .ai-explainability-action {
+  background: rgba(74,173,214,0.10);
+}
+html.theme-dark .ai-explainability-action strong {
+  color: var(--text-dark);
+}
