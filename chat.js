@@ -1,3 +1,71 @@
+const MAX_IMAGE_COUNT = 4;
+const MAX_IMAGE_DATA_URL_CHARS = 3_400_000;
+const MAX_TOTAL_IMAGE_DATA_URL_CHARS = 6_800_000;
+const SUPPORTED_IMAGE_DATA_URL = /^data:image\/(?:jpeg|jpg|png|webp|gif);base64,[a-z0-9+/=\r\n]+$/i;
+
+function normalizeImageAttachments(value) {
+  if (value === undefined || value === null) return { images: [], error: null, status: 200 };
+  if (!Array.isArray(value)) {
+    return { images: [], error: 'Attachments must be an array.', status: 400 };
+  }
+
+  const requested = value.slice(0, MAX_IMAGE_COUNT);
+  const images = [];
+  let totalChars = 0;
+
+  for (const item of requested) {
+    if (!item || item.kind !== 'image') continue;
+    const dataUrl = typeof item.dataUrl === 'string' ? item.dataUrl.trim() : '';
+    if (!SUPPORTED_IMAGE_DATA_URL.test(dataUrl)) {
+      return { images: [], error: 'The attached photo is not a supported JPEG, PNG, WebP, or GIF image.', status: 400 };
+    }
+    if (dataUrl.length > MAX_IMAGE_DATA_URL_CHARS) {
+      return { images: [], error: 'The attached photo is too large. Crop it or choose a smaller image.', status: 413 };
+    }
+    totalChars += dataUrl.length;
+    if (totalChars > MAX_TOTAL_IMAGE_DATA_URL_CHARS) {
+      return { images: [], error: 'The combined attached photos are too large. Send fewer or smaller images.', status: 413 };
+    }
+    images.push({
+      name: String(item.name || 'reef photo').slice(0, 160),
+      type: String(item.type || 'image/jpeg').slice(0, 80),
+      dataUrl
+    });
+  }
+
+  if (value.length > 0 && images.length === 0) {
+    return { images: [], error: 'No supported image attachment was received.', status: 400 };
+  }
+  return { images, error: null, status: 200 };
+}
+
+function addImagesToLatestUserMessage(messages, images) {
+  if (!images.length) return messages;
+  const output = messages.map(message => ({ ...message }));
+  let latestUserIndex = -1;
+  for (let i = output.length - 1; i >= 0; i -= 1) {
+    if (output[i].role === 'user') {
+      latestUserIndex = i;
+      break;
+    }
+  }
+  if (latestUserIndex < 0) return output;
+
+  const text = String(output[latestUserIndex].content || '').slice(0, 12000);
+  output[latestUserIndex] = {
+    role: 'user',
+    content: [
+      { type: 'input_text', text },
+      ...images.map(image => ({
+        type: 'input_image',
+        image_url: image.dataUrl,
+        detail: 'high'
+      }))
+    ]
+  };
+  return output;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -9,7 +77,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { system, messages, modelMode } = req.body || {};
+    const { system, messages, modelMode, attachments } = req.body || {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ error: 'Missing messages array.' });
@@ -21,6 +89,17 @@ export default async function handler(req, res) {
         role: m.role,
         content: m.content.slice(0, 12000)
       }));
+
+    if (cleanMessages.length === 0) {
+      return res.status(400).json({ error: 'No supported messages were received.' });
+    }
+
+    const normalizedAttachments = normalizeImageAttachments(attachments);
+    if (normalizedAttachments.error) {
+      return res.status(normalizedAttachments.status).json({ error: normalizedAttachments.error });
+    }
+    const imageAttachments = normalizedAttachments.images;
+    const openaiInput = addImagesToLatestUserMessage(cleanMessages, imageAttachments);
 
     const modelProfiles = {
       quick: {
@@ -47,6 +126,14 @@ export default async function handler(req, res) {
 
     const selectedMode = ['quick', 'balanced', 'deep', 'simple'].includes(modelMode) ? modelMode : 'balanced';
     const selectedProfile = modelProfiles[selectedMode];
+    const selectedModel = imageAttachments.length
+      ? (process.env.OPENAI_MODEL_VISION || process.env.OPENAI_MODEL || selectedProfile.model)
+      : selectedProfile.model;
+
+    const imageInstructions = imageAttachments.length ? `
+
+IMAGE REVIEW:
+One or more actual images are attached to the latest user message. Inspect the image pixels directly. Do not say that you can only see the filename. Separate visible observations from interpretation, state uncertainty caused by blue reef lighting, glare, blur, angle, obstruction, or limited resolution, and avoid diagnosing disease from an image alone.` : '';
 
     const reminderInstructions = `
 
@@ -79,12 +166,12 @@ If there are no good reminders, return an empty reminders array.`;
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: selectedProfile.model,
+        model: selectedModel,
         instructions: `${typeof system === 'string' ? system.slice(0, 50000) : ''}
 
 ANSWER STYLE FOR THIS REQUEST:
-${selectedProfile.style}${reminderInstructions}`,
-        input: cleanMessages,
+${selectedProfile.style}${imageInstructions}${reminderInstructions}`,
+        input: openaiInput,
         max_output_tokens: selectedProfile.max_output_tokens
       })
     });

@@ -1251,6 +1251,26 @@ html, body {
   font-weight: 700;
 }
 .attachment-status.visible { display: flex; }
+.attachment-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.attachment-main #attachment-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.attachment-preview {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(0,180,216,0.28);
+  background: rgba(0,119,182,0.08);
+}
+.attachment-preview[hidden] { display: none; }
 .attachment-clear {
   background: none;
   border: none;
@@ -4231,3 +4251,6 @@ html.theme-dark .ai-explainability-action {
 html.theme-dark .ai-explainability-action strong {
   color: var(--text-dark);
 }
+
+
+/* Build 2D: real multimodal image input for Ask AI */

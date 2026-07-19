@@ -492,7 +492,7 @@ Unavailable. Error while fetching /api/apex-status: ${error && error.message ? e
 }
 
 // ── Backend AI call ─────────────────────────────────────────────────────────
-async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
+async function askOpenAI(userMsg, history, modelMode = getModelMode(), attachments = []) {
   const cleanHistory = (Array.isArray(history) ? history : [])
     .map(item => ({ role: item && item.role, content: item && item.content }))
     .filter(item => (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string');
@@ -546,7 +546,16 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode()) {
       system: selectedSystem,
       messages,
       modelMode,
-      useTankContext
+      useTankContext,
+      attachments: (Array.isArray(attachments) ? attachments : [])
+        .filter(item => item && item.kind === 'image' && typeof item.dataUrl === 'string')
+        .slice(0, 4)
+        .map(item => ({
+          kind: 'image',
+          name: String(item.name || 'reef photo').slice(0, 160),
+          type: String(item.type || 'image/jpeg').slice(0, 80),
+          dataUrl: item.dataUrl
+        }))
     })
   });
 
@@ -692,12 +701,32 @@ let attachedFileContext = null;
 function updateAttachmentStatus() {
   const box = document.getElementById('attachment-status');
   const label = document.getElementById('attachment-label');
+  const preview = document.getElementById('attachment-preview');
   if (!box || !label) return;
   if (attachedFileContext) {
-    label.textContent = `📎 ${attachedFileContext.name}`;
+    const isImage = attachedFileContext.kind === 'image' && typeof attachedFileContext.dataUrl === 'string';
+    label.textContent = isImage
+      ? `🖼 ${attachedFileContext.name} · ready for AI`
+      : `📎 ${attachedFileContext.name}`;
+    if (preview) {
+      if (isImage) {
+        preview.src = attachedFileContext.dataUrl;
+        preview.alt = attachedFileContext.name || 'Attached reef photo';
+        preview.hidden = false;
+      } else {
+        preview.removeAttribute('src');
+        preview.alt = '';
+        preview.hidden = true;
+      }
+    }
     box.classList.add('visible');
   } else {
     label.textContent = '📎 File attached';
+    if (preview) {
+      preview.removeAttribute('src');
+      preview.alt = '';
+      preview.hidden = true;
+    }
     box.classList.remove('visible');
   }
 }
@@ -1193,7 +1222,11 @@ async function sendChat(event) {
 
   const input = document.getElementById('chat-input');
   if (!input) return;
-  const text = input.value.trim();
+  const attachmentForRequest = attachedFileContext;
+  let text = input.value.trim();
+  if (!text && attachmentForRequest?.kind === 'image') {
+    text = 'Analyze this reef aquarium photo. Describe what is visible, note any health or equipment concerns, explain uncertainty, and give the safest practical next steps.';
+  }
   if (!text) return;
 
   if (handleManagementCommandIfNeeded(text)) {
@@ -1211,7 +1244,7 @@ async function sendChat(event) {
   }
 
   try {
-    appendMsg('user', attachedFileContext ? `${text}\n\n📎 Attached: ${attachedFileContext.name}` : text);
+    appendMsg('user', attachmentForRequest ? `${text}\n\n${attachmentForRequest.kind === 'image' ? '🖼 Photo' : '📎 Attached'}: ${attachmentForRequest.name}` : text);
     input.value = '';
     input.style.height = 'auto';
     scrollChatToBottom();
@@ -1226,8 +1259,10 @@ async function sendChat(event) {
     scrollChatToBottom();
   }
 
-  const textForAI = attachedFileContext
-    ? `${text}\n\nAttached file for context (${attachedFileContext.name}):\n\n${attachedFileContext.text}`
+  const textForAI = attachmentForRequest
+    ? (attachmentForRequest.kind === 'image'
+      ? `${text}\n\n[Image attached for this message: ${attachmentForRequest.name}]`
+      : `${text}\n\nAttached file for context (${attachmentForRequest.name}):\n\n${attachmentForRequest.text || ''}`)
     : text;
 
   chatHistory.push({ role: 'user', content: textForAI });
@@ -1237,7 +1272,7 @@ async function sendChat(event) {
   scrollChatToBottom();
 
   try {
-    const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode());
+    const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode(), attachmentForRequest?.kind === 'image' ? [attachmentForRequest] : []);
     removeTyping();
     const assistantAnswer = result.answer || 'I received your question, but the answer came back empty.';
     appendMsg('ai', assistantAnswer, { explainability: result.explainability || null });
@@ -1245,12 +1280,15 @@ async function sendChat(event) {
     chatHistory.push({ role: 'assistant', content: assistantAnswer, explainability: result.explainability || null });
     if (chatHistory.length > 80) chatHistory = chatHistory.slice(-80);
     saveCurrentConversation();
-    if (attachedFileContext) clearAttachment();
+    if (attachmentForRequest && attachedFileContext === attachmentForRequest) clearAttachment();
     scrollChatToBottom();
   } catch(e) {
     console.error('Ask AI failed:', e);
     removeTyping();
-    appendMsg('ai', '⚠️ Couldn\'t connect to AI. Please check your connection and try again.');
+    const imageError = attachmentForRequest?.kind === 'image' && e?.message
+      ? `⚠️ Couldn\'t analyze the photo. ${e.message}`
+      : '⚠️ Couldn\'t connect to AI. Please check your connection and try again.';
+    appendMsg('ai', imageError);
     scrollChatToBottom();
   }
 }
@@ -5324,17 +5362,74 @@ function chooseDocumentUpload() {
   if (input) input.click();
 }
 
+const ASK_AI_IMAGE_MAX_DATA_URL_CHARS = 3_200_000;
+
+async function prepareAskAiImage(file) {
+  const fileName = String(file?.name || '');
+  const fileType = String(file?.type || '');
+  const looksLikeImage = fileType.startsWith('image/') || /\.(?:jpe?g|png|webp|gif|heic|heif)$/i.test(fileName);
+  if (!file || !looksLikeImage) throw new Error('Choose a supported photo file.');
+
+  const sourceDataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the photo.'));
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.readAsDataURL(file);
+  });
+
+  const image = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onerror = () => reject(new Error('Could not load this photo format. Try exporting it as JPEG.'));
+    img.onload = () => resolve(img);
+    img.src = sourceDataUrl;
+  });
+
+  const attempts = [
+    { maxSize: 1600, quality: 0.82 },
+    { maxSize: 1400, quality: 0.78 },
+    { maxSize: 1200, quality: 0.72 },
+    { maxSize: 1000, quality: 0.66 }
+  ];
+
+  let lastDataUrl = '';
+  for (const attempt of attempts) {
+    const scale = Math.min(1, attempt.maxSize / Math.max(image.width, image.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not prepare the photo for analysis.');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    lastDataUrl = canvas.toDataURL('image/jpeg', attempt.quality);
+    if (lastDataUrl && lastDataUrl.length <= ASK_AI_IMAGE_MAX_DATA_URL_CHARS) return lastDataUrl;
+  }
+
+  if (!lastDataUrl) throw new Error('The photo could not be prepared.');
+  throw new Error('The photo is still too large after resizing. Crop it or choose a smaller image.');
+}
+
 async function handlePhotoLibraryUpload(event) {
   const file = event?.target?.files?.[0];
   if (!file) return;
-  attachedFileContext = {
-    name: file.name || 'reef photo',
-    text: `Attached photo reference: ${file.name || 'reef photo'}. The app can store and reference the image name, but this text-only AI endpoint does not analyze the image pixels yet. Add a short note describing what you want reviewed.`,
-    type: file.type || 'image/*'
-  };
-  updateAttachmentStatus();
-  showToast('🖼 Photo attached');
-  event.target.value = '';
+  try {
+    showToast('Preparing photo…');
+    const dataUrl = await prepareAskAiImage(file);
+    attachedFileContext = {
+      kind: 'image',
+      name: file.name || 'reef photo.jpg',
+      type: 'image/jpeg',
+      dataUrl,
+      originalType: file.type || 'image/*'
+    };
+    updateAttachmentStatus();
+    showToast('🖼 Photo ready for AI analysis');
+  } catch(e) {
+    console.warn('Photo preparation failed', e);
+    clearAttachment();
+    showToast(`⚠️ ${e.message || 'Could not prepare photo'}`);
+  } finally {
+    if (event?.target) event.target.value = '';
+  }
 }
 
 handleFileUpload = async function(event) {
@@ -5344,6 +5439,7 @@ handleFileUpload = async function(event) {
     showToast('Reading document…');
     const doc = await readDocumentForReefKeeper(file);
     attachedFileContext = {
+      kind: 'document',
       name: doc.name,
       text: doc.extracted ? doc.text.slice(0, 45000) : doc.text,
       type: doc.type,
@@ -5358,7 +5454,7 @@ handleFileUpload = async function(event) {
     }
   } catch(e) {
     console.warn('Document read failed', e);
-    attachedFileContext = { name: file.name, text: `Attached document: ${file.name}. The app could not extract readable text from this file. Error: ${e.message || e}` };
+    attachedFileContext = { kind: 'document', name: file.name, text: `Attached document: ${file.name}. The app could not extract readable text from this file. Error: ${e.message || e}` };
     updateAttachmentStatus();
     showToast('⚠️ Attached, but could not extract text');
   } finally {

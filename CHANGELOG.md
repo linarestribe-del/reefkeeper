@@ -1,3 +1,21 @@
+## v4.3.15 — Build 2D: Ask AI Image Input
+
+### Fixed
+
+- Ask AI now sends the actual attached image pixels to the Responses API instead of sending only the filename or a text placeholder.
+- Camera and photo-library uploads are resized and converted to JPEG before sending, with a compact preview confirming the image is ready.
+- A photo can be sent without typing a question; Reef Keeper supplies a conservative general reef-photo analysis prompt.
+- Image data is used only for the current request and is not stored inside chat-history localStorage.
+- The existing AI Vision fallback call can now pass image attachments through the same Ask AI pipeline.
+
+### Safety and compatibility
+
+- Existing PDF and text-document attachment behavior remains unchanged.
+- Unsupported or oversized images are rejected with a clear error before an OpenAI request is made.
+- Image requests use `OPENAI_MODEL_VISION` when configured, while text-only model selection remains unchanged.
+- No saved-data migration, navigation, Parameter Log, graph, Apex, or explainability changes.
+- Added an automated multimodal request regression test.
+
 ## v4.3.14 — Build 2C: In-Answer Explainability
 
 ### Added
