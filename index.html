@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260718-build-2d-image-input">
+<link rel="stylesheet" href="css/app.css?v=20260719-build-2e-observer-ui">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -751,6 +751,7 @@
   /* Non-Home pages must grow naturally inside app-content, not become their own clipped panel. */
   #page-tank,
   #page-vision,
+  #page-observer,
   #page-chat,
   #page-more,
   #page-reminders,
@@ -766,6 +767,7 @@
 
   #page-tank.page.active,
   #page-vision.page.active,
+  #page-observer.page.active,
   #page-chat.page.active,
   #page-more.page.active,
   #page-reminders.page.active,
@@ -776,6 +778,7 @@
 
   #page-tank *,
   #page-vision *,
+  #page-observer *,
   #page-chat *,
   #page-more *,
   #page-reminders *,
@@ -1102,6 +1105,41 @@
           <div class="compact-page-subtitle">Photo analysis for livestock, full tank, pests, tests, and equipment.</div>
         </div>
       </div>
+
+      <section class="observer-preview-card" aria-labelledby="observer-preview-title">
+        <div class="observer-card-head">
+          <div class="observer-title-wrap">
+            <span class="observer-camera-icon" aria-hidden="true">📹</span>
+            <div>
+              <div class="observer-eyebrow">Aquarium Observer</div>
+              <div class="observer-card-title" id="observer-preview-title">Automated sump camera</div>
+            </div>
+          </div>
+          <span class="observer-state-badge pending" id="observer-preview-badge">Checking</span>
+        </div>
+
+        <button class="observer-preview-frame" type="button" onclick="openAquariumObserver()" aria-label="Open Aquarium Observer">
+          <img id="observer-preview-image" alt="Latest Aquarium Observer capture" hidden>
+          <span class="observer-image-placeholder" id="observer-preview-placeholder">
+            <b>📷</b>
+            <strong>Latest capture will appear here</strong>
+            <small>The Pi is saving images locally. A secure remote bridge is still required for app access.</small>
+          </span>
+          <span class="observer-image-time" id="observer-preview-image-time" hidden>—</span>
+        </button>
+
+        <div class="observer-preview-meta" aria-label="Observer summary">
+          <div><span>Last capture</span><strong id="observer-preview-captured">—</strong></div>
+          <div><span>Image age</span><strong id="observer-preview-age">—</strong></div>
+          <div><span>Schedule</span><strong id="observer-preview-interval">Every 5 min</strong></div>
+        </div>
+
+        <div class="observer-card-actions">
+          <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh</button>
+          <button class="observer-primary-btn" type="button" onclick="openAquariumObserver()">Open Observer</button>
+        </div>
+      </section>
+
       <div class="workspace-grid">
         <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this coral photo. Identify the coral if possible, evaluate color, tissue, polyp extension, algae/pest irritation, and growth signs. Be honest about uncertainty.', true)"><span class="tile-icon">🪸</span><span class="tile-title">Coral</span><span class="tile-detail">ID, health, color, tissue, growth.</span></button>
         <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this fish photo. Identify the fish if possible and check visible body condition, fins, color, injury, parasites, and stress signs. Separate observation from diagnosis.', true)"><span class="tile-icon">🐠</span><span class="tile-title">Fish</span><span class="tile-detail">ID, body condition, fins, stress.</span></button>
@@ -1114,6 +1152,70 @@
         <button class="workspace-list-row" type="button" onclick="chooseCameraPhoto()"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Take a photo</strong><span>Use the camera and then ask AI what to inspect.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="choosePhotoLibrary()"><span class="workspace-list-icon">🖼️</span><span class="workspace-list-main"><strong>Choose existing photos</strong><span>Compare progress photos or upload multiple angles.</span></span><span class="workspace-chevron">›</span></button>
       </div>
+    </div>
+
+    <!-- AQUARIUM OBSERVER WORKSPACE -->
+    <div class="page" id="page-observer">
+      <div class="compact-page-bar">
+        <div>
+          <div class="compact-page-title">Aquarium Observer</div>
+          <div class="compact-page-subtitle">Latest camera capture, bridge health, and storage status.</div>
+        </div>
+        <button class="compact-page-action" type="button" onclick="rkDirectGo('vision')">Back</button>
+      </div>
+
+      <section class="observer-detail-card">
+        <div class="observer-card-head observer-detail-head">
+          <div class="observer-title-wrap">
+            <span class="observer-camera-icon" aria-hidden="true">📹</span>
+            <div>
+              <div class="observer-eyebrow">Sump camera</div>
+              <div class="observer-card-title">Tapo C500 · stream2</div>
+            </div>
+          </div>
+          <span class="observer-state-badge pending" id="observer-detail-badge">Checking</span>
+        </div>
+
+        <div class="observer-detail-frame">
+          <img id="observer-detail-image" alt="Latest Aquarium Observer sump capture" hidden>
+          <div class="observer-image-placeholder observer-detail-placeholder" id="observer-detail-placeholder">
+            <b>🌊</b>
+            <strong>Remote image not connected yet</strong>
+            <small>The Pi capture service is running independently. This page is ready for the secure image bridge.</small>
+          </div>
+          <div class="observer-image-time" id="observer-detail-image-time" hidden>—</div>
+        </div>
+
+        <div class="observer-detail-grid" aria-label="Aquarium Observer status details">
+          <div><span>Bridge status</span><strong id="observer-detail-status">Checking…</strong></div>
+          <div><span>Last capture</span><strong id="observer-detail-captured">—</strong></div>
+          <div><span>Image age</span><strong id="observer-detail-age">—</strong></div>
+          <div><span>Capture interval</span><strong id="observer-detail-interval">5 minutes</strong></div>
+          <div><span>Camera</span><strong id="observer-detail-camera">Sump camera</strong></div>
+          <div><span>Stream</span><strong id="observer-detail-stream">stream2 · 720p</strong></div>
+          <div><span>Image size</span><strong id="observer-detail-size">—</strong></div>
+          <div><span>Archive storage</span><strong id="observer-detail-storage">Local Pi drive</strong></div>
+        </div>
+
+        <div class="observer-connection-note" id="observer-connection-note">
+          <strong>App-side setup is ready.</strong>
+          <span>The Pi currently keeps full-resolution captures on the local ext4 drive. The next Pi step will securely publish status and a selected thumbnail without exposing camera credentials or the home-network address.</span>
+        </div>
+
+        <div class="observer-card-actions observer-detail-actions">
+          <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh status</button>
+          <button class="observer-primary-btn" id="observer-analyze-btn" type="button" onclick="analyzeLatestObserverCapture()" disabled>Analyze latest capture</button>
+        </div>
+      </section>
+
+      <section class="observer-safety-card">
+        <div class="observer-safety-title">How Reef Keeper will use the camera</div>
+        <div class="observer-safety-list">
+          <div><span>1</span><p><strong>Observe first.</strong> Record visible conditions without treating an image as a diagnosis.</p></div>
+          <div><span>2</span><p><strong>Compare carefully.</strong> Flag lighting, blur, obstruction, or camera movement before calling something a real change.</p></div>
+          <div><span>3</span><p><strong>Combine evidence.</strong> Reef Brain will weigh visual observations with Apex telemetry, water tests, maintenance, and history.</p></div>
+        </div>
+      </section>
     </div>
 
     <!-- MORE WORKSPACE -->
@@ -1129,6 +1231,7 @@
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('report')"><span class="workspace-list-icon">📄</span><span class="workspace-list-main"><strong>Reports</strong><span>Monthly reef report, livestock summary, timeline, and exports.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="rkDirectGo('settings')"><span class="workspace-list-icon">⚙️</span><span class="workspace-list-main"><strong>Settings</strong><span>Theme, AI defaults, personalized scoring targets, and app info.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="rkDirectGo('settings')"><span class="workspace-list-icon">🔌</span><span class="workspace-list-main"><strong>Apex Integration</strong><span>Native Apex LAN telemetry and Fusion profile setup.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="openAquariumObserver()"><span class="workspace-list-icon">📹</span><span class="workspace-list-main"><strong>Aquarium Observer</strong><span>Latest sump image, capture health, storage, and future visual observations.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openSystemCheck()"><span class="workspace-list-icon">✅</span><span class="workspace-list-main"><strong>System Check</strong><span>Check AI, Apex, storage, logs, reminders, and Tank Memory.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('memory')"><span class="workspace-list-icon">🧠</span><span class="workspace-list-main"><strong>Tank Memory</strong><span>Authoritative reef facts used by AI and planning.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="openLongTermTool('library')"><span class="workspace-list-icon">📚</span><span class="workspace-list-main"><strong>Reef Library</strong><span>Protocols, manuals, ICP files, and reference documents.</span></span><span class="workspace-chevron">›</span></button>
@@ -3153,6 +3256,7 @@ function copySystemCheckResults() {
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
 <script src="app.js?v=20260718-build-2d-image-input"></script>
+<script src="observer.js?v=20260719-build-2e-observer-ui"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

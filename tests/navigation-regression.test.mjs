@@ -12,6 +12,7 @@ assert.match(html, /ai\/evidence-engine\.js\?v=20260717-build-1b/, 'Evidence eng
 assert.ok(html.indexOf('ai/evidence-engine.js?v=20260717-build-1b') < html.indexOf('app.js?v=20260718-build-2d-image-input'), 'Evidence engine must load before app.js');
 assert.ok(html.indexOf('ai/trend-engine.js?v=20260718-build-2a') < html.indexOf('ai/trend-chart.js?v=20260718-build-2b'), 'Trend engine must load before the chart module');
 assert.ok(html.indexOf('ai/trend-chart.js?v=20260718-build-2b') < html.indexOf('app.js?v=20260718-build-2d-image-input'), 'Trend chart module must load before app.js');
+assert.ok(html.indexOf('observer.js?v=20260719-build-2e-observer-ui') > html.indexOf('app.js?v=20260718-build-2d-image-input'), 'Observer controller must load after app.js');
 const aiRouteIndex = vercel.routes.findIndex(route => route.src === '/ai/(.*)' && route.dest === '/ai/$1');
 const fallbackIndex = vercel.routes.findIndex(route => route.src === '/(.*)');
 assert.ok(aiRouteIndex >= 0 && aiRouteIndex < fallbackIndex, 'Vercel must serve /ai files before the SPA fallback');

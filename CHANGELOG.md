@@ -1,3 +1,23 @@
+# Reef Keeper Changelog
+
+## v4.3.16 — Build 2E: Aquarium Observer Interface
+
+### Added
+
+- Added an Aquarium Observer preview to AI Vision and a dedicated Observer status page.
+- Added remote-ready status, capture-age, camera, stream, image-size, interval, and archive-storage fields.
+- Added safe offline, stale, and not-yet-connected states instead of showing fabricated camera data.
+- Added an Analyze Latest Capture action that reuses the tested Ask AI image-resize and attachment pipeline when a selected remote image reference becomes available.
+- Added `/api/observer-status` as an authenticated, metadata-only Pi bridge contract backed by Vercel KV when configured.
+- Added automated Observer UI and privacy regression tests.
+
+### Privacy and architecture
+
+- Full-resolution camera archives remain on the Raspberry Pi drive.
+- The metadata endpoint rejects embedded image bytes, credentials, RTSP URLs, local file paths, and home-network addresses.
+- Selected cloud images must be supplied later as HTTPS object-storage references.
+- This build does not expose the Pi or camera directly to the internet.
+
 ## v4.3.15 — Build 2D: Ask AI Image Input
 
 ### Fixed
