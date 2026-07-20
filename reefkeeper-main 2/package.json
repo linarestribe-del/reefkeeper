@@ -1,0 +1,14 @@
+{
+  "name": "reefkeeper-vercel-app",
+  "version": "4.3.18",
+  "private": true,
+  "description": "Reef Keeper Vercel app with OpenAI, Apex, telemetry, and Aquarium Observer publishing APIs",
+  "type": "module",
+  "scripts": {
+    "start": "vercel dev",
+    "test": "node tests/evidence-engine.test.mjs && node tests/decision-engine.test.cjs && node tests/explainability.test.cjs && node tests/trend-engine.test.cjs && node tests/trend-chart.test.cjs && node tests/navigation-regression.test.mjs && node tests/release-regression.test.cjs && node tests/chat-image-input.test.mjs && node tests/observer-ui.test.mjs && node tests/observer-bridge.test.mjs"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.3.0"
+  }
+}
