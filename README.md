@@ -74,3 +74,24 @@ node apex-connector.mjs
 - It retries Apex login after a 401 when username/password are provided.
 - If automatic login fails, use `APEX_COOKIE` until the next connector login refinement.
 - Use `--verbose` for login diagnostics.
+
+## Aquarium Observer publishing bridge (Build 2F)
+
+The app accepts the Raspberry Pi's current selected JPEG at:
+
+```text
+POST /api/observer-publish
+```
+
+Required Vercel configuration:
+
+- Connect a **Private Vercel Blob** store to the project.
+- Set `REEF_OBSERVER_WRITE_TOKEN` in Production, Preview, and Development as appropriate.
+
+The Pi publisher is included at:
+
+```text
+connector/observer-publisher.py
+```
+
+It publishes only the current JPEG and sanitized status. The full dated image archive remains on the Pi at `/mnt/reef-ssd/aquarium-observer/captures/`. Camera credentials, RTSP URLs, local addresses, and local file paths are not sent to Vercel.

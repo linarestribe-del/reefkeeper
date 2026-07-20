@@ -17,7 +17,7 @@ assert(html.includes('ai/explainability.js?v=20260718-build-2c'));
 assert(html.includes('ai/trend-engine.js?v=20260718-build-2a'));
 assert(html.includes('ai/trend-chart.js?v=20260718-build-2b'));
 assert(html.includes('app.js?v=20260718-build-2d-image-input'));
-assert(html.includes('observer.js?v=20260719-build-2e-observer-ui'));
+assert(html.includes('observer.js?v=20260720-build-2f-publishing-bridge'));
 assert(app.includes('window.ReefKeeperDecisionEngine.evaluate(evidenceContext)'));
 assert(app.includes('window.ReefKeeperExplainability.build'));
 assert(app.includes('Evidence review'));
@@ -46,7 +46,7 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.16');
+assert.equal(pkg.version, '4.3.17');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
 assert(vercel.routes.some((route) => route.src === '/ai/(.*)' && route.dest === '/ai/$1'));
@@ -58,6 +58,10 @@ assert(fs.existsSync('app.js'));
 assert(fs.existsSync('css/app.css'));
 assert(fs.existsSync('observer.js'));
 assert(fs.existsSync('api/observer-status.js'));
+assert(fs.existsSync('api/observer-publish.js'));
+assert(fs.existsSync('api/observer-image.js'));
+assert(fs.existsSync('connector/observer-publisher.py'));
+assert.equal(pkg.dependencies['@vercel/blob'], '^2.3.0');
 
 // Parameter Log recursion regression: direct routing must remain present and recursive body absent.
 assert(html.includes("rkDirectGo('log')") || html.includes('rkDirectGo("log")'));

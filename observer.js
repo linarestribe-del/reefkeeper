@@ -1,4 +1,4 @@
-// Reef Keeper Build 2E — Aquarium Observer app-side interface
+// Reef Keeper Build 2F — Aquarium Observer publishing interface
 // Full camera archives remain local. This controller reads only selected remote status and image references.
 
 (function installAquariumObserver() {
@@ -161,14 +161,14 @@
     const note = byId('observer-connection-note');
     if (note) {
       if (record.ok && !record.stale) {
-        note.innerHTML = '<strong>Observer bridge connected.</strong><span>Reef Keeper is receiving selected camera status and image references. Full-resolution archives remain on the Raspberry Pi storage drive.</span>';
+        note.innerHTML = '<strong>Observer bridge connected.</strong><span>Reef Keeper is receiving sanitized camera status and the current selected image through the publishing bridge. Full-resolution archives remain on the Raspberry Pi storage drive.</span>';
       } else if (record.stale) {
         note.innerHTML = '<strong>The last camera update is stale.</strong><span>The Pi may be offline, the camera may be unavailable, or the remote bridge may have stopped. Local captures can continue even when the app cannot receive an update.</span>';
       } else if (record.configured) {
         const safeMessage = record.message ? record.message.replace(/[<>]/g, '') : 'The Observer bridge has not reported a healthy capture.';
         note.innerHTML = `<strong>Observer bridge needs attention.</strong><span>${safeMessage}</span>`;
       } else {
-        note.innerHTML = '<strong>App-side setup is ready.</strong><span>The Pi currently keeps full-resolution captures on the local ext4 drive. The next Pi step will securely publish status and a selected thumbnail without exposing camera credentials or the home-network address.</span>';
+        note.innerHTML = '<strong>App-side setup is ready.</strong><span>The Pi keeps full-resolution captures on the local ext4 drive. Connect the publishing service to send only sanitized status and the current selected image without exposing camera credentials or the home-network address.</span>';
       }
     }
 

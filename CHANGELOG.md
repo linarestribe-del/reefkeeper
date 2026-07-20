@@ -1,5 +1,23 @@
 # Reef Keeper Changelog
 
+## v4.3.17 — Build 2F: Aquarium Observer Publishing Bridge
+
+### Added
+
+- Added authenticated `/api/observer-publish` uploads for the Raspberry Pi's current JPEG and sanitized capture status.
+- Added private Vercel Blob storage for one replaceable current image and one current status record.
+- Added `/api/observer-image` to stream the private current image through the Reef Keeper origin without exposing the Blob URL.
+- Added a dependency-free Raspberry Pi publisher script at `connector/observer-publisher.py`.
+- Added storage-capacity reporting, upload-size validation, JPEG signature validation, constant-time token comparison, and publishing regression tests.
+
+### Privacy and architecture
+
+- Full-resolution archives remain only on the Raspberry Pi's ext4 drive.
+- Vercel receives only the current selected JPEG and a strict allowlist of status fields.
+- Camera credentials, RTSP URLs, local paths, and home-network addresses are excluded from the payload and stored record.
+- The current cloud image is stored in a private Blob store and is delivered only through the same-origin app endpoint.
+- No router port forwarding or direct inbound connection to the Raspberry Pi is required.
+
 ## v4.3.16 — Build 2E: Aquarium Observer Interface
 
 ### Added

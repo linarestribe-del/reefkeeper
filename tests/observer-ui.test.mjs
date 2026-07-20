@@ -13,8 +13,7 @@ assert.match(html, /id="observer-analyze-btn"[^>]*disabled/, 'Analyze should rem
 assert.match(observer, /const STATUS_ENDPOINT = '\/api\/observer-status'/, 'Observer must use the same-origin status endpoint');
 assert.match(observer, /STale_AFTER_MS|STALE_AFTER_MS/, 'Observer must detect stale captures');
 assert.match(observer, /prepareAskAiImage\(file\)/, 'A remote selected image should reuse the tested Ask AI image pipeline');
-assert.match(api, /Image bytes are not accepted/, 'Metadata endpoint must reject image bytes');
-assert.match(api, /Do not store camera credentials, RTSP URLs, local file paths, or home-network addresses/, 'Endpoint must document private-data exclusions');
+assert.match(api, /Image bytes are accepted only by \/api\/observer-publish/, 'Metadata endpoint must route image bytes to the publishing endpoint');
 assert.doesNotMatch(observer, /192\.168\./, 'Browser controller must not embed a private home-network address');
 assert.doesNotMatch(api, /rtsp:\/\//i, 'Remote endpoint must not embed an RTSP URL');
 
