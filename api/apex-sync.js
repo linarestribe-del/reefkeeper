@@ -1,9 +1,122 @@
 const APEX_STATUS_KEY = "reefkeeper:apex:latest";
+const SAFE_SOURCE_LABEL = "Apex via Raspberry Pi";
+const MAX_APEX_ITEMS = 160;
+
+// The browser currently expects raw.istat.inputs/outputs. Keep that small
+// compatibility shape, but never retain the controller's complete raw payload.
+const ALLOWED_INPUT_NAMES = new Set([
+  "Tmp", "pH", "ORP",
+  "Volt_2", "Volt_5",
+  "Return1W", "Return2W", "UVpumpW", "SkimmerW",
+  "LMP40W", "RMP40W", "FilterRollerW", "ATOW",
+  "KalkstirrerW", "KalkpumpW", "NOPOXW", "FanW",
+  "Heat1W", "Heat2W",
+  "Leak1", "Leak2", "Leak3"
+]);
+
+const ALLOWED_OUTPUT_NAMES = new Set([
+  "Return1", "Return2", "UVpump", "UVlight", "Skimmer",
+  "LMP40", "RMP40", "FilterRoller", "GFO", "ATO",
+  "Kalkstirrer", "Kalkpump", "NOPOX", "Fan", "Heat1", "Heat2"
+]);
 
 function readBearerToken(req) {
   const auth = req.headers.authorization || req.headers.Authorization || "";
   if (!auth.startsWith("Bearer ")) return "";
   return auth.slice("Bearer ".length).trim();
+}
+
+function cleanText(value, maxLength = 96) {
+  if (typeof value !== "string" && typeof value !== "number") return "";
+  return String(value).trim().slice(0, maxLength);
+}
+
+function cleanValue(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.trim().slice(0, 80);
+  return null;
+}
+
+function firstNonEmptyArray(...values) {
+  const populated = values.find(value => Array.isArray(value) && value.length > 0);
+  if (populated) return populated;
+  const empty = values.find(Array.isArray);
+  return empty || [];
+}
+
+function sanitizeInput(item) {
+  if (!item || typeof item !== "object") return null;
+  const name = cleanText(item.name, 64);
+  if (!ALLOWED_INPUT_NAMES.has(name)) return null;
+  const type = cleanText(item.type, 40);
+  const value = cleanValue(item.value);
+  return {
+    name,
+    ...(type ? { type } : {}),
+    value
+  };
+}
+
+function isAllowedOutputName(name) {
+  return ALLOWED_OUTPUT_NAMES.has(name) || /alarm|warn|heaterror/i.test(name);
+}
+
+function sanitizeOutput(item) {
+  if (!item || typeof item !== "object") return null;
+  const name = cleanText(item.name, 64);
+  if (!name || !isAllowedOutputName(name)) return null;
+  const rawStatus = Array.isArray(item.status) ? item.status : [item.status];
+  const status = rawStatus
+    .map(value => cleanText(value, 24))
+    .filter(Boolean)
+    .slice(0, 4);
+  const type = cleanText(item.type, 40);
+  return {
+    name,
+    ...(type ? { type } : {}),
+    status
+  };
+}
+
+function sanitizeApexRecord(payload, receivedAt) {
+  const source = payload && typeof payload === "object" ? payload : {};
+  const rawIstat = source.raw && typeof source.raw === "object" && source.raw.istat && typeof source.raw.istat === "object"
+    ? source.raw.istat
+    : {};
+
+  const inputSource = firstNonEmptyArray(source.inputs, rawIstat.inputs);
+  const outputSource = firstNonEmptyArray(source.outputs, rawIstat.outputs);
+
+  const inputs = inputSource
+    .map(sanitizeInput)
+    .filter(Boolean)
+    .slice(0, MAX_APEX_ITEMS);
+
+  const outputs = outputSource
+    .map(sanitizeOutput)
+    .filter(Boolean)
+    .slice(0, MAX_APEX_ITEMS);
+
+  const probeNames = new Set(["Tmp", "pH", "ORP"]);
+  const probes = inputs.filter(item => probeNames.has(item.name));
+
+  return {
+    ok: true,
+    receivedAt,
+    connectorVersion: cleanText(source.connectorVersion, 40) || null,
+    piTimestamp: cleanText(source.piTimestamp, 64) || null,
+    source: SAFE_SOURCE_LABEL,
+    probes,
+    inputs,
+    outputs,
+    raw: {
+      istat: {
+        inputs,
+        outputs
+      }
+    }
+  };
 }
 
 async function kvSet(key, value) {
@@ -52,22 +165,8 @@ export default async function handler(req, res) {
       return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
-    const payload = req.body || {};
     const receivedAt = new Date().toISOString();
-
-    const record = {
-      ok: true,
-      receivedAt,
-      connectorVersion: payload.connectorVersion || null,
-      piTimestamp: payload.piTimestamp || null,
-      apexSourceUrl: payload.apexSourceUrl || null,
-      source: payload.apexSourceUrl || "unknown",
-      probes: payload.probes || [],
-      inputs: payload.inputs || [],
-      outputs: payload.outputs || [],
-      raw: payload.raw || null,
-      rawText: payload.rawText || null,
-    };
+    const record = sanitizeApexRecord(req.body || {}, receivedAt);
 
     await kvSet(APEX_STATUS_KEY, record);
 
