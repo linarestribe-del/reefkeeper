@@ -1,3 +1,9 @@
+## 4.3.25 - Build 2G.1 Visible Compare Photos
+- Added a dedicated Compare Photos tile in AI Vision.
+- Added a Compare photos row below the photo picker.
+- Added Compare Photos to the Ask AI add menu.
+- Multi-photo upload and comparison behavior from Build 2G remain unchanged.
+
 ## 4.3.24 - Build 2G Multi-Image Comparison
 - Ask AI now accepts up to 4 uploaded photos at once for comparison.
 - Added Compare Photos helper actions in AI Vision and the add menu.

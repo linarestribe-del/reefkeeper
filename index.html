@@ -1147,10 +1147,12 @@
         <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this image for algae or pests. Identify likely algae/pest types, confidence, visual clues, and safest next steps for my reef tank.', true)"><span class="tile-icon">🦠</span><span class="tile-title">Algae / Pests</span><span class="tile-detail">Aiptasia, algae, irritation clues.</span></button>
         <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this ICP report or water-test image. Extract values if readable, flag concerns, and compare to my personalized reef targets when available.', false)"><span class="tile-icon">🔬</span><span class="tile-title">ICP / Test</span><span class="tile-detail">Report, chart, or test-kit reading.</span></button>
         <button class="workspace-tile ai-vision-tile" type="button" onclick="startVisionPrompt('Analyze this equipment photo. Identify the equipment if possible, note visible setup issues, maintenance concerns, and what to verify.', true)"><span class="tile-icon">🔧</span><span class="tile-title">Equipment</span><span class="tile-detail">Setup and maintenance checks.</span></button>
+        <button class="workspace-tile ai-vision-tile" type="button" onclick="startPhotoComparison()"><span class="tile-icon">🆚</span><span class="tile-title">Compare Photos</span><span class="tile-detail">Select 2–4 images and identify visible changes.</span></button>
       </div>
       <div class="workspace-list-card">
         <button class="workspace-list-row" type="button" onclick="chooseCameraPhoto()"><span class="workspace-list-icon">📸</span><span class="workspace-list-main"><strong>Take a photo</strong><span>Use the camera and then ask AI what to inspect.</span></span><span class="workspace-chevron">›</span></button>
         <button class="workspace-list-row" type="button" onclick="choosePhotoLibrary()"><span class="workspace-list-icon">🖼️</span><span class="workspace-list-main"><strong>Choose existing photos</strong><span>Upload 1–4 photos for analysis or comparison.</span></span><span class="workspace-chevron">›</span></button>
+        <button class="workspace-list-row" type="button" onclick="startPhotoComparison()"><span class="workspace-list-icon">🆚</span><span class="workspace-list-main"><strong>Compare photos</strong><span>Pick 2–4 reef photos and ask AI what changed.</span></span><span class="workspace-chevron">›</span></button>
       </div>
     </div>
 
@@ -1987,7 +1989,8 @@
   <div class="add-menu-panel" role="dialog" aria-modal="true" aria-labelledby="add-menu-title">
     <div class="add-menu-title" id="add-menu-title">Add to Reef Keeper</div>
     <button class="add-menu-btn secondary" type="button" onclick="chooseCameraPhoto()">📷 Take Photo</button>
-    <button class="add-menu-btn secondary" type="button" onclick="choosePhotoLibrary()">🖼 Choose Photo</button>
+    <button class="add-menu-btn secondary" type="button" onclick="choosePhotoLibrary()">🖼 Choose Photo(s)</button>
+    <button class="add-menu-btn secondary" type="button" onclick="startPhotoComparison()">🆚 Compare Photos</button>
     <button class="add-menu-btn primary" type="button" onclick="chooseDocumentUpload()">📄 Upload Document</button>
     <button class="add-menu-btn cancel" type="button" onclick="closeAddMenu()">Cancel</button>
   </div>
