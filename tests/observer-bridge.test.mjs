@@ -2,10 +2,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   decodeObserverJpeg,
+  expectedObserverWriteToken,
   MAX_OBSERVER_IMAGE_BYTES,
   normalizeObserverStatus,
+  secureTokenMatch,
   OBSERVER_IMAGE_ROUTE
 } from '../lib/observer-common.js';
+
+
+const previousObserverToken = process.env.REEF_OBSERVER_WRITE_TOKEN;
+process.env.REEF_OBSERVER_WRITE_TOKEN = '  test-observer-token\n';
+assert.equal(expectedObserverWriteToken(), 'test-observer-token', 'server token must ignore accidental surrounding whitespace');
+assert.equal(secureTokenMatch('test-observer-token', '  test-observer-token\n'), true, 'token comparison must normalize surrounding whitespace');
+if (previousObserverToken === undefined) delete process.env.REEF_OBSERVER_WRITE_TOKEN;
+else process.env.REEF_OBSERVER_WRITE_TOKEN = previousObserverToken;
 
 const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x01, 0xff, 0xd9]);
 assert.deepEqual(decodeObserverJpeg(jpeg.toString('base64')), jpeg, 'valid JPEG Base64 must decode');

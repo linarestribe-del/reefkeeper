@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260719-build-2e-observer-ui">
+<link rel="stylesheet" href="css/app.css?v=20260720-build-2f4-clean-overlay-fix">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1120,7 +1120,7 @@
 
         <button class="observer-preview-frame" type="button" onclick="openAquariumObserver()" aria-label="Open Aquarium Observer">
           <img id="observer-preview-image" alt="Latest Aquarium Observer capture" hidden>
-          <span class="observer-image-placeholder" id="observer-preview-placeholder">
+          <span class="observer-image-placeholder is-visible" id="observer-preview-placeholder">
             <b>📷</b>
             <strong>Latest capture will appear here</strong>
             <small>The Pi is saving images locally. A secure remote bridge is still required for app access.</small>
@@ -1178,7 +1178,7 @@
 
         <div class="observer-detail-frame">
           <img id="observer-detail-image" alt="Latest Aquarium Observer sump capture" hidden>
-          <div class="observer-image-placeholder observer-detail-placeholder" id="observer-detail-placeholder">
+          <div class="observer-image-placeholder observer-detail-placeholder is-visible" id="observer-detail-placeholder">
             <b>🌊</b>
             <strong>Remote image not connected yet</strong>
             <small>The Pi capture service is running independently. This page is ready for the secure image bridge.</small>
@@ -3256,7 +3256,7 @@ function copySystemCheckResults() {
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
 <script src="app.js?v=20260718-build-2d-image-input"></script>
-<script src="observer.js?v=20260720-build-2f-publishing-bridge"></script>
+<script src="observer.js?v=20260720-build-2f4-clean-overlay-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

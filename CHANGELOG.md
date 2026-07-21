@@ -1,3 +1,16 @@
+## v4.3.20 — Build 2F.3: Observer Overlay Removal
+
+- Fixed the connected Observer image placeholder remaining visible over the live image.
+- Added a CSS rule honoring the placeholder's `hidden` attribute even though its base layout uses `display: flex`.
+- Added a JavaScript fallback that explicitly removes and restores placeholder display state on image load/error.
+- Bumped Observer CSS and JavaScript cache keys.
+
+## v4.3.18 — Build 2F.1: Observer Token Normalization
+
+- Normalizes accidental leading or trailing whitespace in the Observer write token on both sides of the constant-time comparison.
+- Prevents false `401 Unauthorized` responses when a Vercel environment-variable value contains an invisible space or line break.
+- Adds regression coverage for token normalization.
+
 # Reef Keeper Changelog
 
 ## v4.3.17 — Build 2F: Aquarium Observer Publishing Bridge

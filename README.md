@@ -95,3 +95,7 @@ connector/observer-publisher.py
 ```
 
 It publishes only the current JPEG and sanitized status. The full dated image archive remains on the Pi at `/mnt/reef-ssd/aquarium-observer/captures/`. Camera credentials, RTSP URLs, local addresses, and local file paths are not sent to Vercel.
+
+### Build 2F.1 authentication hardening
+
+Observer write tokens are trimmed before constant-time comparison so accidental surrounding whitespace in the Vercel environment value does not cause a false 401 response.

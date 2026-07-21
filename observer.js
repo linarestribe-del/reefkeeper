@@ -102,6 +102,12 @@
     badge.textContent = record.label;
   }
 
+  function setPlaceholderVisible(placeholder, visible) {
+    placeholder.hidden = !visible;
+    placeholder.classList.toggle('is-visible', visible);
+    placeholder.style.display = visible ? 'flex' : 'none';
+  }
+
   function updateImage(imageId, placeholderId, timeId, record) {
     const image = byId(imageId);
     const placeholder = byId(placeholderId);
@@ -111,13 +117,18 @@
     if (record.imageUrl) {
       const separator = record.imageUrl.includes('?') ? '&' : '?';
       const cacheKey = record.captured?.getTime() || Date.now();
+
+      // Remove fallback copy before the refreshed image begins loading.
+      setPlaceholderVisible(placeholder, false);
+      image.hidden = true;
+
       image.onload = () => {
+        setPlaceholderVisible(placeholder, false);
         image.hidden = false;
-        placeholder.hidden = true;
       };
       image.onerror = () => {
         image.hidden = true;
-        placeholder.hidden = false;
+        setPlaceholderVisible(placeholder, true);
       };
       image.src = `${record.imageUrl}${separator}rk=${encodeURIComponent(cacheKey)}`;
       if (time) {
@@ -127,7 +138,7 @@
     } else {
       image.removeAttribute('src');
       image.hidden = true;
-      placeholder.hidden = false;
+      setPlaceholderVisible(placeholder, true);
       if (time) time.hidden = true;
     }
   }
