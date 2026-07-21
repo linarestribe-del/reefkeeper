@@ -1,4 +1,4 @@
-// Reef Keeper Build 2F — Aquarium Observer publishing interface
+// Reef Keeper Build 2F.6 — sump-specific Aquarium Observer analysis
 // Full camera archives remain local. This controller reads only selected remote status and image references.
 
 (function installAquariumObserver() {
@@ -7,6 +7,20 @@
   const STATUS_ENDPOINT = '/api/observer-status';
   const REFRESH_INTERVAL_MS = 60_000;
   const STALE_AFTER_MS = 15 * 60_000;
+  const OBSERVER_ANALYSIS_PROMPT = [
+    'Review this as one still image from my sump camera, not the display tank.',
+    'Analyze only what the pixels visibly support and do not fill unseen areas with assumptions.',
+    '',
+    'Use these headings:',
+    '1. Image usability — note sharpness, exposure or night-vision limits, glare, obstruction, camera angle, and whether the image is suitable for comparison.',
+    '2. Urgent safety check — look for visible active leaks or overflow, unusually high or low water level, displaced plumbing or tubing, equipment out of position, or an apparent water/electrical hazard. If none is visible, say “No obvious urgent issue is visible in this frame,” not that the system is definitely safe.',
+    '3. Equipment observations — discuss only equipment actually visible. Check the skimmer body, neck, cup, foam height, or overflow only where shown; filter-roller media position or apparent clogging; reactor bodies and visible bubbles or turbulence; ATO components; return equipment; and plumbing connections. Explicitly say when an item cannot be assessed from this view.',
+    '4. Housekeeping observations — note visible salt creep, condensation, algae or biofilm, debris, microbubbles, unusual cloudiness, or obstruction.',
+    '5. What cannot be determined — do not infer pump operation, actual flow rate, water chemistry, hidden leaks, or change over time from a single still. Do not claim a trend unless comparison images or data are provided.',
+    '6. Recommended next check — give only one or two practical checks, ranked by urgency, based on visible evidence.',
+    '',
+    'Keep observations separate from possible concerns. Do not diagnose livestock or coral health unless they are clearly visible. Use my tank profile or Apex readings only in a separate Supporting context note and never as proof of what the image shows.'
+  ].join('\n');
   let snapshot = null;
   let refreshTimer = null;
   let refreshInFlight = null;
@@ -263,7 +277,7 @@
 
       const input = byId('chat-input');
       if (input) {
-        input.value = 'Analyze this Aquarium Observer sump-camera capture. Describe only what is visibly supported, assess image quality and comparability first, and separate observations from possible concerns. Consider skimmer foam level, roller condition, water level, leaks or salt creep, reactor flow, equipment state, obstruction, and camera movement. Use my tank context and Apex data only as supporting evidence, not as proof of what the image shows.';
+        input.value = OBSERVER_ANALYSIS_PROMPT;
         input.focus();
         try { autoResize(input); } catch (_) {}
       }

@@ -31,3 +31,12 @@ assert.match(css, /\.observer-image-placeholder\s*\{[\s\S]*?display:\s*none\s*;/
 assert.match(css, /\.observer-image-placeholder\.is-visible[\s\S]*?display:\s*flex\s*;/, 'Observer placeholder must require an explicit visible state');
 assert.match(observer, /setPlaceholderVisible\(placeholder, false\);[\s\S]*?image\.src/, 'Placeholder must be removed before a remote image starts loading');
 assert.match(html, /observer-detail-placeholder[^>]*is-visible|is-visible[^>]*observer-detail-placeholder/, 'Offline detail placeholder must start in an explicit visible state');
+
+assert.match(observer, /const OBSERVER_ANALYSIS_PROMPT = \[/, 'Observer analysis must use a dedicated maintainable prompt');
+assert.match(observer, /Urgent safety check/, 'Sump analysis must prioritize visible leak, overflow, water-level, plumbing, and equipment hazards');
+assert.match(observer, /Equipment observations/, 'Sump analysis must inspect only equipment visible in the frame');
+assert.match(observer, /What cannot be determined/, 'Sump analysis must state single-image and visibility limitations');
+assert.match(observer, /do not infer pump operation, actual flow rate, water chemistry, hidden leaks, or change over time from a single still/i, 'Sump analysis must reject unsupported operational and trend claims');
+assert.match(observer, /Recommended next check/, 'Sump analysis must end with limited practical follow-up checks');
+assert.match(observer, /input\.value = OBSERVER_ANALYSIS_PROMPT/, 'Analyze latest capture must load the sump-specific prompt');
+assert.match(html, /observer\.js\?v=20260720-build-2f6-sump-analysis/, 'Observer script cache key must be bumped for the new prompt');
