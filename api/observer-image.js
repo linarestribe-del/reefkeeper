@@ -1,4 +1,4 @@
-// Reef Keeper Build 2H — same-origin delivery for current and selected historical images
+// Reef Keeper Build 2J — same-origin delivery for current and selected historical images
 
 import { Readable } from 'node:stream';
 import { normalizeObserverSlot } from '../lib/observer-common.js';

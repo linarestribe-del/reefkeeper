@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260721-build-2i-observer-health">
+<link rel="stylesheet" href="css/app.css?v=20260721-build-2j-daily-summary">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -388,7 +388,7 @@
 </style>
 
 
-<style id="reefkeeper-v4-3-27-home-tight-final">
+<style id="reefkeeper-v4-3-28-home-tight-final">
   #page-home .home-telemetry-card {
     padding: 12px !important;
     margin-bottom: 10px !important;
@@ -1161,7 +1161,7 @@
       <div class="compact-page-bar">
         <div>
           <div class="compact-page-title">Aquarium Observer</div>
-          <div class="compact-page-subtitle">Latest camera capture, Pi health, publishing reliability, and storage status.</div>
+          <div class="compact-page-subtitle">Latest capture, Pi health, history comparisons, and the automatic daily visual report.</div>
         </div>
         <button class="compact-page-action" type="button" onclick="rkDirectGo('vision')">Back</button>
       </div>
@@ -1248,6 +1248,28 @@
           <button class="observer-secondary-btn" type="button" onclick="copyObserverDiagnosticReport()">Copy diagnostic report</button>
           <button class="observer-primary-btn" type="button" onclick="refreshAquariumObserver(event)">Run health check</button>
         </div>
+      </section>
+
+
+      <section class="observer-daily-card" id="observer-daily-card" aria-labelledby="observer-daily-title">
+        <div class="observer-daily-head">
+          <div>
+            <div class="observer-safety-title" id="observer-daily-title">Daily visual summary</div>
+            <div class="observer-daily-source" id="observer-daily-source">Waiting for today and the prior day representative frames.</div>
+          </div>
+          <span class="observer-daily-badge pending" id="observer-daily-badge">Waiting</span>
+        </div>
+        <div class="observer-daily-report">
+          <strong class="observer-daily-headline" id="observer-daily-headline">Daily summary is not ready yet.</strong>
+          <p class="observer-daily-summary" id="observer-daily-summary">The Pi will select a representative midday capture and compare it with the prior day automatically.</p>
+          <small class="observer-daily-generated" id="observer-daily-generated">Generated automatically once per day</small>
+        </div>
+        <div class="observer-daily-details" id="observer-daily-details" hidden></div>
+        <div class="observer-card-actions observer-daily-actions">
+          <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh report</button>
+          <button class="observer-primary-btn" id="observer-daily-compare-btn" type="button" onclick="openDailySummaryComparison()" disabled>Open comparison in Ask AI</button>
+        </div>
+        <p class="observer-history-note">The Pi selects frames near noon local time and waits about 20 minutes so the representative frame stays stable. Only the two daily frames are uploaded; the full five-minute archive remains local.</p>
       </section>
 
       <section class="observer-history-card">
@@ -3321,8 +3343,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260721-build-2i-observer-health"></script>
-<script src="observer.js?v=20260721-build-2i-observer-health"></script>
+<script src="app.js?v=20260721-build-2j-daily-summary"></script>
+<script src="observer.js?v=20260721-build-2j-daily-summary"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

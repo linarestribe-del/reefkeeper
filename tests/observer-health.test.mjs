@@ -7,7 +7,7 @@ const observer = fs.readFileSync(new URL('../observer.js', import.meta.url), 'ut
 const publisher = fs.readFileSync(new URL('../connector/observer-publisher.py', import.meta.url), 'utf8');
 const statusApi = fs.readFileSync(new URL('../api/observer-status.js', import.meta.url), 'utf8');
 
-assert.equal(OBSERVER_SCHEMA_VERSION, 4);
+assert.equal(OBSERVER_SCHEMA_VERSION, 5);
 assert.match(html, /id="observer-health-badge"/);
 assert.match(html, /id="observer-health-capture-row"/);
 assert.match(html, /id="observer-health-publisher-row"/);
@@ -18,7 +18,7 @@ assert.match(observer, /PUBLISH_STALE_AFTER_MS/);
 assert.match(observer, /The publisher is online, but camera capture needs attention/);
 assert.match(observer, /Reef Keeper Aquarium Observer diagnostic/);
 assert.doesNotMatch(observer, /REEF_OBSERVER_WRITE_TOKEN|publisher\.json|Authorization: Bearer/);
-assert.match(publisher, /PUBLISHER_VERSION = '2\.1'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.2'/);
 assert.match(publisher, /vcgencmd/);
 assert.match(publisher, /os\.path\.ismount/);
 assert.match(publisher, /systemctl', 'is-active'/);
@@ -32,14 +32,14 @@ const health = normalizeObserverHealth({
   checkedAt: '2026-07-21T05:30:00Z',
   issues: [{ code: 'capture_stale', severity: 'warning', message: 'Latest capture is 20 minutes old.' }],
   capture: { status: 'attention', message: 'Latest capture is stale.', timerActive: true, timerState: 'active' },
-  publisher: { status: 'healthy', message: 'Publisher is active.', timerActive: true, timerState: 'active', version: '2.1' },
+  publisher: { status: 'healthy', message: 'Publisher is active.', timerActive: true, timerState: 'active', version: '2.2' },
   storage: { status: 'healthy', mounted: true, writable: true, totalBytes: 1000, availableBytes: 800, usedPercent: 20 },
   power: { status: 'healthy', available: true, throttledHex: '0x0' },
   archive: { status: 'healthy', captureCount: 366, historySlotsReady: ['previous', 'dayAgo'] },
   services: { captureTimerActive: true, captureTimerState: 'active', publishTimerActive: true, publishTimerState: 'active' }
 });
 assert.equal(health.status, 'attention');
-assert.equal(health.publisher.version, '2.1');
+assert.equal(health.publisher.version, '2.2');
 assert.equal(health.storage.mounted, true);
 assert.deepEqual(health.archive.historySlotsReady, ['previous', 'dayAgo']);
 assert.equal(health.issues[0].severity, 'warning');
@@ -47,11 +47,11 @@ assert.equal(health.issues[0].severity, 'warning');
 const record = normalizeObserverStatus({
   ok: true,
   capturedAt: '2026-07-21T05:25:00Z',
-  publisherVersion: '2.1',
+  publisherVersion: '2.2',
   health
 }, { imageAvailable: true, sizeBytes: 150000 });
-assert.equal(record.schemaVersion, 4);
-assert.equal(record.publisherVersion, '2.1');
+assert.equal(record.schemaVersion, 5);
+assert.equal(record.publisherVersion, '2.2');
 assert.equal(record.health.status, 'attention');
 assert.equal(record.imageAvailable, true);
 

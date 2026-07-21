@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish Aquarium Observer captures, history frames, and Pi health diagnostics."""
+"""Publish Observer captures, history, health, and one automatic daily visual summary."""
 from __future__ import annotations
 
 import base64
@@ -24,7 +24,7 @@ CAPTURES_DIR = BASE_DIR / 'captures'
 CAPTURE_STATUS_PATH = BASE_DIR / 'status.json'
 PUBLISH_STATUS_PATH = BASE_DIR / 'publish-status.json'
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.1'
+PUBLISHER_VERSION = '2.2'
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
 PUBLISH_TIMER = 'reefkeeper-observer-publish.timer'
 CAPTURE_NAME_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.jpg$', re.I)
@@ -153,6 +153,48 @@ def select_history(catalog: list[tuple[datetime, Path]], captured_at: datetime) 
         })
         used.add(path)
     return output
+
+
+def representative_for_local_day(catalog: list[tuple[datetime, Path]], target_local: datetime) -> tuple[datetime, Path] | None:
+    candidates = [item for item in catalog if item[0].astimezone().date() == target_local.date()]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: abs(item[0] - target_local.astimezone(timezone.utc)))
+
+
+def select_daily_images(config: dict[str, Any], catalog: list[tuple[datetime, Path]], now: datetime) -> list[dict[str, Any]]:
+    local_now = now.astimezone()
+    hour = max(0, min(23, int(config.get('daily_summary_hour_local') or 12)))
+    delay_minutes = max(0, min(180, int(config.get('daily_summary_delay_minutes') or 20)))
+    current_target = local_now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    if local_now < current_target + timedelta(minutes=delay_minutes):
+        return []
+    previous_target = current_target - timedelta(days=1)
+    selections = [
+        ('dailyPrevious', representative_for_local_day(catalog, previous_target)),
+        ('dailyCurrent', representative_for_local_day(catalog, current_target)),
+    ]
+    output: list[dict[str, Any]] = []
+    for slot, selected in selections:
+        if not selected:
+            return []
+        captured_at, path = selected
+        try:
+            image = read_jpeg(path)
+        except (OSError, ValueError):
+            return []
+        output.append({
+            'slot': slot,
+            'capturedAt': captured_at.isoformat(),
+            'imageBase64': base64.b64encode(image).decode('ascii'),
+        })
+    return output
+
+
+def derive_daily_summary_endpoint(publish_endpoint: str) -> str:
+    if publish_endpoint.endswith('/observer-publish'):
+        return publish_endpoint[:-len('/observer-publish')] + '/observer-daily-summary'
+    return publish_endpoint.rsplit('/', 1)[0] + '/observer-daily-summary'
 
 
 def command_output(command: list[str], timeout: float = 4.0) -> tuple[int, str]:
@@ -355,6 +397,7 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
             'oldestCaptureAt': catalog[0][0].isoformat() if catalog else None,
             'newestCaptureAt': catalog[-1][0].isoformat() if catalog else None,
             'historySlotsReady': ready_slots,
+            'dailySummaryFramesReady': len(select_daily_images(config, catalog, now)) == 2,
         },
         'services': {
             'captureTimerActive': capture_timer_active,
@@ -437,6 +480,12 @@ def main() -> int:
         health = collect_health(config, capture, catalog)
         captured_raw = str(capture.get('captured_at') or capture.get('capturedAt') or '')
         captured_at = parse_iso(captured_raw)
+        previous_publish_status: dict[str, Any] = {}
+        try:
+            previous_publish_status = read_json(PUBLISH_STATUS_PATH)
+        except Exception:
+            previous_publish_status = {}
+        daily_images = select_daily_images(config, catalog, utc_now_dt())
 
         try:
             if not captured_at:
@@ -447,6 +496,26 @@ def main() -> int:
             result = post_json(endpoint, token, payload)
             slots = result.get('historySlots') or []
             published_at = result.get('publishedAt') or utc_now()
+            daily_status = safe_text(previous_publish_status.get('dailySummaryStatus') or 'waiting', 40)
+            daily_current = safe_text(previous_publish_status.get('dailySummaryCurrentCapturedAt') or '', 80)
+            daily_generated = safe_text(previous_publish_status.get('dailySummaryGeneratedAt') or '', 80)
+            daily_error = ''
+            if len(daily_images) == 2:
+                current_daily = next(item for item in daily_images if item['slot'] == 'dailyCurrent')
+                if daily_current != current_daily['capturedAt']:
+                    try:
+                        daily_result = post_json(derive_daily_summary_endpoint(endpoint), token, {'dailyImages': daily_images}, timeout=55)
+                        daily_status = 'reused' if daily_result.get('reused') else 'generated'
+                        daily_current = current_daily['capturedAt']
+                        daily_generated = safe_text(daily_result.get('generatedAt') or utc_now(), 80)
+                    except Exception as daily_exception:
+                        daily_status = 'retrying'
+                        daily_error = safe_text(daily_exception, 300)
+                        print(f'DAILY_SUMMARY_RETRY: {daily_error}', file=sys.stderr)
+                else:
+                    daily_status = 'current'
+            else:
+                daily_status = 'waiting_for_frames'
             try_write_status({
                 'ok': True,
                 'capturedAt': captured_raw,
@@ -454,9 +523,13 @@ def main() -> int:
                 'sizeBytes': len(image),
                 'historySlots': slots,
                 'healthStatus': health.get('status'),
+                'dailySummaryStatus': daily_status,
+                'dailySummaryCurrentCapturedAt': daily_current or None,
+                'dailySummaryGeneratedAt': daily_generated or None,
+                'dailySummaryError': daily_error,
                 'publisherVersion': PUBLISHER_VERSION,
             })
-            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')}")
+            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} daily={daily_status}")
             return 0
         except (OSError, ValueError) as local_error:
             health = collect_health(config, capture, catalog)

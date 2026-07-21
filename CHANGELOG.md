@@ -1,3 +1,10 @@
+## 4.3.28 - Build 2J Daily Visual Summary
+- Pi publisher 2.2 selects stable representative frames near noon local time for today and the prior day.
+- An authenticated server endpoint automatically compares the two frames once per day with OpenAI and saves a concise evidence-limited report.
+- Aquarium Observer now displays the daily status, headline, visible changes, concerns, image limitations, and up to two practical next checks.
+- The daily frames can be opened in Ask AI for an interactive follow-up comparison.
+- Full five-minute archives remain local on the Pi; only two representative daily frames are uploaded.
+
 ## 4.3.27 - Build 2I Observer Health & Reliability
 - Adds an Observer Health dashboard for camera freshness, remote publishing, Pi timers, archive storage, free space, and power flags.
 - Distinguishes a stale camera from a stale remote publisher.

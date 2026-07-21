@@ -9,6 +9,9 @@
     },
     "api/observer-publish.js": {
       "maxDuration": 60
+    },
+    "api/observer-daily-summary.js": {
+      "maxDuration": 60
     }
   },
   "routes": [

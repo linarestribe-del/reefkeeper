@@ -1,3 +1,7 @@
+# Build 2J — Daily Visual Summary
+
+The Aquarium Observer automatically selects representative daily sump frames, generates one comparison report per day, and retains the full capture archive locally.
+
 # Reef Keeper Apex Connector v4.2.1
 
 This connector runs on your home Mac. It reads your local Neptune Apex `/rest/status` endpoint and pushes a normalized snapshot to the stable Reef Keeper telemetry hub.

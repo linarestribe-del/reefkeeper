@@ -1,10 +1,11 @@
-// Reef Keeper Build 2I — Aquarium Observer history, health, and reliability
+// Reef Keeper Build 2J — Aquarium Observer health, history, and automatic daily visual summaries
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
   'use strict';
 
   const STATUS_ENDPOINT = '/api/observer-status';
+  const DAILY_SUMMARY_ENDPOINT = '/api/observer-daily-summary';
   const REFRESH_INTERVAL_MS = 60_000;
   const CAPTURE_STALE_AFTER_MS = 15 * 60_000;
   const CAPTURE_OFFLINE_AFTER_MS = 60 * 60_000;
@@ -33,6 +34,7 @@
   let snapshot = null;
   let refreshTimer = null;
   let refreshInFlight = null;
+  let dailySummary = null;
 
   function byId(id) { return document.getElementById(id); }
 
@@ -121,7 +123,8 @@
         captureCount: Math.max(0, Number(archive.captureCount) || 0),
         oldestCaptureAt: parseDate(archive.oldestCaptureAt),
         newestCaptureAt: parseDate(archive.newestCaptureAt),
-        historySlotsReady: Array.isArray(archive.historySlotsReady) ? archive.historySlotsReady : []
+        historySlotsReady: Array.isArray(archive.historySlotsReady) ? archive.historySlotsReady : [],
+        dailySummaryFramesReady: archive.dailySummaryFramesReady === true
       },
       services: {
         captureTimerActive: services.captureTimerActive === true,
@@ -145,6 +148,83 @@
       sizeBytes: Number(item.sizeBytes ?? item.size_bytes),
       imageVersion: String(item.imageVersion || item.capturedAt || '')
     };
+  }
+
+  function normalizeDailySummary(payload) {
+    const item = payload && typeof payload === 'object' ? payload : {};
+    const source = item.source && typeof item.source === 'object' ? item.source : {};
+    const currentCaptured = parseDate(source.currentCapturedAt);
+    const previousCaptured = parseDate(source.previousCapturedAt);
+    const status = ['stable', 'watch', 'attention', 'unavailable'].includes(item.status) ? item.status : 'pending';
+    const list = (value, max = 5) => Array.isArray(value)
+      ? value.slice(0, max).map(entry => cleanText(entry)).filter(Boolean)
+      : [];
+    const ok = item.ok === true && Boolean(currentCaptured && previousCaptured);
+    return {
+      ok,
+      state: ok ? 'ready' : cleanText(item.state, 'awaiting_daily_summary'),
+      status: ok ? status : 'pending',
+      generatedAt: parseDate(item.generatedAt),
+      headline: cleanText(item.headline, ok ? 'Daily Observer summary' : 'Daily summary is not ready yet.'),
+      summary: cleanText(item.summary || item.message, 'The Pi will generate the report after today’s representative capture is selected.'),
+      visibleChanges: list(item.visibleChanges),
+      concerns: list(item.concerns),
+      nextChecks: list(item.nextChecks, 3),
+      uncertainty: cleanText(item.uncertainty),
+      source: {
+        currentCaptured,
+        previousCaptured,
+        currentImageUrl: String(source.currentImageUrl || ''),
+        previousImageUrl: String(source.previousImageUrl || '')
+      }
+    };
+  }
+
+  function dailyStatusLabel(status) {
+    return { stable: 'Stable', watch: 'Watch', attention: 'Attention', unavailable: 'Limited', pending: 'Waiting' }[status] || 'Waiting';
+  }
+
+  function dailyListHtml(title, items, emptyText) {
+    const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+    return `<div class="observer-daily-section"><strong>${title}</strong>${safeItems.length
+      ? `<ul>${safeItems.map(item => `<li>${cleanText(item)}</li>`).join('')}</ul>`
+      : `<p>${cleanText(emptyText)}</p>`}</div>`;
+  }
+
+  function renderDailySummary(report) {
+    dailySummary = report;
+    const badge = byId('observer-daily-badge');
+    const card = byId('observer-daily-card');
+    if (badge) {
+      badge.className = `observer-daily-badge ${report.status}`;
+      badge.textContent = dailyStatusLabel(report.status);
+    }
+    if (card) card.classList.toggle('is-ready', report.ok);
+    setText('observer-daily-headline', report.headline);
+    setText('observer-daily-summary', report.summary);
+    setText('observer-daily-source', report.ok
+      ? `${formatCaptureTime(report.source.previousCaptured?.toISOString())} → ${formatCaptureTime(report.source.currentCaptured?.toISOString())}`
+      : 'Waiting for today and the prior day representative frames.');
+    setText('observer-daily-generated', report.generatedAt ? `Generated ${formatCaptureTime(report.generatedAt.toISOString())}` : 'Generated automatically once per day');
+    const details = byId('observer-daily-details');
+    if (details) {
+      details.hidden = !report.ok;
+      details.innerHTML = report.ok ? [
+        dailyListHtml('Visible changes', report.visibleChanges, 'No meaningful visible change was identified.'),
+        dailyListHtml('Concerns', report.concerns, 'No clear visual concern was identified.'),
+        dailyListHtml('Next checks', report.nextChecks, 'No additional check was recommended.'),
+        report.uncertainty ? `<div class="observer-daily-uncertainty"><strong>Image limits</strong><p>${cleanText(report.uncertainty)}</p></div>` : ''
+      ].join('') : '';
+    }
+    const compare = byId('observer-daily-compare-btn');
+    if (compare) compare.disabled = !report.ok || !report.source.currentImageUrl || !report.source.previousImageUrl;
+  }
+
+  async function fetchObserverDailySummary() {
+    const response = await fetch(DAILY_SUMMARY_ENDPOINT, { cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Daily summary returned HTTP ${response.status}`);
+    return normalizeDailySummary(data);
   }
 
   function effectiveHealth(record, captured, publishedAt) {
@@ -333,7 +413,8 @@
     setHealthRow('services', servicesState, servicesDetail);
 
     const readyLabels = (health.archive.historySlotsReady || []).map(slot => HISTORY_LABELS[slot] || slot);
-    const archiveDetail = `${health.archive.captureCount || 0} captures. ${readyLabels.length ? `Ready: ${readyLabels.join(', ')}.` : 'Historical slots are still building.'}`;
+    const dailyReady = health.archive.dailySummaryFramesReady ? ' Daily summary frames ready.' : ' Daily summary frames still building.';
+    const archiveDetail = `${health.archive.captureCount || 0} captures. ${readyLabels.length ? `Ready: ${readyLabels.join(', ')}.` : 'Historical slots are still building.'}${dailyReady}`;
     setHealthRow('archive', health.archive.status, archiveDetail);
 
     const issuesBox = byId('observer-health-issues');
@@ -463,8 +544,12 @@
     buttons.forEach(button => { button.disabled = true; });
     refreshInFlight = (async () => {
       try {
-        const record = await fetchObserverStatus();
+        const [record, report] = await Promise.all([
+          fetchObserverStatus(),
+          fetchObserverDailySummary().catch(error => normalizeDailySummary({ ok: false, state: 'temporarily_unavailable', message: error.message || String(error) }))
+        ]);
         renderObserver(record);
+        renderDailySummary(report);
         if (event && typeof showToast === 'function') {
           const message = record.health.status === 'healthy' ? '✅ Observer health refreshed' : '⚠️ Observer health needs attention';
           showToast(message);
@@ -570,6 +655,34 @@
     }
   }
 
+  async function openDailySummaryComparison() {
+    const report = dailySummary;
+    if (!report?.ok || !report.source.previousImageUrl || !report.source.currentImageUrl) {
+      if (typeof showToast === 'function') showToast('Daily comparison frames are not available yet');
+      return;
+    }
+    const button = byId('observer-daily-compare-btn');
+    const originalText = button?.textContent || 'Open comparison in Ask AI';
+    if (button) { button.disabled = true; button.textContent = 'Preparing…'; }
+    try {
+      const [previous, current] = await Promise.all([
+        imageAttachmentFromUrl(report.source.previousImageUrl, 'observer-daily-previous.jpg'),
+        imageAttachmentFromUrl(report.source.currentImageUrl, 'observer-daily-current.jpg')
+      ]);
+      const prompt = [
+        `Review the daily sump-camera comparison. Image 1 is from ${formatCaptureTime(report.source.previousCaptured?.toISOString())}; Image 2 is from ${formatCaptureTime(report.source.currentCaptured?.toISOString())}.`,
+        'Verify the automatic daily summary against the pixels. Describe only visible differences and explicitly account for lighting, night vision, framing, blur, reflections, obstruction, and camera movement.',
+        'Separate confirmed visible changes, possible changes needing verification, no meaningful change, and what cannot be determined. End with no more than two practical checks.'
+      ].join('\n\n');
+      openImagesInChat([previous, current], prompt, '📅 Daily Observer comparison ready in Ask AI');
+    } catch (error) {
+      console.warn('Could not prepare daily Observer comparison', error);
+      if (typeof showToast === 'function') showToast(`⚠️ ${error.message || 'Could not load daily comparison images'}`);
+    } finally {
+      if (button) { button.textContent = originalText; button.disabled = !dailySummary?.ok; }
+    }
+  }
+
   function startRefreshLoop() {
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
@@ -584,6 +697,7 @@
   window.analyzeLatestObserverCapture = analyzeLatestObserverCapture;
   window.compareObserverHistory = compareObserverHistory;
   window.copyObserverDiagnosticReport = copyObserverDiagnosticReport;
+  window.openDailySummaryComparison = openDailySummaryComparison;
   window.ReefKeeperObserver = {
     refresh: refreshAquariumObserver,
     getSnapshot: () => snapshot,
@@ -593,6 +707,7 @@
 
   const initialize = () => {
     renderObserver(normalizeRecord({ configured: false, ok: false }));
+    renderDailySummary(normalizeDailySummary({ ok: false }));
     refreshAquariumObserver();
     startRefreshLoop();
   };

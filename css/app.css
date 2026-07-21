@@ -4739,3 +4739,59 @@ html.theme-dark .observer-health-issue { background: rgba(31,111,139,.14); }
   .observer-health-row > b { grid-column: 2; justify-self: start; }
   .observer-health-icon { width: 30px; height: 30px; }
 }
+
+
+/* Build 2J: automatic daily visual summary */
+.observer-daily-card {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(0,180,216,.20);
+  background: rgba(255,255,255,.90);
+  box-shadow: var(--shadow);
+}
+.observer-daily-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.observer-daily-source { margin-top: 4px; color: var(--text-mid); font-size: 12px; font-weight: 750; line-height: 1.4; }
+.observer-daily-badge {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  background: rgba(255,183,3,.16);
+  color: #8a5700;
+}
+.observer-daily-badge.stable { background: rgba(82,183,136,.18); color: #246f4c; }
+.observer-daily-badge.watch { background: rgba(255,183,3,.18); color: #8a5700; }
+.observer-daily-badge.attention { background: rgba(214,40,40,.12); color: #b21f2d; }
+.observer-daily-badge.unavailable,
+.observer-daily-badge.pending { background: rgba(31,111,139,.12); color: var(--ocean-deep); }
+.observer-daily-report {
+  margin-top: 13px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: rgba(0,119,182,.055);
+  border: 1px solid rgba(0,119,182,.10);
+}
+.observer-daily-headline { display: block; color: var(--text-dark); font-size: 15px; font-weight: 950; line-height: 1.35; }
+.observer-daily-summary { margin: 7px 0 0; color: var(--text-mid); font-size: 13px; font-weight: 700; line-height: 1.55; }
+.observer-daily-generated { display: block; margin-top: 9px; color: var(--text-light); font-size: 11px; font-weight: 750; }
+.observer-daily-details { display: grid; gap: 9px; margin-top: 11px; }
+.observer-daily-details[hidden] { display: none !important; }
+.observer-daily-section,
+.observer-daily-uncertainty {
+  padding: 11px 12px;
+  border-radius: 13px;
+  border: 1px solid rgba(0,119,182,.12);
+  background: rgba(255,255,255,.62);
+}
+.observer-daily-section > strong,
+.observer-daily-uncertainty > strong { color: var(--text-dark); font-size: 12px; font-weight: 950; }
+.observer-daily-section ul { margin: 7px 0 0; padding-left: 18px; color: var(--text-mid); font-size: 12px; font-weight: 700; line-height: 1.5; }
+.observer-daily-section p,
+.observer-daily-uncertainty p { margin: 6px 0 0; color: var(--text-mid); font-size: 12px; font-weight: 700; line-height: 1.5; }
+.observer-daily-actions { margin-top: 12px; }
+html.theme-dark .observer-daily-card { background: rgba(8,27,42,.92); border-color: rgba(155,216,240,.18); }
+html.theme-dark .observer-daily-report,
+html.theme-dark .observer-daily-section,
+html.theme-dark .observer-daily-uncertainty { background: rgba(31,111,139,.14); border-color: rgba(155,216,240,.14); }

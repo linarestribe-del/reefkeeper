@@ -74,3 +74,6 @@ node apex-connector.mjs
 - It retries Apex login after a 401 when username/password are provided.
 - If automatic login fails, use `APEX_COOKIE` until the next connector login refinement.
 - Use `--verbose` for login diagnostics.
+
+## Build 2J daily visual summary
+Publisher version 2.2 selects one representative capture near noon local time for the current day and one for the prior day. After a 20-minute settling delay, it sends only those two frames to the authenticated `/api/observer-daily-summary` endpoint. The server generates and stores one evidence-limited visual report per day. The full five-minute archive remains local.
