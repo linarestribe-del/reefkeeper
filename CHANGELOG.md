@@ -1,3 +1,8 @@
+## Maintenance 1.1 — Public npm registry lockfile fix
+- Replaced environment-specific package-lock download URLs with public npm registry URLs.
+- Added `.npmrc` to make Vercel and GitHub Actions use `https://registry.npmjs.org/`.
+- No runtime application files changed.
+
 ## Maintenance 1 — Repository safeguards
 
 - Added locked dependencies, Node/npm version declarations, GitHub Actions CI, repository-integrity tests, and a Vercel function-count guard.
