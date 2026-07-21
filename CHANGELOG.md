@@ -1,5 +1,11 @@
 ## v4.3.20 — Build 2F.3: Observer Overlay Removal
 
+## 4.3.22 — Build 2F.5: Vision request timeout fix
+
+- Increased the Vercel execution window for `/api/chat.js` from the platform default to 60 seconds so image analysis can finish reliably.
+- Added clearer handling for browser-level network termination errors such as Safari's `Load failed`.
+- Added regression coverage for the function-duration configuration.
+
 - Fixed the connected Observer image placeholder remaining visible over the live image.
 - Added a CSS rule honoring the placeholder's `hidden` attribute even though its base layout uses `display: flex`.
 - Added a JavaScript fallback that explicitly removes and restores placeholder display state on image load/error.

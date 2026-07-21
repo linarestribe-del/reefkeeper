@@ -539,25 +539,34 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode(), attachmen
     ? `${TANK_CONTEXT}${getLocalTankMemorySummary(userMsg)}${liveApexContext}${structuredEvidenceContext}${decisionReviewContext}`
     : GENERAL_REEF_CONTEXT;
 
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system: selectedSystem,
-      messages,
-      modelMode,
-      useTankContext,
-      attachments: (Array.isArray(attachments) ? attachments : [])
-        .filter(item => item && item.kind === 'image' && typeof item.dataUrl === 'string')
-        .slice(0, 4)
-        .map(item => ({
-          kind: 'image',
-          name: String(item.name || 'reef photo').slice(0, 160),
-          type: String(item.type || 'image/jpeg').slice(0, 80),
-          dataUrl: item.dataUrl
-        }))
-    })
-  });
+  let response;
+  try {
+    response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: selectedSystem,
+        messages,
+        modelMode,
+        useTankContext,
+        attachments: (Array.isArray(attachments) ? attachments : [])
+          .filter(item => item && item.kind === 'image' && typeof item.dataUrl === 'string')
+          .slice(0, 4)
+          .map(item => ({
+            kind: 'image',
+            name: String(item.name || 'reef photo').slice(0, 160),
+            type: String(item.type || 'image/jpeg').slice(0, 80),
+            dataUrl: item.dataUrl
+          }))
+      })
+    });
+  } catch (error) {
+    const message = String(error?.message || error || '');
+    if (/load failed|failed to fetch|network request failed/i.test(message)) {
+      throw new Error('The AI request ended before the server finished. Please try again.');
+    }
+    throw error;
+  }
 
   let data = {};
   try { data = await response.json(); } catch(e) {}
