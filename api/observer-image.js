@@ -1,6 +1,7 @@
-// Reef Keeper Build 2F — same-origin delivery route for the current private Observer image
+// Reef Keeper Build 2H — same-origin delivery for current and selected historical images
 
 import { Readable } from 'node:stream';
+import { normalizeObserverSlot } from '../lib/observer-common.js';
 import { readObserverImage } from '../lib/observer-blob.js';
 
 export default async function handler(req, res) {
@@ -9,12 +10,15 @@ export default async function handler(req, res) {
     return res.status(405).send('Method not allowed');
   }
 
+  const slot = normalizeObserverSlot(req.query?.slot || 'latest');
+  if (!slot) return res.status(400).send('Unknown Observer image slot');
+
   try {
-    const result = await readObserverImage();
+    const result = await readObserverImage(slot);
     if (!result || result.statusCode !== 200 || !result.stream) return res.status(404).send('Observer image not found');
 
     res.setHeader('Content-Type', result.blob.contentType || 'image/jpeg');
-    res.setHeader('Content-Disposition', 'inline; filename="aquarium-observer-latest.jpg"');
+    res.setHeader('Content-Disposition', `inline; filename="aquarium-observer-${slot}.jpg"`);
     res.setHeader('Cache-Control', 'private, no-store, max-age=0');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');

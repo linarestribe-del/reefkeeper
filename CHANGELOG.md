@@ -1,3 +1,9 @@
+## 4.3.26 - Build 2H Observer History Comparison
+- Publishes selected previous, approximately 24-hour-old, and approximately 7-day-old sump captures alongside the latest image.
+- Adds built-in historical comparison actions to Aquarium Observer.
+- Sends only two selected frames to Ask AI in chronological order while the full archive remains local on the Pi.
+- Adds comparison-specific safety and uncertainty instructions.
+
 ## 4.3.25 - Build 2G.1 Visible Compare Photos
 - Added a dedicated Compare Photos tile in AI Vision.
 - Added a Compare photos row below the photo picker.

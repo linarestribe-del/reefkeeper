@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260720-build-2g-multi-image-comparison">
+<link rel="stylesheet" href="css/app.css?v=20260721-build-2h-observer-history">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1208,6 +1208,28 @@
           <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh status</button>
           <button class="observer-primary-btn" id="observer-analyze-btn" type="button" onclick="analyzeLatestObserverCapture()" disabled>Analyze latest capture</button>
         </div>
+      </section>
+
+      <section class="observer-history-card">
+        <div class="observer-history-head">
+          <div>
+            <div class="observer-safety-title">Compare with history</div>
+            <div class="observer-history-summary" id="observer-history-summary">Checking for historical captures…</div>
+          </div>
+          <span class="observer-history-icon" aria-hidden="true">🆚</span>
+        </div>
+        <div class="observer-history-actions">
+          <button class="observer-history-row" id="observer-compare-previous" type="button" onclick="compareObserverHistory('previous')" disabled>
+            <span><strong>Latest vs previous</strong><small id="observer-compare-previous-time">Not available yet</small></span><b>Compare</b>
+          </button>
+          <button class="observer-history-row" id="observer-compare-dayAgo" type="button" onclick="compareObserverHistory('dayAgo')" disabled>
+            <span><strong>Latest vs 24 hours ago</strong><small id="observer-compare-dayAgo-time">Not available yet</small></span><b>Compare</b>
+          </button>
+          <button class="observer-history-row" id="observer-compare-weekAgo" type="button" onclick="compareObserverHistory('weekAgo')" disabled>
+            <span><strong>Latest vs 7 days ago</strong><small id="observer-compare-weekAgo-time">Not available yet</small></span><b>Compare</b>
+          </button>
+        </div>
+        <p class="observer-history-note">Only these selected comparison frames are sent to Reef Keeper. The complete five-minute archive remains on the Raspberry Pi drive.</p>
       </section>
 
       <section class="observer-safety-card">
@@ -3259,8 +3281,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260720-build-2g-multi-image-comparison"></script>
-<script src="observer.js?v=20260720-build-2g-multi-image-comparison"></script>
+<script src="app.js?v=20260721-build-2h-observer-history"></script>
+<script src="observer.js?v=20260721-build-2h-observer-history"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

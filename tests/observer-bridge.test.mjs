@@ -56,7 +56,7 @@ const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.ur
 
 assert.match(pkg.dependencies?.['@vercel/blob'] || '', /^\^?2\.[3-9]|^[3-9]/, 'private Blob support requires @vercel/blob >= 2.3');
 assert.match(publishApi, /secureTokenMatch/, 'publisher endpoint must authenticate uploads');
-assert.match(publishApi, /writeObserverImage\(image\)/, 'publisher endpoint must write image bytes');
+assert.match(publishApi, /writeObserverImage\(latestImage, 'latest'\)/, 'publisher endpoint must write image bytes');
 assert.match(blobStore, /access:\s*'private'/, 'Observer objects must use private Blob storage');
 assert.match(blobStore, /allowOverwrite:\s*true/, 'latest objects must be replaceable at fixed paths');
 assert.match(blobStore, /useCache:\s*false/, 'reads must not serve an older overwritten capture');

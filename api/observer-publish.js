@@ -1,6 +1,7 @@
-// Reef Keeper Build 2F — authenticated Raspberry Pi image and status publisher
+// Reef Keeper Build 2H — authenticated current and historical image publisher
 
 import {
+  decodeObserverHistoryImages,
   decodeObserverJpeg,
   expectedObserverWriteToken,
   normalizeObserverStatus,
@@ -22,18 +23,29 @@ export default async function handler(req, res) {
 
   try {
     const body = parseObserverBody(req);
-    const image = decodeObserverJpeg(body.imageBase64);
+    const latestImage = decodeObserverJpeg(body.imageBase64);
+    const historyImages = decodeObserverHistoryImages(body.historyImages);
     const publishedAt = new Date().toISOString();
-    const imageBlob = await writeObserverImage(image);
+    const latestBlob = await writeObserverImage(latestImage, 'latest');
 
-    // Only selected, sanitized fields are persisted. Camera credentials, RTSP URLs,
-    // local file paths, and home-network addresses are never copied into Vercel storage.
+    const comparisons = {};
+    for (const history of historyImages) {
+      const blob = await writeObserverImage(history.image, history.slot);
+      comparisons[history.slot] = {
+        available: true,
+        capturedAt: history.capturedAt,
+        sizeBytes: history.image.length,
+        imageVersion: blob.etag || history.capturedAt
+      };
+    }
+
     const record = normalizeObserverStatus(body, {
       ok: body.ok !== false,
       imageAvailable: true,
-      imageVersion: body.capturedAt || body.captured_at || imageBlob.etag || publishedAt,
+      imageVersion: body.capturedAt || body.captured_at || latestBlob.etag || publishedAt,
       publishedAt,
-      sizeBytes: image.length
+      sizeBytes: latestImage.length,
+      comparisons
     });
     await writeObserverStatus(record);
 
@@ -42,11 +54,12 @@ export default async function handler(req, res) {
       durable: true,
       publishedAt: record.publishedAt,
       capturedAt: record.capturedAt,
-      sizeBytes: record.sizeBytes
+      sizeBytes: record.sizeBytes,
+      historySlots: historyImages.map(item => item.slot)
     });
   } catch (error) {
     const message = error?.message || 'Observer publish failed.';
-    const validationError = /Missing imageBase64|Base64|JPEG|exceeds|padding|empty/i.test(message);
+    const validationError = /Missing imageBase64|Base64|JPEG|exceeds|padding|empty|historyImages|History image|slot|capturedAt/i.test(message);
     if (!validationError) console.error('Observer publish storage error', error);
     return res.status(validationError ? 400 : 503).json({
       ok: false,

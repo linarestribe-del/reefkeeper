@@ -1,5 +1,5 @@
-// Reef Keeper Build 2F.6 — sump-specific Aquarium Observer analysis
-// Full camera archives remain local. This controller reads only selected remote status and image references.
+// Reef Keeper Build 2H — Aquarium Observer historical comparison
+// Full archives remain local. Only current and selected comparison images are published remotely.
 
 (function installAquariumObserver() {
   'use strict';
@@ -7,6 +7,11 @@
   const STATUS_ENDPOINT = '/api/observer-status';
   const REFRESH_INTERVAL_MS = 60_000;
   const STALE_AFTER_MS = 15 * 60_000;
+  const HISTORY_LABELS = {
+    previous: 'Previous capture',
+    dayAgo: 'About 24 hours ago',
+    weekAgo: 'About 7 days ago'
+  };
   const OBSERVER_ANALYSIS_PROMPT = [
     'Review this as one still image from my sump camera, not the display tank.',
     'Analyze only what the pixels visibly support and do not fill unseen areas with assumptions.',
@@ -21,6 +26,7 @@
     '',
     'Keep observations separate from possible concerns. Do not diagnose livestock or coral health unless they are clearly visible. Use my tank profile or Apex readings only in a separate Supporting context note and never as proof of what the image shows.'
   ].join('\n');
+
   let snapshot = null;
   let refreshTimer = null;
   let refreshInFlight = null;
@@ -54,12 +60,7 @@
   function formatCaptureTime(value) {
     const date = parseDate(value);
     if (!date) return '—';
-    return date.toLocaleString([], {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+    return date.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
   function formatAge(date) {
@@ -72,6 +73,21 @@
     if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
     const days = Math.floor(hours / 24);
     return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+
+  function normalizeComparison(slot, value) {
+    const item = value && typeof value === 'object' ? value : {};
+    const captured = parseDate(item.capturedAt || item.captured_at);
+    const imageUrl = String(item.imageUrl || '').trim();
+    return {
+      slot,
+      label: HISTORY_LABELS[slot] || slot,
+      available: item.available === true && Boolean(captured && imageUrl),
+      captured,
+      imageUrl,
+      sizeBytes: Number(item.sizeBytes ?? item.size_bytes),
+      imageVersion: String(item.imageVersion || item.capturedAt || '')
+    };
   }
 
   function normalizeRecord(payload) {
@@ -98,6 +114,11 @@
       label,
       captured,
       imageUrl,
+      comparisons: {
+        previous: normalizeComparison('previous', record.comparisons?.previous),
+        dayAgo: normalizeComparison('dayAgo', record.comparisons?.dayAgo),
+        weekAgo: normalizeComparison('weekAgo', record.comparisons?.weekAgo)
+      },
       receivedAt: parseDate(record.receivedAt),
       cameraLabel: String(record.cameraLabel || record.camera?.label || 'Sump camera'),
       stream: String(record.stream || record.camera?.stream || 'stream2'),
@@ -131,19 +152,10 @@
     if (record.imageUrl) {
       const separator = record.imageUrl.includes('?') ? '&' : '?';
       const cacheKey = record.captured?.getTime() || Date.now();
-
-      // Remove fallback copy before the refreshed image begins loading.
       setPlaceholderVisible(placeholder, false);
       image.hidden = true;
-
-      image.onload = () => {
-        setPlaceholderVisible(placeholder, false);
-        image.hidden = false;
-      };
-      image.onerror = () => {
-        image.hidden = true;
-        setPlaceholderVisible(placeholder, true);
-      };
+      image.onload = () => { setPlaceholderVisible(placeholder, false); image.hidden = false; };
+      image.onerror = () => { image.hidden = true; setPlaceholderVisible(placeholder, true); };
       image.src = `${record.imageUrl}${separator}rk=${encodeURIComponent(cacheKey)}`;
       if (time) {
         time.textContent = formatCaptureTime(record.captured?.toISOString());
@@ -157,6 +169,24 @@
     }
   }
 
+  function renderHistoryOptions(record) {
+    const summary = byId('observer-history-summary');
+    const available = Object.values(record.comparisons).filter(item => item.available);
+    if (summary) {
+      summary.textContent = available.length
+        ? `${available.length} historical comparison${available.length === 1 ? '' : 's'} ready.`
+        : 'Historical comparison images have not been published yet.';
+    }
+
+    for (const slot of Object.keys(HISTORY_LABELS)) {
+      const item = record.comparisons[slot];
+      const button = byId(`observer-compare-${slot}`);
+      const time = byId(`observer-compare-${slot}-time`);
+      if (button) button.disabled = !record.imageUrl || !item.available;
+      if (time) time.textContent = item.available ? formatCaptureTime(item.captured?.toISOString()) : 'Not available yet';
+    }
+  }
+
   function renderObserver(record) {
     snapshot = record;
     const captureIso = record.captured?.toISOString() || '';
@@ -166,14 +196,12 @@
 
     setBadge('observer-preview-badge', record);
     setBadge('observer-detail-badge', record);
-
     updateImage('observer-preview-image', 'observer-preview-placeholder', 'observer-preview-image-time', record);
     updateImage('observer-detail-image', 'observer-detail-placeholder', 'observer-detail-image-time', record);
 
     setText('observer-preview-captured', capturedLabel);
     setText('observer-preview-age', ageLabel);
     setText('observer-preview-interval', intervalLabel);
-
     setText('observer-detail-status', record.label);
     setText('observer-detail-captured', capturedLabel);
     setText('observer-detail-age', ageLabel);
@@ -182,18 +210,19 @@
     setText('observer-detail-stream', `${record.stream} · ${record.resolution}`);
     setText('observer-detail-size', formatBytes(record.sizeBytes));
     setText('observer-detail-storage', record.storageLabel);
+    renderHistoryOptions(record);
 
     const note = byId('observer-connection-note');
     if (note) {
       if (record.ok && !record.stale) {
-        note.innerHTML = '<strong>Observer bridge connected.</strong><span>Reef Keeper is receiving sanitized camera status and the current selected image through the publishing bridge. Full-resolution archives remain on the Raspberry Pi storage drive.</span>';
+        note.innerHTML = '<strong>Observer bridge connected.</strong><span>Reef Keeper is receiving the current image and selected historical comparison images. The full archive remains on the Raspberry Pi storage drive.</span>';
       } else if (record.stale) {
         note.innerHTML = '<strong>The last camera update is stale.</strong><span>The Pi may be offline, the camera may be unavailable, or the remote bridge may have stopped. Local captures can continue even when the app cannot receive an update.</span>';
       } else if (record.configured) {
         const safeMessage = record.message ? record.message.replace(/[<>]/g, '') : 'The Observer bridge has not reported a healthy capture.';
         note.innerHTML = `<strong>Observer bridge needs attention.</strong><span>${safeMessage}</span>`;
       } else {
-        note.innerHTML = '<strong>App-side setup is ready.</strong><span>The Pi keeps full-resolution captures on the local ext4 drive. Connect the publishing service to send only sanitized status and the current selected image without exposing camera credentials or the home-network address.</span>';
+        note.innerHTML = '<strong>App-side setup is ready.</strong><span>The Pi keeps full-resolution captures locally. Install the Build 2H publisher update to send the current image plus selected comparison frames.</span>';
       }
     }
 
@@ -212,17 +241,13 @@
     event?.preventDefault?.();
     event?.stopPropagation?.();
     if (refreshInFlight) return refreshInFlight;
-
     const buttons = Array.from(document.querySelectorAll('[onclick^="refreshAquariumObserver"]'));
     buttons.forEach(button => { button.disabled = true; });
-
     refreshInFlight = (async () => {
       try {
         const record = await fetchObserverStatus();
         renderObserver(record);
-        if (event && typeof showToast === 'function') {
-          showToast(record.ok ? '📹 Observer status refreshed' : 'Observer bridge is not connected yet');
-        }
+        if (event && typeof showToast === 'function') showToast(record.ok ? '📹 Observer status refreshed' : 'Observer bridge is not connected yet');
         return record;
       } catch (error) {
         const record = normalizeRecord({ configured: true, ok: false, error: error.message || String(error) });
@@ -234,17 +259,42 @@
         buttons.forEach(button => { button.disabled = false; });
       }
     })();
-
     return refreshInFlight;
   }
 
   function openAquariumObserver() {
     if (typeof window.rkDirectGo === 'function') window.rkDirectGo('observer');
     else if (typeof window.showPage === 'function') window.showPage('observer');
-
     document.querySelectorAll('.nav-btn').forEach(button => button.classList.remove('active'));
     document.querySelector('.nav-btn[data-workspace="vision"]')?.classList.add('active');
     setTimeout(() => refreshAquariumObserver(), 30);
+  }
+
+  async function imageAttachmentFromUrl(url, name) {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Image returned HTTP ${response.status}`);
+    const blob = await response.blob();
+    const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+    const dataUrl = await prepareAskAiImage(file);
+    return { kind: 'image', name, type: 'image/jpeg', dataUrl, originalType: blob.type || 'image/jpeg' };
+  }
+
+  function openImagesInChat(images, prompt, toast) {
+    attachedFileContext = {
+      kind: 'image-set',
+      name: images.length === 1 ? images[0].name : `${images.length} Observer photos`,
+      images
+    };
+    updateAttachmentStatus();
+    if (typeof window.rkDirectGo === 'function') window.rkDirectGo('chat');
+    else if (typeof window.showPage === 'function') window.showPage('chat');
+    const input = byId('chat-input');
+    if (input) {
+      input.value = prompt;
+      input.focus();
+      try { autoResize(input); } catch (_) {}
+    }
+    if (typeof showToast === 'function') showToast(toast);
   }
 
   async function analyzeLatestObserverCapture() {
@@ -252,48 +302,50 @@
       if (typeof showToast === 'function') showToast('Remote image is not available yet');
       return;
     }
-
     const button = byId('observer-analyze-btn');
     if (button) { button.disabled = true; button.textContent = 'Preparing image…'; }
-
     try {
-      const response = await fetch(snapshot.imageUrl, { cache: 'no-store' });
-      if (!response.ok) throw new Error(`Image returned HTTP ${response.status}`);
-      const blob = await response.blob();
-      const file = new File([blob], 'aquarium-observer-latest.jpg', { type: blob.type || 'image/jpeg' });
-      const dataUrl = await prepareAskAiImage(file);
-
-      attachedFileContext = {
-        kind: 'image-set',
-        name: file.name,
-        images: [{
-          kind: 'image',
-          name: file.name,
-          type: 'image/jpeg',
-          dataUrl,
-          originalType: blob.type || 'image/jpeg'
-        }]
-      };
-      updateAttachmentStatus();
-
-      if (typeof window.rkDirectGo === 'function') window.rkDirectGo('chat');
-      else if (typeof window.showPage === 'function') window.showPage('chat');
-
-      const input = byId('chat-input');
-      if (input) {
-        input.value = OBSERVER_ANALYSIS_PROMPT;
-        input.focus();
-        try { autoResize(input); } catch (_) {}
-      }
-      if (typeof showToast === 'function') showToast('📹 Latest Observer capture ready for AI');
+      const image = await imageAttachmentFromUrl(snapshot.imageUrl, 'aquarium-observer-latest.jpg');
+      openImagesInChat([image], OBSERVER_ANALYSIS_PROMPT, '📹 Latest Observer capture ready for AI');
     } catch (error) {
       console.warn('Could not prepare Observer image', error);
       if (typeof showToast === 'function') showToast(`⚠️ ${error.message || 'Could not load Observer image'}`);
     } finally {
-      if (button) {
-        button.textContent = 'Analyze latest capture';
-        button.disabled = !snapshot?.imageUrl;
-      }
+      if (button) { button.textContent = 'Analyze latest capture'; button.disabled = !snapshot?.imageUrl; }
+    }
+  }
+
+  async function compareObserverHistory(slot) {
+    const comparison = snapshot?.comparisons?.[slot];
+    if (!snapshot?.imageUrl || !comparison?.available) {
+      if (typeof showToast === 'function') showToast('That historical comparison is not available yet');
+      return;
+    }
+    const button = byId(`observer-compare-${slot}`);
+    const originalText = button?.textContent || 'Compare';
+    if (button) { button.disabled = true; button.textContent = 'Preparing…'; }
+    try {
+      const [older, latest] = await Promise.all([
+        imageAttachmentFromUrl(comparison.imageUrl, `observer-${slot}-${comparison.captured?.toISOString().slice(0, 10) || 'older'}.jpg`),
+        imageAttachmentFromUrl(snapshot.imageUrl, 'observer-latest.jpg')
+      ]);
+      const olderTime = formatCaptureTime(comparison.captured?.toISOString());
+      const latestTime = formatCaptureTime(snapshot.captured?.toISOString());
+      const prompt = [
+        `Compare these two sump-camera images in chronological order: Image 1 was captured ${olderTime}; Image 2 was captured ${latestTime}.`,
+        'First decide whether lighting, night vision, framing, camera movement, blur, obstruction, or reflections make the comparison unreliable.',
+        'Then describe only visible changes between Image 1 and Image 2.',
+        'Check water level, skimmer foam or cup condition, filter roller position, visible plumbing or tubing, equipment position, salt creep, condensation, algae or biofilm, debris, microbubbles, cloudiness, and possible leak or overflow evidence—but only where visible in both frames.',
+        'Separate: Confirmed visible change; Possible change needing verification; No meaningful visible change; What cannot be determined.',
+        'Do not infer pump operation, flow rate, water chemistry, or hidden leaks. Do not call normal lighting differences a tank change.',
+        'End with no more than two practical next checks, ranked by urgency.'
+      ].join('\n\n');
+      openImagesInChat([older, latest], prompt, `🆚 ${comparison.label} and latest capture ready`);
+    } catch (error) {
+      console.warn('Could not prepare Observer comparison', error);
+      if (typeof showToast === 'function') showToast(`⚠️ ${error.message || 'Could not load comparison images'}`);
+    } finally {
+      if (button) { button.textContent = originalText; button.disabled = !snapshot?.imageUrl || !comparison?.available; }
     }
   }
 
@@ -309,11 +361,8 @@
   window.openAquariumObserver = openAquariumObserver;
   window.refreshAquariumObserver = refreshAquariumObserver;
   window.analyzeLatestObserverCapture = analyzeLatestObserverCapture;
-  window.ReefKeeperObserver = {
-    refresh: refreshAquariumObserver,
-    getSnapshot: () => snapshot,
-    endpoint: STATUS_ENDPOINT
-  };
+  window.compareObserverHistory = compareObserverHistory;
+  window.ReefKeeperObserver = { refresh: refreshAquariumObserver, getSnapshot: () => snapshot, endpoint: STATUS_ENDPOINT };
 
   const initialize = () => {
     renderObserver(normalizeRecord({ configured: false, ok: false }));
