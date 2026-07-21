@@ -1,4 +1,4 @@
-// Reef Keeper Build 2H — authenticated current and historical image publisher
+// Reef Keeper Build 2I — authenticated Observer image, history, and health publisher
 
 import {
   decodeObserverHistoryImages,
@@ -55,7 +55,8 @@ export default async function handler(req, res) {
       publishedAt: record.publishedAt,
       capturedAt: record.capturedAt,
       sizeBytes: record.sizeBytes,
-      historySlots: historyImages.map(item => item.slot)
+      historySlots: historyImages.map(item => item.slot),
+      healthStatus: record.health?.status || 'pending'
     });
   } catch (error) {
     const message = error?.message || 'Observer publish failed.';

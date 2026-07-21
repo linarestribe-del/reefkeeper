@@ -1,12 +1,15 @@
-// Reef Keeper Build 2H — Aquarium Observer historical comparison
-// Full archives remain local. Only current and selected comparison images are published remotely.
+// Reef Keeper Build 2I — Aquarium Observer history, health, and reliability
+// Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
   'use strict';
 
   const STATUS_ENDPOINT = '/api/observer-status';
   const REFRESH_INTERVAL_MS = 60_000;
-  const STALE_AFTER_MS = 15 * 60_000;
+  const CAPTURE_STALE_AFTER_MS = 15 * 60_000;
+  const CAPTURE_OFFLINE_AFTER_MS = 60 * 60_000;
+  const PUBLISH_STALE_AFTER_MS = 15 * 60_000;
+  const PUBLISH_OFFLINE_AFTER_MS = 60 * 60_000;
   const HISTORY_LABELS = {
     previous: 'Previous capture',
     dayAgo: 'About 24 hours ago',
@@ -36,6 +39,10 @@
   function setText(id, value) {
     const element = byId(id);
     if (element) element.textContent = value;
+  }
+
+  function cleanText(value, fallback = '') {
+    return String(value ?? fallback).replace(/[<>]/g, '').trim();
   }
 
   function formatBytes(value) {
@@ -75,6 +82,56 @@
     return `${days} day${days === 1 ? '' : 's'} ago`;
   }
 
+  function healthState(value, fallback = 'pending') {
+    const state = String(value || '').toLowerCase();
+    return ['healthy', 'attention', 'offline', 'pending'].includes(state) ? state : fallback;
+  }
+
+  function normalizeHealthComponent(value, fallbackMessage) {
+    const item = value && typeof value === 'object' ? value : {};
+    return {
+      ...item,
+      status: healthState(item.status),
+      message: cleanText(item.message, fallbackMessage)
+    };
+  }
+
+  function normalizeHealth(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const issues = Array.isArray(source.issues)
+      ? source.issues.slice(0, 12).map(item => ({
+          code: cleanText(item?.code, 'observer_issue'),
+          severity: ['critical', 'warning', 'info'].includes(item?.severity) ? item.severity : 'info',
+          message: cleanText(item?.message)
+        })).filter(item => item.message)
+      : [];
+    const services = source.services && typeof source.services === 'object' ? source.services : {};
+    const archive = source.archive && typeof source.archive === 'object' ? source.archive : {};
+    return {
+      status: healthState(source.status),
+      summary: cleanText(source.summary, 'Observer health data has not arrived yet.'),
+      checkedAt: parseDate(source.checkedAt || source.checked_at),
+      issues,
+      capture: normalizeHealthComponent(source.capture, 'Waiting for camera health data.'),
+      publisher: normalizeHealthComponent(source.publisher, 'Waiting for publisher health data.'),
+      storage: normalizeHealthComponent(source.storage, 'Waiting for drive health data.'),
+      power: normalizeHealthComponent(source.power, 'Waiting for Pi power health data.'),
+      archive: {
+        ...normalizeHealthComponent(archive, 'Waiting for archive health data.'),
+        captureCount: Math.max(0, Number(archive.captureCount) || 0),
+        oldestCaptureAt: parseDate(archive.oldestCaptureAt),
+        newestCaptureAt: parseDate(archive.newestCaptureAt),
+        historySlotsReady: Array.isArray(archive.historySlotsReady) ? archive.historySlotsReady : []
+      },
+      services: {
+        captureTimerActive: services.captureTimerActive === true,
+        captureTimerState: cleanText(services.captureTimerState, 'unknown'),
+        publishTimerActive: services.publishTimerActive === true,
+        publishTimerState: cleanText(services.publishTimerState, 'unknown')
+      }
+    };
+  }
+
   function normalizeComparison(slot, value) {
     const item = value && typeof value === 'object' ? value : {};
     const captured = parseDate(item.capturedAt || item.captured_at);
@@ -90,30 +147,78 @@
     };
   }
 
+  function effectiveHealth(record, captured, publishedAt) {
+    const health = normalizeHealth(record.health);
+    const publishAgeMs = publishedAt ? Date.now() - publishedAt.getTime() : Number.POSITIVE_INFINITY;
+    const captureAgeMs = captured ? Date.now() - captured.getTime() : Number.POSITIVE_INFINITY;
+    const issues = [...health.issues];
+
+    if (publishAgeMs > PUBLISH_OFFLINE_AFTER_MS) {
+      health.publisher.status = 'offline';
+      health.publisher.message = `No remote update has arrived for ${formatAge(publishedAt).toLowerCase()}.`;
+      if (!issues.some(item => item.code === 'publisher_stale')) {
+        issues.unshift({ code: 'publisher_stale', severity: 'critical', message: health.publisher.message });
+      }
+    } else if (publishAgeMs > PUBLISH_STALE_AFTER_MS) {
+      health.publisher.status = 'attention';
+      health.publisher.message = `Last remote update arrived ${formatAge(publishedAt).toLowerCase()}.`;
+      if (!issues.some(item => item.code === 'publisher_delayed')) {
+        issues.unshift({ code: 'publisher_delayed', severity: 'warning', message: health.publisher.message });
+      }
+    } else if (publishedAt && health.publisher.status === 'pending') {
+      health.publisher.status = 'healthy';
+      health.publisher.message = `Last remote update arrived ${formatAge(publishedAt).toLowerCase()}.`;
+    }
+
+    if (captureAgeMs > CAPTURE_OFFLINE_AFTER_MS && health.capture.status !== 'offline') {
+      health.capture.status = 'offline';
+      health.capture.message = `Latest capture is ${formatAge(captured).toLowerCase()}.`;
+    } else if (captureAgeMs > CAPTURE_STALE_AFTER_MS && health.capture.status === 'healthy') {
+      health.capture.status = 'attention';
+      health.capture.message = `Latest capture is ${formatAge(captured).toLowerCase()}.`;
+    }
+
+    const componentStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.archive.status];
+    if (componentStates.includes('offline')) health.status = 'offline';
+    else if (componentStates.includes('attention')) health.status = 'attention';
+    else if (componentStates.every(state => state === 'healthy')) health.status = 'healthy';
+
+    if (health.status === 'healthy') health.summary = 'Camera capture, remote publishing, storage, services, and Pi power checks are healthy.';
+    else if (health.status === 'attention') health.summary = 'Observer is still reporting, but one or more checks need attention.';
+    else if (health.status === 'offline') health.summary = health.publisher.status === 'offline'
+      ? 'The app is not receiving current Observer health reports.'
+      : 'A critical local Observer component is unavailable.';
+
+    health.issues = issues;
+    return health;
+  }
+
   function normalizeRecord(payload) {
     const record = payload && typeof payload === 'object' ? payload : {};
     const captured = captureDate(record);
+    const publishedAt = parseDate(record.publishedAt || record.receivedAt);
     const imageUrl = String(record.thumbnailUrl || record.imageUrl || record.latestImageUrl || '').trim();
-    const configured = record.configured === true || Boolean(record.receivedAt || captured || imageUrl);
-    const sourceOk = record.ok === true;
-    const ageMs = captured ? Date.now() - captured.getTime() : Number.POSITIVE_INFINITY;
-    const stale = sourceOk && captured && ageMs > STALE_AFTER_MS;
+    const configured = record.configured === true || Boolean(record.receivedAt || publishedAt || captured || imageUrl);
+    const health = effectiveHealth(record, captured, publishedAt);
 
     let state = 'pending';
-    let label = 'Not connected';
-    if (configured && sourceOk && !stale) { state = 'online'; label = 'Online'; }
-    else if (configured && sourceOk && stale) { state = 'stale'; label = 'Stale'; }
-    else if (configured && record.ok === false) { state = 'offline'; label = 'Offline'; }
+    let label = 'Checking';
+    if (!configured) { state = 'pending'; label = 'Not connected'; }
+    else if (health.status === 'healthy') { state = 'online'; label = 'Healthy'; }
+    else if (health.status === 'attention') { state = 'stale'; label = 'Attention'; }
+    else { state = 'offline'; label = 'Offline'; }
 
     return {
       raw: record,
       configured,
-      ok: sourceOk,
-      stale,
+      ok: state === 'online',
+      stale: state === 'stale',
       state,
       label,
       captured,
+      publishedAt,
       imageUrl,
+      health,
       comparisons: {
         previous: normalizeComparison('previous', record.comparisons?.previous),
         dayAgo: normalizeComparison('dayAgo', record.comparisons?.dayAgo),
@@ -124,8 +229,12 @@
       stream: String(record.stream || record.camera?.stream || 'stream2'),
       resolution: String(record.resolution || record.camera?.resolution || '1280×720'),
       intervalMinutes: Number(record.captureIntervalMinutes || record.intervalMinutes || 5) || 5,
+      publisherVersion: String(record.publisherVersion || health.publisher?.version || '—'),
       sizeBytes: Number(record.sizeBytes ?? record.size_bytes),
       storageLabel: String(record.storage?.label || record.storageLabel || 'Local Pi drive'),
+      storageTotalBytes: Number(record.storage?.totalBytes || health.storage?.totalBytes || 0),
+      storageAvailableBytes: Number(record.storage?.availableBytes || health.storage?.availableBytes || 0),
+      storageUsedPercent: Number(record.storage?.usedPercent ?? health.storage?.usedPercent),
       message: String(record.message || record.error || '')
     };
   }
@@ -187,6 +296,107 @@
     }
   }
 
+  function healthLabel(state) {
+    return { healthy: 'Healthy', attention: 'Attention', offline: 'Offline', pending: 'Checking' }[healthState(state)] || 'Checking';
+  }
+
+  function setHealthRow(name, state, detail) {
+    const row = byId(`observer-health-${name}-row`);
+    const stateNode = byId(`observer-health-${name}-state`);
+    const detailNode = byId(`observer-health-${name}-detail`);
+    const normalized = healthState(state);
+    if (row) row.className = `observer-health-row ${normalized}`;
+    if (stateNode) stateNode.textContent = healthLabel(normalized);
+    if (detailNode) detailNode.textContent = detail || 'No details received.';
+  }
+
+  function renderObserverHealth(record) {
+    const health = record.health;
+    const badge = byId('observer-health-badge');
+    if (badge) {
+      badge.className = `observer-health-badge ${health.status}`;
+      badge.textContent = healthLabel(health.status);
+    }
+    setText('observer-health-summary', health.summary);
+    setHealthRow('capture', health.capture.status, health.capture.message);
+    setHealthRow('publisher', health.publisher.status, health.publisher.message);
+
+    const storageDetail = health.storage.availableBytes
+      ? `${health.storage.message} ${formatBytes(health.storage.availableBytes)} free; ${Number(health.storage.usedPercent || 0).toFixed(1)}% used.`
+      : health.storage.message;
+    setHealthRow('storage', health.storage.status, storageDetail);
+    setHealthRow('power', health.power.status, `${health.power.message}${health.power.throttledHex ? ` (${health.power.throttledHex})` : ''}`);
+
+    const servicesHealthy = health.services.captureTimerActive && health.services.publishTimerActive;
+    const servicesState = servicesHealthy ? 'healthy' : 'attention';
+    const servicesDetail = `Capture timer: ${health.services.captureTimerState}; publisher timer: ${health.services.publishTimerState}.`;
+    setHealthRow('services', servicesState, servicesDetail);
+
+    const readyLabels = (health.archive.historySlotsReady || []).map(slot => HISTORY_LABELS[slot] || slot);
+    const archiveDetail = `${health.archive.captureCount || 0} captures. ${readyLabels.length ? `Ready: ${readyLabels.join(', ')}.` : 'Historical slots are still building.'}`;
+    setHealthRow('archive', health.archive.status, archiveDetail);
+
+    const issuesBox = byId('observer-health-issues');
+    if (issuesBox) {
+      const issues = health.issues.filter(item => item.message);
+      issuesBox.hidden = !issues.length;
+      issuesBox.innerHTML = issues.map(item => `<div class="observer-health-issue ${item.severity}">${item.message.replace(/[<>]/g, '')}</div>`).join('');
+    }
+  }
+
+  function diagnosticLine(label, value) {
+    return `${label}: ${value || '—'}`;
+  }
+
+  function buildObserverDiagnosticReport(record = snapshot) {
+    if (!record) return 'Reef Keeper Aquarium Observer diagnostic\nNo Observer status is loaded.';
+    const health = record.health;
+    const ready = (health.archive.historySlotsReady || []).map(slot => HISTORY_LABELS[slot] || slot).join(', ') || 'none';
+    const issues = health.issues.length
+      ? health.issues.map(item => `- [${item.severity.toUpperCase()}] ${item.code}: ${item.message}`).join('\n')
+      : '- None reported';
+    return [
+      'Reef Keeper Aquarium Observer diagnostic',
+      `Generated: ${new Date().toISOString()}`,
+      diagnosticLine('Overall status', healthLabel(health.status)),
+      diagnosticLine('Summary', health.summary),
+      diagnosticLine('Last capture', record.captured?.toISOString()),
+      diagnosticLine('Capture age', formatAge(record.captured)),
+      diagnosticLine('Last publish', record.publishedAt?.toISOString()),
+      diagnosticLine('Publish age', formatAge(record.publishedAt)),
+      diagnosticLine('Publisher version', record.publisherVersion),
+      diagnosticLine('Camera capture', `${healthLabel(health.capture.status)} — ${health.capture.message}`),
+      diagnosticLine('Capture timer', health.services.captureTimerState),
+      diagnosticLine('Publisher timer', health.services.publishTimerState),
+      diagnosticLine('Storage', `${healthLabel(health.storage.status)} — mounted=${health.storage.mounted === true}, writable=${health.storage.writable === true}`),
+      diagnosticLine('Storage space', `${formatBytes(health.storage.availableBytes)} free; ${Number(health.storage.usedPercent || 0).toFixed(1)}% used`),
+      diagnosticLine('Pi power', `${health.power.message}${health.power.throttledHex ? ` (${health.power.throttledHex})` : ''}`),
+      diagnosticLine('Archive count', health.archive.captureCount),
+      diagnosticLine('History ready', ready),
+      'Issues:',
+      issues
+    ].join('\n');
+  }
+
+  async function copyObserverDiagnosticReport() {
+    const report = buildObserverDiagnosticReport();
+    try {
+      await navigator.clipboard.writeText(report);
+      if (typeof showToast === 'function') showToast('📋 Observer diagnostic copied');
+    } catch (error) {
+      const textarea = document.createElement('textarea');
+      textarea.value = report;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (typeof showToast === 'function') showToast(copied ? '📋 Observer diagnostic copied' : '⚠️ Could not copy diagnostic');
+    }
+  }
+
   function renderObserver(record) {
     snapshot = record;
     const captureIso = record.captured?.toISOString() || '';
@@ -209,20 +419,28 @@
     setText('observer-detail-camera', record.cameraLabel);
     setText('observer-detail-stream', `${record.stream} · ${record.resolution}`);
     setText('observer-detail-size', formatBytes(record.sizeBytes));
+    setText('observer-detail-published', `${formatCaptureTime(record.publishedAt?.toISOString())} · ${formatAge(record.publishedAt)}`);
+    setText('observer-detail-publisher', record.publisherVersion === '—' ? 'Waiting for version' : `v${record.publisherVersion}`);
     setText('observer-detail-storage', record.storageLabel);
+    setText('observer-detail-drive-space', record.storageAvailableBytes ? `${formatBytes(record.storageAvailableBytes)} free · ${Number(record.storageUsedPercent || 0).toFixed(1)}% used` : '—');
+    renderObserverHealth(record);
     renderHistoryOptions(record);
 
     const note = byId('observer-connection-note');
     if (note) {
-      if (record.ok && !record.stale) {
-        note.innerHTML = '<strong>Observer bridge connected.</strong><span>Reef Keeper is receiving the current image and selected historical comparison images. The full archive remains on the Raspberry Pi storage drive.</span>';
-      } else if (record.stale) {
-        note.innerHTML = '<strong>The last camera update is stale.</strong><span>The Pi may be offline, the camera may be unavailable, or the remote bridge may have stopped. Local captures can continue even when the app cannot receive an update.</span>';
+      if (record.health.status === 'healthy') {
+        note.innerHTML = '<strong>Observer system is healthy.</strong><span>The camera, Pi timers, storage drive, and remote publisher are reporting normally. The full archive remains on the Raspberry Pi drive.</span>';
+      } else if (record.health.publisher.status === 'offline') {
+        note.innerHTML = '<strong>The remote publisher stopped reporting.</strong><span>The app cannot confirm what is happening on the Pi until a new health report arrives. Local captures may still be running.</span>';
+      } else if (record.health.capture.status !== 'healthy' && record.health.publisher.status === 'healthy') {
+        note.innerHTML = `<strong>The publisher is online, but camera capture needs attention.</strong><span>${cleanText(record.health.capture.message, 'The latest capture is not current.')}</span>`;
+      } else if (record.health.storage.status === 'offline') {
+        note.innerHTML = `<strong>The Observer drive needs attention.</strong><span>${cleanText(record.health.storage.message, 'The archive drive is unavailable or not writable.')}</span>`;
       } else if (record.configured) {
-        const safeMessage = record.message ? record.message.replace(/[<>]/g, '') : 'The Observer bridge has not reported a healthy capture.';
-        note.innerHTML = `<strong>Observer bridge needs attention.</strong><span>${safeMessage}</span>`;
+        const safeMessage = record.health.summary || record.message || 'One or more Observer checks need attention.';
+        note.innerHTML = `<strong>Observer is reporting with a warning.</strong><span>${cleanText(safeMessage)}</span>`;
       } else {
-        note.innerHTML = '<strong>App-side setup is ready.</strong><span>The Pi keeps full-resolution captures locally. Install the Build 2H publisher update to send the current image plus selected comparison frames.</span>';
+        note.innerHTML = '<strong>App-side setup is ready.</strong><span>Install the Build 2I Pi health publisher to report camera, storage, timer, and power diagnostics.</span>';
       }
     }
 
@@ -247,7 +465,10 @@
       try {
         const record = await fetchObserverStatus();
         renderObserver(record);
-        if (event && typeof showToast === 'function') showToast(record.ok ? '📹 Observer status refreshed' : 'Observer bridge is not connected yet');
+        if (event && typeof showToast === 'function') {
+          const message = record.health.status === 'healthy' ? '✅ Observer health refreshed' : '⚠️ Observer health needs attention';
+          showToast(message);
+        }
         return record;
       } catch (error) {
         const record = normalizeRecord({ configured: true, ok: false, error: error.message || String(error) });
@@ -362,7 +583,13 @@
   window.refreshAquariumObserver = refreshAquariumObserver;
   window.analyzeLatestObserverCapture = analyzeLatestObserverCapture;
   window.compareObserverHistory = compareObserverHistory;
-  window.ReefKeeperObserver = { refresh: refreshAquariumObserver, getSnapshot: () => snapshot, endpoint: STATUS_ENDPOINT };
+  window.copyObserverDiagnosticReport = copyObserverDiagnosticReport;
+  window.ReefKeeperObserver = {
+    refresh: refreshAquariumObserver,
+    getSnapshot: () => snapshot,
+    diagnostic: () => buildObserverDiagnosticReport(snapshot),
+    endpoint: STATUS_ENDPOINT
+  };
 
   const initialize = () => {
     renderObserver(normalizeRecord({ configured: false, ok: false }));

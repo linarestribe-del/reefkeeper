@@ -1,3 +1,10 @@
+## 4.3.27 - Build 2I Observer Health & Reliability
+- Adds an Observer Health dashboard for camera freshness, remote publishing, Pi timers, archive storage, free space, and power flags.
+- Distinguishes a stale camera from a stale remote publisher.
+- Preserves the last published image while accepting metadata-only failure reports from the Pi.
+- Adds a copyable diagnostic report that excludes tokens, camera credentials, and private network addresses.
+- Updates the Pi publisher to version 2.1 with health-only fallback reporting when local images or storage are unavailable.
+
 ## 4.3.26 - Build 2H Observer History Comparison
 - Publishes selected previous, approximately 24-hour-old, and approximately 7-day-old sump captures alongside the latest image.
 - Adds built-in historical comparison actions to Aquarium Observer.

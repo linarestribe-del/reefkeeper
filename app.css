@@ -4615,3 +4615,127 @@ html.theme-dark .observer-history-row {
   border-color: rgba(155,216,240,.18);
   color: var(--text-dark);
 }
+
+/* Build 2I: Aquarium Observer health and reliability */
+.observer-health-card {
+  margin-top: 14px;
+  padding: 16px;
+  background: rgba(255,255,255,.88);
+  border: 1px solid rgba(0,180,216,.20);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.observer-health-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.observer-health-summary {
+  margin-top: 4px;
+  color: var(--text-mid);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.observer-health-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.observer-health-badge.pending { background: rgba(255,183,3,.18); color: #8a5700; }
+.observer-health-badge.healthy { background: rgba(82,183,136,.18); color: #246f4c; }
+.observer-health-badge.attention { background: rgba(255,107,53,.16); color: #b34816; }
+.observer-health-badge.offline { background: rgba(214,40,40,.12); color: #b21f2d; }
+.observer-health-grid {
+  display: grid;
+  gap: 9px;
+  margin-top: 13px;
+}
+.observer-health-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid rgba(0,119,182,.14);
+  border-radius: 14px;
+  background: rgba(246,252,255,.92);
+  padding: 10px 11px;
+}
+.observer-health-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(0,180,216,.11);
+  font-size: 17px;
+}
+.observer-health-row > div { min-width: 0; }
+.observer-health-row strong {
+  display: block;
+  color: var(--text-dark);
+  font-size: 12px;
+  font-weight: 900;
+}
+.observer-health-row small {
+  display: block;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+  color: var(--text-mid);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.observer-health-row > b {
+  border-radius: 999px;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.observer-health-row.healthy > b { background: rgba(82,183,136,.16); color: #246f4c; }
+.observer-health-row.attention > b { background: rgba(255,107,53,.14); color: #b34816; }
+.observer-health-row.offline > b { background: rgba(214,40,40,.11); color: #b21f2d; }
+.observer-health-row.pending > b { background: rgba(255,183,3,.14); color: #8a5700; }
+.observer-health-issues {
+  display: grid;
+  gap: 7px;
+  margin-top: 11px;
+}
+.observer-health-issues[hidden] { display: none !important; }
+.observer-health-issue {
+  border-left: 4px solid rgba(0,119,182,.5);
+  border-radius: 10px;
+  background: rgba(0,180,216,.07);
+  padding: 9px 10px;
+  color: var(--text-mid);
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.observer-health-issue.warning { border-left-color: #ff6b35; background: rgba(255,107,53,.07); }
+.observer-health-issue.critical { border-left-color: #d62828; background: rgba(214,40,40,.07); }
+.observer-health-issue.info { border-left-color: var(--ocean-mid); }
+.observer-health-actions { margin-top: 12px; }
+html.theme-dark .observer-health-card {
+  background: rgba(8,27,42,.94);
+  border-color: rgba(155,216,240,.20);
+}
+html.theme-dark .observer-health-row {
+  background: rgba(3,21,34,.72);
+  border-color: rgba(155,216,240,.18);
+}
+html.theme-dark .observer-health-icon { background: rgba(74,173,214,.12); }
+html.theme-dark .observer-health-issue { background: rgba(31,111,139,.14); }
+@media (max-width: 380px) {
+  .observer-health-row { grid-template-columns: 30px minmax(0,1fr); }
+  .observer-health-row > b { grid-column: 2; justify-self: start; }
+  .observer-health-icon { width: 30px; height: 30px; }
+}

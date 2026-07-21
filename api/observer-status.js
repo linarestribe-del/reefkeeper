@@ -1,4 +1,4 @@
-// Reef Keeper Build 2F — Aquarium Observer status bridge backed by private Vercel Blob
+// Reef Keeper Build 2I — Aquarium Observer status and health bridge backed by private Vercel Blob
 
 import {
   awaitingObserverStatus,
@@ -27,9 +27,25 @@ export default async function handler(req, res) {
       if (body.imageDataUrl || body.imageBase64 || body.imageBytes || body.thumbnailDataUrl) {
         return res.status(400).json({ ok: false, error: 'Image bytes are accepted only by /api/observer-publish.' });
       }
-      const record = normalizeObserverStatus(body, { imageAvailable: false });
+      const existing = await readObserverStatus().catch(() => null);
+      const merged = {
+        ...(existing || {}),
+        ...body,
+        storage: { ...(existing?.storage || {}), ...(body.storage || {}) },
+        health: body.health || existing?.health,
+        comparisons: existing?.comparisons || body.comparisons
+      };
+      const record = normalizeObserverStatus(merged, {
+        ok: body.ok ?? existing?.ok ?? false,
+        capturedAt: body.capturedAt || body.captured_at || existing?.capturedAt,
+        imageAvailable: existing?.imageAvailable === true,
+        imageVersion: existing?.imageVersion || '',
+        sizeBytes: existing?.sizeBytes || 0,
+        comparisons: existing?.comparisons || body.comparisons,
+        health: body.health || existing?.health
+      });
       await writeObserverStatus(record);
-      return res.status(200).json({ ok: true, durable: true, receivedAt: record.receivedAt });
+      return res.status(200).json({ ok: true, durable: true, receivedAt: record.receivedAt, healthStatus: record.health?.status || 'pending' });
     }
 
     if (req.method === 'GET') {

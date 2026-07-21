@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260721-build-2h-observer-history">
+<link rel="stylesheet" href="css/app.css?v=20260721-build-2i-observer-health">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1161,7 +1161,7 @@
       <div class="compact-page-bar">
         <div>
           <div class="compact-page-title">Aquarium Observer</div>
-          <div class="compact-page-subtitle">Latest camera capture, bridge health, and storage status.</div>
+          <div class="compact-page-subtitle">Latest camera capture, Pi health, publishing reliability, and storage status.</div>
         </div>
         <button class="compact-page-action" type="button" onclick="rkDirectGo('vision')">Back</button>
       </div>
@@ -1196,7 +1196,10 @@
           <div><span>Camera</span><strong id="observer-detail-camera">Sump camera</strong></div>
           <div><span>Stream</span><strong id="observer-detail-stream">stream2 · 720p</strong></div>
           <div><span>Image size</span><strong id="observer-detail-size">—</strong></div>
+          <div><span>Last publish</span><strong id="observer-detail-published">—</strong></div>
+          <div><span>Publisher</span><strong id="observer-detail-publisher">—</strong></div>
           <div><span>Archive storage</span><strong id="observer-detail-storage">Local Pi drive</strong></div>
+          <div><span>Drive space</span><strong id="observer-detail-drive-space">—</strong></div>
         </div>
 
         <div class="observer-connection-note" id="observer-connection-note">
@@ -1207,6 +1210,43 @@
         <div class="observer-card-actions observer-detail-actions">
           <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh status</button>
           <button class="observer-primary-btn" id="observer-analyze-btn" type="button" onclick="analyzeLatestObserverCapture()" disabled>Analyze latest capture</button>
+        </div>
+      </section>
+
+      <section class="observer-health-card" aria-labelledby="observer-health-title">
+        <div class="observer-health-head">
+          <div>
+            <div class="observer-safety-title" id="observer-health-title">Observer Health</div>
+            <div class="observer-health-summary" id="observer-health-summary">Checking the Pi, camera, drive, and publisher…</div>
+          </div>
+          <span class="observer-health-badge pending" id="observer-health-badge">Checking</span>
+        </div>
+
+        <div class="observer-health-grid">
+          <div class="observer-health-row" id="observer-health-capture-row">
+            <span class="observer-health-icon">📷</span><div><strong>Camera capture</strong><small id="observer-health-capture-detail">Checking…</small></div><b id="observer-health-capture-state">—</b>
+          </div>
+          <div class="observer-health-row" id="observer-health-publisher-row">
+            <span class="observer-health-icon">☁️</span><div><strong>Remote publishing</strong><small id="observer-health-publisher-detail">Checking…</small></div><b id="observer-health-publisher-state">—</b>
+          </div>
+          <div class="observer-health-row" id="observer-health-storage-row">
+            <span class="observer-health-icon">💾</span><div><strong>Observer drive</strong><small id="observer-health-storage-detail">Checking…</small></div><b id="observer-health-storage-state">—</b>
+          </div>
+          <div class="observer-health-row" id="observer-health-power-row">
+            <span class="observer-health-icon">⚡</span><div><strong>Pi power</strong><small id="observer-health-power-detail">Checking…</small></div><b id="observer-health-power-state">—</b>
+          </div>
+          <div class="observer-health-row" id="observer-health-services-row">
+            <span class="observer-health-icon">⏱️</span><div><strong>System services</strong><small id="observer-health-services-detail">Checking…</small></div><b id="observer-health-services-state">—</b>
+          </div>
+          <div class="observer-health-row" id="observer-health-archive-row">
+            <span class="observer-health-icon">🗂️</span><div><strong>Capture archive</strong><small id="observer-health-archive-detail">Checking…</small></div><b id="observer-health-archive-state">—</b>
+          </div>
+        </div>
+
+        <div class="observer-health-issues" id="observer-health-issues" hidden></div>
+        <div class="observer-card-actions observer-health-actions">
+          <button class="observer-secondary-btn" type="button" onclick="copyObserverDiagnosticReport()">Copy diagnostic report</button>
+          <button class="observer-primary-btn" type="button" onclick="refreshAquariumObserver(event)">Run health check</button>
         </div>
       </section>
 
@@ -3281,8 +3321,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260721-build-2h-observer-history"></script>
-<script src="observer.js?v=20260721-build-2h-observer-history"></script>
+<script src="app.js?v=20260721-build-2i-observer-health"></script>
+<script src="observer.js?v=20260721-build-2i-observer-health"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
