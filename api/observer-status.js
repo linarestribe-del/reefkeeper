@@ -4,12 +4,23 @@ import {
   awaitingObserverStatus,
   expectedObserverWriteToken,
   normalizeObserverStatus,
+  normalizeObserverTimelapseFeed,
   parseObserverBody,
   readBearer,
   secureTokenMatch,
   setObserverHeaders
 } from '../lib/observer-common.js';
-import { readObserverStatus, writeObserverStatus } from '../lib/observer-blob.js';
+import { readObserverStatus, writeObserverStatus, readObserverTimelapseFeed } from '../lib/observer-blob.js';
+
+function awaitingTimelapseFeed() {
+  return normalizeObserverTimelapseFeed({
+    ok: true,
+    timelapses: {
+      week: { available: false, state: 'waiting_for_history', label: 'Rolling 7 days' },
+      month: { available: false, state: 'waiting_for_history', label: 'Rolling 30 days' }
+    }
+  });
+}
 
 export default async function handler(req, res) {
   setObserverHeaders(res);
@@ -49,6 +60,10 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'GET') {
+      if (String(req.query?.resource || '') === 'timelapses') {
+        const stored = await readObserverTimelapseFeed().catch(() => null);
+        return res.status(200).json(stored ? normalizeObserverTimelapseFeed(stored) : awaitingTimelapseFeed());
+      }
       const record = await readObserverStatus();
       return res.status(200).json(record || awaitingObserverStatus());
     }

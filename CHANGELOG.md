@@ -1,3 +1,10 @@
+## 4.3.31 - Build 2L.1 Hobby Plan Function Fix
+- Consolidated time-lapse metadata into observer-status.
+- Consolidated time-lapse uploads into observer-publish.
+- Consolidated private MP4 delivery into observer-image.
+- Reduced the deployment from 14 to 12 Vercel Functions for Hobby-plan compatibility.
+- Preserved weekly/monthly time-lapse behavior and private Blob storage.
+
 ## 4.3.30 - Build 2L Weekly and Monthly Time-Lapses
 - Added private rolling 7-day and rolling 30-day Observer videos.
 - A separate daily Pi service selects one hourly frame for weekly video and one frame about every six hours for monthly video.

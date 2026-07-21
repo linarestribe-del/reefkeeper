@@ -175,9 +175,8 @@ def generate_timelapse(slot: str, frames: list[tuple[datetime, Path]]) -> dict[s
 
 
 def derive_endpoint(publish_endpoint: str) -> str:
-    if publish_endpoint.endswith('/observer-publish'):
-        return publish_endpoint[:-len('/observer-publish')] + '/observer-timelapses'
-    return publish_endpoint.rsplit('/', 1)[0] + '/observer-timelapses'
+    separator = '&' if '?' in publish_endpoint else '?'
+    return f'{publish_endpoint}{separator}resource=timelapse'
 
 
 def post_json(endpoint: str, token: str, payload: dict[str, Any], timeout: int = 90) -> dict[str, Any]:

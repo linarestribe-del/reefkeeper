@@ -36,13 +36,14 @@ const feed = normalizeObserverTimelapseFeed({
   }
 });
 assert.equal(feed.timelapses.week.available, true);
-assert.equal(feed.timelapses.week.videoUrl, '/api/observer-timelapse?slot=week');
+assert.equal(feed.timelapses.week.videoUrl, '/api/observer-image?media=timelapse&slot=week');
 assert.equal(feed.timelapses.month.available, false);
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const observer = fs.readFileSync(new URL('../observer.js', import.meta.url), 'utf8');
-const metadataApi = fs.readFileSync(new URL('../api/observer-timelapses.js', import.meta.url), 'utf8');
-const videoApi = fs.readFileSync(new URL('../api/observer-timelapse.js', import.meta.url), 'utf8');
+const metadataApi = fs.readFileSync(new URL('../api/observer-status.js', import.meta.url), 'utf8');
+const publishApi = fs.readFileSync(new URL('../api/observer-publish.js', import.meta.url), 'utf8');
+const videoApi = fs.readFileSync(new URL('../api/observer-image.js', import.meta.url), 'utf8');
 const builder = fs.readFileSync(new URL('../connector/timelapse-builder.py', import.meta.url), 'utf8');
 const service = fs.readFileSync(new URL('../connector/reefkeeper-observer-timelapse.service', import.meta.url), 'utf8');
 const timer = fs.readFileSync(new URL('../connector/reefkeeper-observer-timelapse.timer', import.meta.url), 'utf8');
@@ -54,8 +55,9 @@ assert.match(html, /id="observer-timelapse-week-video"/);
 assert.match(html, /id="observer-timelapse-month-video"/);
 assert.match(observer, /fetchObserverTimelapses/);
 assert.match(observer, /playObserverTimelapse/);
-assert.match(metadataApi, /decodeObserverMp4/);
-assert.match(metadataApi, /writeObserverTimelapseFeed/);
+assert.match(metadataApi, /readObserverTimelapseFeed/);
+assert.match(publishApi, /decodeObserverMp4/);
+assert.match(publishApi, /writeObserverTimelapseFeed/);
 assert.match(videoApi, /Content-Range/);
 assert.match(blob, /OBSERVER_TIMELAPSE_SLOTS/);
 assert.match(builder, /def generate_timelapse/);
@@ -64,6 +66,8 @@ assert.match(builder, /libx264/);
 assert.match(builder, /MAX_TIMELAPSE_BYTES = 2_800_000/);
 assert.match(service, /TimeoutStartSec=20min/);
 assert.match(timer, /OnCalendar=\*-\*-\* 13:10:00/);
-assert.equal(vercel.functions['api/observer-timelapses.js'].maxDuration, 60);
+assert.equal(vercel.functions['api/observer-publish.js'].maxDuration, 60);
+const functionCount = fs.readdirSync(new URL('../api/', import.meta.url)).filter(name => name.endsWith('.js')).length;
+assert.equal(functionCount, 12, 'Hobby deployment must stay at or below 12 Vercel Functions');
 
 console.log('Observer weekly/monthly timelapse tests passed.');

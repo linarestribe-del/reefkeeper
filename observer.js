@@ -7,7 +7,7 @@
   const STATUS_ENDPOINT = '/api/observer-status';
   const DAILY_SUMMARY_ENDPOINT = '/api/observer-daily-summary';
   const ALERTS_ENDPOINT = '/api/observer-alerts';
-  const TIMELAPSES_ENDPOINT = '/api/observer-timelapses';
+  const TIMELAPSES_ENDPOINT = '/api/observer-status?resource=timelapses';
   const ALERT_REVIEWED_KEY = 'reef_observer_reviewed_alert_ids_v1';
   const ALERT_SEEN_KEY = 'reef_observer_seen_alert_ids_v1';
   const REFRESH_INTERVAL_MS = 60_000;
