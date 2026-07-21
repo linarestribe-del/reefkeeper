@@ -1,3 +1,10 @@
+## 4.3.29 — Build 2K Automatic Change Alerts
+- Converts the daily visual comparison into evidence-limited structured alerts for water level, skimmer condition, leak/overflow evidence, equipment position, buildup, and camera quality.
+- Adds urgent/watch/info severity rules that explicitly avoid alerts caused only by lighting, reflections, framing, or image noise.
+- Adds an Observer alert card with new-alert toasts, review controls, current comparison access, and recent textual alert history.
+- Stores up to 30 alert records privately in Vercel Blob. Older alert text remains available while only the latest daily image pair is retained remotely.
+- Requires no Raspberry Pi update; the existing Build 2J publisher automatically triggers the new alert evaluation.
+
 ## 4.3.28 - Build 2J Daily Visual Summary
 - Pi publisher 2.2 selects stable representative frames near noon local time for today and the prior day.
 - An authenticated server endpoint automatically compares the two frames once per day with OpenAI and saves a concise evidence-limited report.

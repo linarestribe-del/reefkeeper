@@ -1,10 +1,12 @@
-// Reef Keeper Build 2J — authenticated automatic daily visual comparison and public read endpoint
+// Reef Keeper Build 2K — daily visual comparison with automatic evidence-limited change alerts
 
 import {
   cleanObserverString,
   decodeObserverDailyImages,
   expectedObserverWriteToken,
   normalizeObserverDailySummary,
+  normalizeObserverAlertFeed,
+  normalizeObserverChangeAlert,
   parseObserverBody,
   readBearer,
   secureTokenMatch,
@@ -12,7 +14,9 @@ import {
 } from '../lib/observer-common.js';
 import {
   readObserverDailySummary,
+  readObserverAlerts,
   writeObserverDailySummary,
+  writeObserverAlerts,
   writeObserverImage
 } from '../lib/observer-blob.js';
 
@@ -42,7 +46,12 @@ function dailyPrompt(previous, current) {
     'Describe only changes visibly supported by both frames. Check water level, skimmer foam/cup condition, filter roller position, visible plumbing or tubing, equipment position, salt creep, condensation, algae/biofilm, debris, microbubbles, cloudiness, and visible leak/overflow evidence—but only where shown.',
     'Do not infer pump operation, flow rate, water chemistry, hidden leaks, or livestock condition outside the camera view.',
     'Use status stable when no meaningful concerning change is visible; watch when a possible change deserves verification; attention only for a clearly visible concern; unavailable when image quality prevents a useful comparison.',
-    'Return JSON only with: status, headline, summary, visibleChanges (array), concerns (array), nextChecks (array, maximum 2), and uncertainty.'
+    'Also evaluate automatic change alerts. Return alerts as an array with no more than 3 objects. Each object must contain category, severity, title, evidence, recommendedCheck, and confidence.',
+    'Allowed categories: water_level, skimmer, leak_overflow, equipment_position, buildup, camera_quality, other. Allowed severity: urgent, watch, info.',
+    'Create no alert for a stable view or for differences explainable only by lighting, reflections, framing, blur, or normal image noise. A camera_quality alert is allowed only when obstruction or image degradation prevents useful monitoring.',
+    'Use urgent only for clearly visible active leak or overflow evidence, a water/electrical hazard, or equipment displacement that appears to require immediate inspection. Use watch for a possible water-level shift, skimmer condition change, equipment movement, or buildup that should be verified. Use info only for low-risk housekeeping or camera-quality limitations.',
+    'Evidence must state exactly what is visible in both frames and must not present an inference as fact.',
+    'Return JSON only with: status, headline, summary, visibleChanges (array), concerns (array), nextChecks (array, maximum 2), uncertainty, and alerts (array).'
   ].join('\n\n');
 }
 
@@ -77,6 +86,37 @@ async function generateDailySummary(images) {
   const parsed = parseJsonObject(extractResponseText(data));
   if (!parsed) throw new Error('The daily visual report was not returned as valid JSON.');
   return { parsed, previous, current, model };
+}
+
+
+function normalizeGeneratedAlerts(rawAlerts, generatedAt, previous, current) {
+  if (!Array.isArray(rawAlerts)) return [];
+  return rawAlerts.slice(0, 3).map((item, index) => normalizeObserverChangeAlert({
+    ...item,
+    id: `${current.capturedAt}:${cleanObserverString(item?.category || 'other', 40)}:${index}`,
+    createdAt: generatedAt,
+    source: {
+      currentCapturedAt: current.capturedAt,
+      previousCapturedAt: previous.capturedAt
+    }
+  }, index)).filter(alert => alert.title && alert.evidence);
+}
+
+async function saveAlertEvaluation(alerts, generatedAt, previous, current) {
+  const existing = normalizeObserverAlertFeed(await readObserverAlerts().catch(() => null) || {});
+  const currentIds = alerts.map(alert => alert.id);
+  const older = existing.alerts.filter(alert => alert.source.currentCapturedAt !== current.capturedAt);
+  const feed = normalizeObserverAlertFeed({
+    ok: true,
+    updatedAt: new Date().toISOString(),
+    lastEvaluatedAt: generatedAt,
+    currentCapturedAt: current.capturedAt,
+    previousCapturedAt: previous.capturedAt,
+    currentAlertIds: currentIds,
+    alerts: [...alerts, ...older].slice(0, 30)
+  });
+  await writeObserverAlerts(feed);
+  return feed;
 }
 
 export default async function handler(req, res) {
@@ -124,24 +164,30 @@ export default async function handler(req, res) {
     await Promise.all(images.map(item => writeObserverImage(item.image, item.slot)));
     const generated = await generateDailySummary(images);
     const raw = generated.parsed || {};
+    const generatedAt = new Date().toISOString();
+    const alerts = normalizeGeneratedAlerts(raw.alerts, generatedAt, previous, current);
     const record = normalizeObserverDailySummary({
       ok: true,
       status: cleanObserverString(raw.status || 'watch', 20).toLowerCase(),
-      generatedAt: new Date().toISOString(),
+      generatedAt,
       headline: raw.headline,
       summary: raw.summary,
       visibleChanges: raw.visibleChanges,
       concerns: raw.concerns,
       nextChecks: raw.nextChecks,
       uncertainty: raw.uncertainty,
+      alerts,
       source: {
         currentCapturedAt: current.capturedAt,
         previousCapturedAt: previous.capturedAt
       },
       model: generated.model
     });
-    await writeObserverDailySummary(record);
-    return res.status(200).json({ ...record, reused: false });
+    await Promise.all([
+      writeObserverDailySummary(record),
+      saveAlertEvaluation(alerts, generatedAt, previous, current)
+    ]);
+    return res.status(200).json({ ...record, alerts, reused: false });
   } catch (error) {
     const message = error?.message || 'Daily visual summary generation failed.';
     const validation = /dailyImages|Daily image|requires both|JPEG|Base64|capturedAt|older than/i.test(message);

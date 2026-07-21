@@ -1,4 +1,4 @@
-// Reef Keeper Build 2J — Aquarium Observer health, history, and automatic daily visual summaries
+// Reef Keeper Build 2K — Aquarium Observer health, daily summaries, and automatic change alerts
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -6,6 +6,9 @@
 
   const STATUS_ENDPOINT = '/api/observer-status';
   const DAILY_SUMMARY_ENDPOINT = '/api/observer-daily-summary';
+  const ALERTS_ENDPOINT = '/api/observer-alerts';
+  const ALERT_REVIEWED_KEY = 'reef_observer_reviewed_alert_ids_v1';
+  const ALERT_SEEN_KEY = 'reef_observer_seen_alert_ids_v1';
   const REFRESH_INTERVAL_MS = 60_000;
   const CAPTURE_STALE_AFTER_MS = 15 * 60_000;
   const CAPTURE_OFFLINE_AFTER_MS = 60 * 60_000;
@@ -35,6 +38,7 @@
   let refreshTimer = null;
   let refreshInFlight = null;
   let dailySummary = null;
+  let observerAlerts = null;
 
   function byId(id) { return document.getElementById(id); }
 
@@ -178,6 +182,141 @@
         previousImageUrl: String(source.previousImageUrl || '')
       }
     };
+  }
+
+  function storedAlertIds(key) {
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || '[]');
+      return new Set(Array.isArray(value) ? value.map(String) : []);
+    } catch (_) { return new Set(); }
+  }
+
+  function saveAlertIds(key, ids) {
+    try { localStorage.setItem(key, JSON.stringify([...ids].slice(-100))); } catch (_) {}
+  }
+
+  function normalizeObserverAlertFeed(payload) {
+    const item = payload && typeof payload === 'object' ? payload : {};
+    const alerts = Array.isArray(item.alerts) ? item.alerts.slice(0, 30).map((alert, index) => {
+      const source = alert?.source && typeof alert.source === 'object' ? alert.source : {};
+      return {
+        id: cleanText(alert?.id, `observer-alert-${index}`),
+        severity: ['urgent', 'watch', 'info'].includes(alert?.severity) ? alert.severity : 'watch',
+        category: cleanText(alert?.category, 'other'),
+        title: cleanText(alert?.title, 'Observer change needs review'),
+        evidence: cleanText(alert?.evidence),
+        recommendedCheck: cleanText(alert?.recommendedCheck),
+        confidence: cleanText(alert?.confidence),
+        createdAt: parseDate(alert?.createdAt),
+        source: {
+          currentCapturedAt: parseDate(source.currentCapturedAt),
+          previousCapturedAt: parseDate(source.previousCapturedAt)
+        }
+      };
+    }).filter(alert => alert.title) : [];
+    return {
+      ok: item.ok !== false,
+      updatedAt: parseDate(item.updatedAt),
+      lastEvaluatedAt: parseDate(item.lastEvaluatedAt),
+      currentCapturedAt: parseDate(item.currentCapturedAt),
+      previousCapturedAt: parseDate(item.previousCapturedAt),
+      currentAlertIds: Array.isArray(item.currentAlertIds) ? item.currentAlertIds.map(String) : [],
+      alerts
+    };
+  }
+
+  function alertCategoryIcon(category) {
+    return {
+      water_level: '🌊',
+      skimmer: '🫧',
+      leak_overflow: '🚨',
+      equipment_position: '🔧',
+      buildup: '🧽',
+      camera_quality: '📷',
+      other: '👁️'
+    }[category] || '👁️';
+  }
+
+  function alertSeverityLabel(severity) {
+    return { urgent: 'Urgent', watch: 'Watch', info: 'Info' }[severity] || 'Watch';
+  }
+
+  function markObserverAlertReviewed(id) {
+    const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
+    reviewed.add(String(id || ''));
+    saveAlertIds(ALERT_REVIEWED_KEY, reviewed);
+    renderObserverAlerts(observerAlerts || normalizeObserverAlertFeed({}));
+  }
+
+  function markAllObserverAlertsReviewed() {
+    const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
+    (observerAlerts?.alerts || []).forEach(alert => reviewed.add(alert.id));
+    saveAlertIds(ALERT_REVIEWED_KEY, reviewed);
+    renderObserverAlerts(observerAlerts || normalizeObserverAlertFeed({}));
+    if (typeof showToast === 'function') showToast('Observer alerts marked reviewed');
+  }
+
+  function renderObserverAlerts(feed) {
+    observerAlerts = feed;
+    const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
+    const currentIds = new Set(feed.currentAlertIds || []);
+    const currentAlerts = feed.alerts.filter(alert => currentIds.has(alert.id));
+    const unreviewed = currentAlerts.filter(alert => !reviewed.has(alert.id));
+    const urgent = unreviewed.some(alert => alert.severity === 'urgent');
+    const badge = byId('observer-alert-badge');
+    const card = byId('observer-alert-card');
+    if (badge) {
+      const state = urgent ? 'urgent' : (unreviewed.length ? 'watch' : 'clear');
+      badge.className = `observer-alert-badge ${state}`;
+      badge.textContent = urgent ? 'Urgent' : (unreviewed.length ? `${unreviewed.length} new` : 'Clear');
+    }
+    if (card) card.classList.toggle('has-urgent', urgent);
+    setText('observer-alert-summary', currentAlerts.length
+      ? `${currentAlerts.length} visual change alert${currentAlerts.length === 1 ? '' : 's'} from the latest daily comparison.`
+      : 'No automatic visual change alert was created from the latest daily comparison.');
+    setText('observer-alert-evaluated', feed.lastEvaluatedAt
+      ? `Last evaluated ${formatCaptureTime(feed.lastEvaluatedAt.toISOString())}`
+      : 'Waiting for the next daily comparison');
+    const list = byId('observer-alert-list');
+    if (list) {
+      const visible = feed.alerts.slice(0, 8);
+      list.innerHTML = visible.length ? visible.map(alert => {
+        const isCurrent = currentIds.has(alert.id);
+        const isReviewed = reviewed.has(alert.id);
+        const classes = ['observer-alert-item', alert.severity, isReviewed ? 'reviewed' : '', isCurrent ? 'current' : 'history'].filter(Boolean).join(' ');
+        return `<article class="${classes}">
+          <div class="observer-alert-item-head"><span class="observer-alert-icon">${alertCategoryIcon(alert.category)}</span><div><strong>${cleanText(alert.title)}</strong><small>${alertSeverityLabel(alert.severity)} · ${formatCaptureTime(alert.createdAt?.toISOString())}${isCurrent ? ' · latest comparison' : ''}</small></div><b>${alertSeverityLabel(alert.severity)}</b></div>
+          ${alert.evidence ? `<p><strong>Visible evidence:</strong> ${cleanText(alert.evidence)}</p>` : ''}
+          ${alert.recommendedCheck ? `<p><strong>Recommended check:</strong> ${cleanText(alert.recommendedCheck)}</p>` : ''}
+          ${alert.confidence ? `<p class="observer-alert-confidence">${cleanText(alert.confidence)}</p>` : ''}
+          <div class="observer-alert-item-actions">
+            ${isCurrent && dailySummary?.ok ? `<button type="button" onclick="openObserverAlertComparison('${alert.id}')">Open comparison</button>` : ''}
+            <button type="button" onclick="markObserverAlertReviewed('${alert.id}')">${isReviewed ? 'Reviewed' : 'Mark reviewed'}</button>
+          </div>
+        </article>`;
+      }).join('') : '<div class="observer-alert-empty"><strong>No visual change alerts.</strong><span>Reef Keeper will add an alert only when the daily comparison contains visible evidence that deserves verification.</span></div>';
+    }
+    const reviewAll = byId('observer-alert-review-all');
+    if (reviewAll) reviewAll.disabled = feed.alerts.length === 0 || feed.alerts.every(alert => reviewed.has(alert.id));
+  }
+
+  function announceNewObserverAlerts(feed) {
+    const seen = storedAlertIds(ALERT_SEEN_KEY);
+    const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
+    const current = feed.alerts.filter(alert => feed.currentAlertIds.includes(alert.id));
+    const fresh = current.filter(alert => !seen.has(alert.id) && !reviewed.has(alert.id));
+    current.forEach(alert => seen.add(alert.id));
+    saveAlertIds(ALERT_SEEN_KEY, seen);
+    if (!fresh.length || typeof showToast !== 'function') return;
+    const urgent = fresh.some(alert => alert.severity === 'urgent');
+    showToast(urgent ? '🚨 New urgent Observer change alert' : `👁️ ${fresh.length} new Observer change alert${fresh.length === 1 ? '' : 's'}`);
+  }
+
+  async function fetchObserverAlerts() {
+    const response = await fetch(ALERTS_ENDPOINT, { cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Observer alerts returned HTTP ${response.status}`);
+    return normalizeObserverAlertFeed(data);
   }
 
   function dailyStatusLabel(status) {
@@ -544,12 +683,15 @@
     buttons.forEach(button => { button.disabled = true; });
     refreshInFlight = (async () => {
       try {
-        const [record, report] = await Promise.all([
+        const [record, report, alerts] = await Promise.all([
           fetchObserverStatus(),
-          fetchObserverDailySummary().catch(error => normalizeDailySummary({ ok: false, state: 'temporarily_unavailable', message: error.message || String(error) }))
+          fetchObserverDailySummary().catch(error => normalizeDailySummary({ ok: false, state: 'temporarily_unavailable', message: error.message || String(error) })),
+          fetchObserverAlerts().catch(() => normalizeObserverAlertFeed({ ok: false, alerts: [] }))
         ]);
         renderObserver(record);
         renderDailySummary(report);
+        renderObserverAlerts(alerts);
+        announceNewObserverAlerts(alerts);
         if (event && typeof showToast === 'function') {
           const message = record.health.status === 'healthy' ? '✅ Observer health refreshed' : '⚠️ Observer health needs attention';
           showToast(message);
@@ -683,6 +825,21 @@
     }
   }
 
+  function openObserverAlertComparison(id) {
+    const alert = (observerAlerts?.alerts || []).find(item => item.id === id);
+    if (!alert || !dailySummary?.ok) {
+      if (typeof showToast === 'function') showToast('The comparison frames for this alert are not available.');
+      return;
+    }
+    const sameCurrent = alert.source.currentCapturedAt && dailySummary.source.currentCaptured
+      && alert.source.currentCapturedAt.getTime() === dailySummary.source.currentCaptured.getTime();
+    if (!sameCurrent) {
+      if (typeof showToast === 'function') showToast('Older alert images are no longer retained remotely. The alert evidence remains in the history.');
+      return;
+    }
+    openDailySummaryComparison();
+  }
+
   function startRefreshLoop() {
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
@@ -698,6 +855,9 @@
   window.compareObserverHistory = compareObserverHistory;
   window.copyObserverDiagnosticReport = copyObserverDiagnosticReport;
   window.openDailySummaryComparison = openDailySummaryComparison;
+  window.openObserverAlertComparison = openObserverAlertComparison;
+  window.markObserverAlertReviewed = markObserverAlertReviewed;
+  window.markAllObserverAlertsReviewed = markAllObserverAlertsReviewed;
   window.ReefKeeperObserver = {
     refresh: refreshAquariumObserver,
     getSnapshot: () => snapshot,
@@ -708,6 +868,7 @@
   const initialize = () => {
     renderObserver(normalizeRecord({ configured: false, ok: false }));
     renderDailySummary(normalizeDailySummary({ ok: false }));
+    renderObserverAlerts(normalizeObserverAlertFeed({ ok: true, alerts: [] }));
     refreshAquariumObserver();
     startRefreshLoop();
   };

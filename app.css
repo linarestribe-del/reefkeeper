@@ -4795,3 +4795,66 @@ html.theme-dark .observer-daily-card { background: rgba(8,27,42,.92); border-col
 html.theme-dark .observer-daily-report,
 html.theme-dark .observer-daily-section,
 html.theme-dark .observer-daily-uncertainty { background: rgba(31,111,139,.14); border-color: rgba(155,216,240,.14); }
+
+
+/* Build 2K: automatic evidence-limited Observer change alerts */
+.observer-alert-card {
+  margin: 14px 0;
+  padding: 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(0,180,216,.22);
+  background: rgba(255,255,255,.86);
+  box-shadow: var(--shadow);
+}
+.observer-alert-card.has-urgent { border-color: rgba(214,40,40,.42); box-shadow: 0 12px 32px rgba(214,40,40,.12); }
+.observer-alert-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.observer-alert-summary { margin-top: 4px; color: var(--text-mid); font-size: 12px; font-weight: 750; line-height: 1.45; }
+.observer-alert-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+.observer-alert-badge.clear { background: rgba(82,183,136,.18); color: #246f4c; }
+.observer-alert-badge.watch { background: rgba(255,183,3,.18); color: #8a5700; }
+.observer-alert-badge.urgent { background: rgba(214,40,40,.13); color: #b21f2d; }
+.observer-alert-evaluated { display: block; margin-top: 8px; color: var(--text-light); font-size: 11px; font-weight: 750; }
+.observer-alert-list { display: grid; gap: 10px; margin-top: 12px; }
+.observer-alert-item {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(31,111,139,.16);
+  border-left: 4px solid var(--ocean-mid);
+  background: rgba(255,255,255,.78);
+}
+.observer-alert-item.watch { border-left-color: #ffb703; }
+.observer-alert-item.urgent { border-left-color: #d62828; background: rgba(214,40,40,.045); }
+.observer-alert-item.info { border-left-color: var(--ocean-mid); }
+.observer-alert-item.history { opacity: .82; }
+.observer-alert-item.reviewed { opacity: .62; }
+.observer-alert-item-head { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: start; gap: 9px; }
+.observer-alert-icon { width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; background: rgba(31,111,139,.09); font-size: 18px; }
+.observer-alert-item-head > div { min-width: 0; }
+.observer-alert-item-head strong { display: block; color: var(--text-dark); font-size: 13px; font-weight: 950; line-height: 1.35; }
+.observer-alert-item-head small { display: block; margin-top: 3px; color: var(--text-light); font-size: 10px; font-weight: 750; line-height: 1.35; }
+.observer-alert-item-head b { border-radius: 999px; padding: 4px 8px; background: rgba(255,183,3,.14); color: #8a5700; font-size: 10px; font-weight: 950; }
+.observer-alert-item.urgent .observer-alert-item-head b { background: rgba(214,40,40,.12); color: #b21f2d; }
+.observer-alert-item.info .observer-alert-item-head b { background: rgba(31,111,139,.12); color: var(--ocean-deep); }
+.observer-alert-item p { margin: 9px 0 0; color: var(--text-mid); font-size: 12px; font-weight: 700; line-height: 1.5; }
+.observer-alert-confidence { color: var(--text-light) !important; font-size: 11px !important; }
+.observer-alert-item-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.observer-alert-item-actions button { border: 1px solid rgba(31,111,139,.2); border-radius: 10px; padding: 7px 9px; background: rgba(31,111,139,.08); color: var(--ocean-deep); font-size: 11px; font-weight: 900; cursor: pointer; }
+.observer-alert-empty { padding: 12px; border-radius: 14px; background: rgba(82,183,136,.08); border: 1px solid rgba(82,183,136,.16); }
+.observer-alert-empty strong { display: block; color: #246f4c; font-size: 13px; font-weight: 950; }
+.observer-alert-empty span { display: block; margin-top: 4px; color: var(--text-mid); font-size: 12px; font-weight: 700; line-height: 1.45; }
+.observer-alert-actions { margin-top: 12px; }
+.observer-alert-note { margin-top: 10px; color: var(--text-light); font-size: 10px; font-weight: 700; line-height: 1.45; }
+html.theme-dark .observer-alert-card { background: rgba(8,27,42,.92); border-color: rgba(155,216,240,.18); }
+html.theme-dark .observer-alert-item { background: rgba(31,111,139,.12); border-color: rgba(155,216,240,.12); }
+html.theme-dark .observer-alert-empty { background: rgba(82,183,136,.09); }
+@media (max-width: 520px) {
+  .observer-alert-item-head { grid-template-columns: 32px minmax(0,1fr); }
+  .observer-alert-item-head b { grid-column: 2; justify-self: start; }
+}

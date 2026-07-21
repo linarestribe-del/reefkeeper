@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260721-build-2j-daily-summary">
+<link rel="stylesheet" href="css/app.css?v=20260721-build-2k-change-alerts">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1250,6 +1250,22 @@
         </div>
       </section>
 
+
+      <section class="observer-alert-card" id="observer-alert-card" aria-labelledby="observer-alert-title">
+        <div class="observer-alert-head">
+          <div>
+            <div class="observer-safety-title" id="observer-alert-title">Automatic change alerts</div>
+            <div class="observer-alert-summary" id="observer-alert-summary">Checking the latest daily comparison for visible changes…</div>
+          </div>
+          <span class="observer-alert-badge clear" id="observer-alert-badge">Checking</span>
+        </div>
+        <small class="observer-alert-evaluated" id="observer-alert-evaluated">Waiting for the next daily comparison</small>
+        <div class="observer-alert-list" id="observer-alert-list"></div>
+        <div class="observer-card-actions observer-alert-actions">
+          <button class="observer-secondary-btn" id="observer-alert-review-all" type="button" onclick="markAllObserverAlertsReviewed()" disabled>Mark all reviewed</button>
+        </div>
+        <div class="observer-alert-note">Alerts are evidence-limited screening prompts, not proof of a leak, overflow, equipment failure, or water-quality problem. Verify the camera view and inspect the sump directly before acting.</div>
+      </section>
 
       <section class="observer-daily-card" id="observer-daily-card" aria-labelledby="observer-daily-title">
         <div class="observer-daily-head">
@@ -3343,8 +3359,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260721-build-2j-daily-summary"></script>
-<script src="observer.js?v=20260721-build-2j-daily-summary"></script>
+<script src="app.js?v=20260721-build-2k-change-alerts"></script>
+<script src="observer.js?v=20260721-build-2k-change-alerts"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
