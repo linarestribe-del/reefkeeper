@@ -1,108 +1,76 @@
-# Build 2J — Daily Visual Summary
+# Reef Keeper
 
-The Aquarium Observer automatically selects representative daily sump frames, generates one comparison report per day, and retains the full capture archive locally.
+**Current application version:** `4.3.31`  
+**Current release family:** Build 2L.1 — Aquarium Observer weekly/monthly time-lapses with the Vercel Hobby-plan consolidation  
+**Maintenance state:** Maintenance 1 adds repository safeguards only; it does not intentionally change application behavior.
 
-# Reef Keeper Apex Connector v4.2.1
+Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-This connector runs on your home Mac. It reads your local Neptune Apex `/rest/status` endpoint and pushes a normalized snapshot to the stable Reef Keeper telemetry hub.
+## Current major capabilities
 
-## Recommended one-time test
+- Tank profile, parameter logging, maintenance records, reminders, and timeline
+- Evidence, decision, explainability, trend, and chart modules
+- Ask AI with tank context, document input, single-photo analysis, and 2–4 photo comparison
+- Apex telemetry display
+- Aquarium Observer latest image, historical comparisons, health checks, daily summaries, change alerts, and rolling time-lapses
+- Private Observer uploads from the Raspberry Pi to Vercel Blob
 
-From the connector folder:
-
-```bash
-export REEF_KEEPER_URL="https://reefkeeper-l4isz0ta2-jorge-s-projects6.vercel.app"
-export APEX_BASE_URL="http://apex.local"
-export APEX_USERNAME="your-apex-username"
-export APEX_PASSWORD="your-apex-password"
-node apex-connector.mjs --once
-```
-
-If your Apex firmware does not accept automatic login yet, use a temporary cookie:
-
-```bash
-export APEX_COOKIE="connect.sid=YOUR_CURRENT_COOKIE"
-node apex-connector.mjs --once
-```
-
-Good output looks like:
+## Repository layout
 
 ```text
-pushed Apex telemetry: temp=76.6 pH=8.45 ORP=334 outlets=30 alarms=0 durable=true auth=saved-cookie
+api/                  Vercel serverless functions (currently 12)
+ai/                   Browser evidence, decision, explainability, and trend modules
+connector/            Raspberry Pi / Apex connector source
+css/                   Main stylesheet copy used by index.html
+lib/                   Shared Observer server helpers
+assets/                Application images
+tests/                 Regression and repository-safety tests
+.github/workflows/     Automated GitHub checks
 ```
 
-## Stable hub rule
+## Local verification
 
-Use the stable hub URL, not the temporary preview branch URL. The app previews read from the stable hub through `telemetry-config.js`.
-
-You can also target the exact endpoint:
+Use Node.js 22. The repository includes `.nvmrc`, a Node engine declaration, and `package-lock.json`.
 
 ```bash
-export REEF_KEEPER_TELEMETRY_ENDPOINT="https://reefkeeper-l4isz0ta2-jorge-s-projects6.vercel.app/api/telemetry"
+npm ci
+npm test
 ```
 
-## Persistent cloud storage
+The test command includes application regressions, Pi time-lapse selection tests, repository-integrity checks, and a Vercel function-count check.
 
-For reliable telemetry, configure Vercel KV / Upstash variables on the stable hub deployment:
+## Deployment constraint
 
-```text
-KV_REST_API_URL
-KV_REST_API_TOKEN
-```
+The Vercel Hobby deployment currently uses all **12** available functions. New backend features must be added to existing endpoints or must first consolidate/remove another function. The automated function-count check fails before deployment if this limit is exceeded.
 
-Optional security variables:
+## Aquarium Observer
 
-```text
-REEF_TELEMETRY_WRITE_TOKEN
-REEF_TELEMETRY_READ_TOKEN
-```
+The Raspberry Pi keeps the complete five-minute archive on the external drive. Only selected current/history images, daily comparison material, alert data, and finished compressed time-lapses are published to private Vercel Blob storage.
 
-If you set `REEF_TELEMETRY_WRITE_TOKEN`, also set this before running the connector:
+Current Pi-side components include:
 
-```bash
-export REEF_KEEPER_TOKEN="same-write-token"
-```
+- camera capture timer;
+- Observer publisher timer;
+- health reporting;
+- daily summary frame selection;
+- weekly/monthly time-lapse builder.
 
-## Continuous mode
+Observer write authentication depends on `REEF_OBSERVER_WRITE_TOKEN`. Do not commit tokens, camera credentials, RTSP URLs, `.env` files, or local network details.
 
-Without `--once`, the connector keeps running and pushes every 60 seconds by default:
+## Apex integration note
 
-```bash
-export APEX_POLL_SECONDS="60"
-node apex-connector.mjs
-```
+The repository presently contains both `/api/apex-sync` + `/api/apex-status` and `/api/telemetry` paths. The live installation is working, but these paths should not be consolidated during a general cleanup. Apex consolidation must be a separate, rollback-ready build after the installed Pi connector is captured and compared with repository source.
 
-## Notes
+## Safe release process
 
-- v4.2.1 reuses and saves Apex session cookies at `~/.reef-keeper/apex-session.json`.
-- It retries Apex login after a 401 when username/password are provided.
-- If automatic login fails, use `APEX_COOKIE` until the next connector login refinement.
-- Use `--verbose` for login diagnostics.
+1. Start from a confirmed working repository ZIP.
+2. Make one narrowly scoped change.
+3. Run `npm ci` and `npm test`.
+4. Confirm the Vercel function count remains at or below 12.
+5. Preview or deploy the candidate without altering the Pi unless required.
+6. Run the smoke-test checklist in [`ROLLBACK.md`](ROLLBACK.md).
+7. Keep the prior Vercel deployment and repository ZIP available until testing is complete.
 
-## Aquarium Observer publishing bridge (Build 2F)
+## Rollback
 
-The app accepts the Raspberry Pi's current selected JPEG at:
-
-```text
-POST /api/observer-publish
-```
-
-Required Vercel configuration:
-
-- Connect a **Private Vercel Blob** store to the project.
-- Set `REEF_OBSERVER_WRITE_TOKEN` in Production, Preview, and Development as appropriate.
-
-The Pi publisher is included at:
-
-```text
-connector/observer-publisher.py
-```
-
-It publishes only the current JPEG and sanitized status. The full dated image archive remains on the Pi at `/mnt/reef-ssd/aquarium-observer/captures/`. Camera credentials, RTSP URLs, local addresses, and local file paths are not sent to Vercel.
-
-### Build 2F.1 authentication hardening
-
-Observer write tokens are trimmed before constant-time comparison so accidental surrounding whitespace in the Vercel environment value does not cause a false 401 response.
-
-
-Build 2L adds rolling weekly and monthly Observer timelapses generated locally on the Raspberry Pi and delivered through private Vercel Blob storage.
+See [`ROLLBACK.md`](ROLLBACK.md) for the exact restoration procedure and smoke-test checklist.

@@ -1,8 +1,42 @@
 # Reef Keeper Architecture
 
-**Last updated:** July 17, 2026  
-**Current runtime family:** v4.3.10 / Build 1B  
+**Last updated:** July 21, 2026  
+**Current runtime family:** v4.3.31 / Build 2L.1  
+**Maintenance state:** Maintenance 1 repository safeguards; runtime behavior unchanged  
 **Target architecture:** v5.x evidence-based AI engine
+
+
+## Current deployed system boundary
+
+```text
+Browser / iPhone app
+  -> local browser records and UI
+  -> 12 Vercel serverless functions
+  -> OpenAI APIs, private Vercel Blob, and Apex/telemetry storage
+
+Raspberry Pi
+  -> Tapo camera capture every five minutes
+  -> local SSD archive
+  -> authenticated Observer publishing
+  -> daily comparison selection
+  -> weekly/monthly time-lapse generation
+```
+
+The Vercel Hobby deployment is currently at the 12-function limit. New backend behavior must extend an existing function or be preceded by a separately tested consolidation.
+
+The repository contains two Apex endpoint families: `/api/apex-sync` + `/api/apex-status`, and `/api/telemetry`. The live installation is working, but consolidation is intentionally deferred until the installed Pi connector is captured and compared against repository source.
+
+## Maintenance 1 safeguards
+
+Maintenance 1 does not refactor runtime code. It adds:
+
+- locked dependency installation through `package-lock.json`;
+- Node.js 22.x and npm 10.x version declarations;
+- GitHub Actions checks;
+- repository-integrity and function-count tests;
+- an explicit rollback procedure and release manifest.
+
+The fragile navigation, inline-script, duplicate-file, Apex, and security work remain separate future builds.
 
 ## Core Philosophy
 

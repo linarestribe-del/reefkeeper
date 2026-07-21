@@ -1,3 +1,10 @@
+## Maintenance 1 — Repository safeguards
+
+- Added locked dependencies, Node/npm version declarations, GitHub Actions CI, repository-integrity tests, and a Vercel function-count guard.
+- Added rollback and release-manifest documentation.
+- Updated README and architecture metadata for Build 2L.1.
+- No intentional changes to application runtime files, API routes, Observer behavior, Apex behavior, or Raspberry Pi services.
+
 ## 4.3.31 - Build 2L.1 Hobby Plan Function Fix
 - Consolidated time-lapse metadata into observer-status.
 - Consolidated time-lapse uploads into observer-publish.
