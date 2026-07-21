@@ -1,11 +1,8 @@
-## 4.3.23 — Build 2F.6: Sump-specific Observer analysis
-
-- Replaced the general Observer image prompt with a structured sump-camera inspection.
-- Prioritizes visible leak, overflow, water-level, plumbing, equipment-position, skimmer, filter-roller, reactor, ATO, salt-creep, debris, and microbubble observations.
-- Requires explicit image-quality and visibility limits before interpretation.
-- Prevents unsupported claims about hidden leaks, actual flow, pump operation, water chemistry, or trends from a single still.
-- Limits the result to one or two practical next checks ranked by urgency.
-- Bumped the Observer script cache key and added regression coverage for the sump-analysis instructions.
+## 4.3.24 - Build 2G Multi-Image Comparison
+- Ask AI now accepts up to 4 uploaded photos at once for comparison.
+- Added Compare Photos helper actions in AI Vision and the add menu.
+- Chat now uses a comparison prompt automatically when multiple images are attached without typed text.
+- Observer image handoff remains compatible with the new multi-image attachment format.
 
 ## v4.3.20 — Build 2F.3: Observer Overlay Removal
 

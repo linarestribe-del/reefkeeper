@@ -1256,11 +1256,20 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .attachment-main #attachment-label {
   min-width: 0;
   overflow-wrap: anywhere;
+  flex: 1 1 180px;
 }
+.attachment-preview-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+}
+.attachment-preview-strip[hidden] { display: none !important; }
 .attachment-preview {
   width: 46px;
   height: 46px;

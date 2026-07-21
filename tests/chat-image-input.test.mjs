@@ -69,6 +69,23 @@ try {
   assert.match(capturedRequest.body.instructions, /Inspect the image pixels directly/);
 
   capturedRequest = null;
+  const compareResponse = makeResponseRecorder();
+  await handler({
+    method: 'POST',
+    body: {
+      system: 'reef system',
+      modelMode: 'quick',
+      messages: [{ role: 'user', content: 'Compare these reef photos.' }],
+      attachments: [
+        { kind: 'image', name: 'before.jpg', type: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,/9j/2Q==' },
+        { kind: 'image', name: 'after.jpg', type: 'image/jpeg', dataUrl: 'data:image/jpeg;base64,/9j/2Q==' }
+      ]
+    }
+  }, compareResponse);
+  assert.equal(compareResponse.statusCode, 200);
+  assert.equal(capturedRequest.body.input[0].content.length, 3);
+
+  capturedRequest = null;
   const textResponse = makeResponseRecorder();
   await handler({
     method: 'POST',

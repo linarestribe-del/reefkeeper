@@ -264,11 +264,15 @@
       const dataUrl = await prepareAskAiImage(file);
 
       attachedFileContext = {
-        kind: 'image',
+        kind: 'image-set',
         name: file.name,
-        type: 'image/jpeg',
-        dataUrl,
-        originalType: blob.type || 'image/jpeg'
+        images: [{
+          kind: 'image',
+          name: file.name,
+          type: 'image/jpeg',
+          dataUrl,
+          originalType: blob.type || 'image/jpeg'
+        }]
       };
       updateAttachmentStatus();
 

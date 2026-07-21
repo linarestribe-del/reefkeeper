@@ -707,22 +707,77 @@ function autoRefreshQuickQuestionsOnChatOpen() {
 // ── File attachment state ───────────────────────────────────────────────────
 let attachedFileContext = null;
 
+function getAttachedImageItems(context = attachedFileContext) {
+  if (!context) return [];
+  if (context.kind === 'image' && typeof context.dataUrl === 'string') return [context];
+  if (context.kind === 'image-set' && Array.isArray(context.images)) {
+    return context.images.filter(item => item && typeof item.dataUrl === 'string');
+  }
+  return [];
+}
+
+function renderAttachmentPreviewStrip(images) {
+  const strip = document.getElementById('attachment-preview-strip');
+  const preview = document.getElementById('attachment-preview');
+  if (!strip) {
+    if (preview) {
+      const first = images[0];
+      if (first) {
+        preview.src = first.dataUrl;
+        preview.alt = first.name || 'Attached reef photo';
+        preview.hidden = false;
+      } else {
+        preview.removeAttribute('src');
+        preview.alt = '';
+        preview.hidden = true;
+      }
+    }
+    return;
+  }
+
+  if (!Array.isArray(images) || !images.length) {
+    strip.innerHTML = '';
+    strip.hidden = true;
+    if (preview) {
+      preview.removeAttribute('src');
+      preview.alt = '';
+      preview.hidden = true;
+    }
+    return;
+  }
+
+  strip.hidden = false;
+  strip.innerHTML = images.map((item, index) => {
+    const safeName = escapeHtml(item?.name || `reef photo ${index + 1}`);
+    const safeUrl = String(item?.dataUrl || '').replace(/"/g, '&quot;');
+    return `<img class="attachment-preview" src="${safeUrl}" alt="${safeName}" title="${safeName}">`;
+  }).join('');
+
+  if (preview) {
+    const first = images[0];
+    preview.src = first.dataUrl;
+    preview.alt = first.name || 'Attached reef photo';
+    preview.hidden = true;
+  }
+}
+
 function updateAttachmentStatus() {
   const box = document.getElementById('attachment-status');
   const label = document.getElementById('attachment-label');
   const preview = document.getElementById('attachment-preview');
   if (!box || !label) return;
   if (attachedFileContext) {
-    const isImage = attachedFileContext.kind === 'image' && typeof attachedFileContext.dataUrl === 'string';
-    label.textContent = isImage
-      ? `🖼 ${attachedFileContext.name} · ready for AI`
-      : `📎 ${attachedFileContext.name}`;
-    if (preview) {
-      if (isImage) {
-        preview.src = attachedFileContext.dataUrl;
-        preview.alt = attachedFileContext.name || 'Attached reef photo';
-        preview.hidden = false;
-      } else {
+    const images = getAttachedImageItems(attachedFileContext);
+    const imageCount = images.length;
+    if (imageCount > 0) {
+      label.textContent = imageCount === 1
+        ? `🖼 ${images[0].name} · ready for AI`
+        : `🖼 ${imageCount} photos ready for AI comparison`;
+      renderAttachmentPreviewStrip(images);
+    } else {
+      label.textContent = `📎 ${attachedFileContext.name}`;
+      renderAttachmentPreviewStrip([]);
+      if (preview) {
         preview.removeAttribute('src');
         preview.alt = '';
         preview.hidden = true;
@@ -731,6 +786,7 @@ function updateAttachmentStatus() {
     box.classList.add('visible');
   } else {
     label.textContent = '📎 File attached';
+    renderAttachmentPreviewStrip([]);
     if (preview) {
       preview.removeAttribute('src');
       preview.alt = '';
@@ -744,6 +800,10 @@ function clearAttachment() {
   attachedFileContext = null;
   const input = document.getElementById('file-input');
   if (input) input.value = '';
+  const photoInput = document.getElementById('photo-library-input');
+  if (photoInput) photoInput.value = '';
+  const cameraInput = document.getElementById('camera-input');
+  if (cameraInput) cameraInput.value = '';
   updateAttachmentStatus();
 }
 
@@ -753,7 +813,7 @@ function handleFileUpload(event) {
   const reader = new FileReader();
   reader.onload = () => {
     const text = String(reader.result || '').slice(0, 12000);
-    attachedFileContext = { name: file.name, text };
+    attachedFileContext = { kind: 'document', name: file.name, text };
     updateAttachmentStatus();
     showToast('📎 File attached');
   };
@@ -1232,9 +1292,13 @@ async function sendChat(event) {
   const input = document.getElementById('chat-input');
   if (!input) return;
   const attachmentForRequest = attachedFileContext;
+  const imageAttachmentsForRequest = getAttachedImageItems(attachmentForRequest);
+  const hasImageAttachments = imageAttachmentsForRequest.length > 0;
   let text = input.value.trim();
-  if (!text && attachmentForRequest?.kind === 'image') {
-    text = 'Analyze this reef aquarium photo. Describe what is visible, note any health or equipment concerns, explain uncertainty, and give the safest practical next steps.';
+  if (!text && hasImageAttachments) {
+    text = imageAttachmentsForRequest.length > 1
+      ? 'Compare these reef aquarium photos. Treat them as an ordered series. Describe the visible differences only, note improvements, declines, or changes, explain uncertainty, and give the safest practical next checks.'
+      : 'Analyze this reef aquarium photo. Describe what is visible, note any health or equipment concerns, explain uncertainty, and give the safest practical next steps.';
   }
   if (!text) return;
 
@@ -1253,7 +1317,7 @@ async function sendChat(event) {
   }
 
   try {
-    appendMsg('user', attachmentForRequest ? `${text}\n\n${attachmentForRequest.kind === 'image' ? '🖼 Photo' : '📎 Attached'}: ${attachmentForRequest.name}` : text);
+    appendMsg('user', attachmentForRequest ? `${text}\n\n${hasImageAttachments ? `🖼 ${imageAttachmentsForRequest.length} photo${imageAttachmentsForRequest.length === 1 ? '' : 's'} attached` : '📎 Attached'}: ${attachmentForRequest.name}` : text);
     input.value = '';
     input.style.height = 'auto';
     scrollChatToBottom();
@@ -1281,7 +1345,7 @@ async function sendChat(event) {
   scrollChatToBottom();
 
   try {
-    const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode(), attachmentForRequest?.kind === 'image' ? [attachmentForRequest] : []);
+    const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode(), hasImageAttachments ? imageAttachmentsForRequest : []);
     removeTyping();
     const assistantAnswer = result.answer || 'I received your question, but the answer came back empty.';
     appendMsg('ai', assistantAnswer, { explainability: result.explainability || null });
@@ -1294,8 +1358,8 @@ async function sendChat(event) {
   } catch(e) {
     console.error('Ask AI failed:', e);
     removeTyping();
-    const imageError = attachmentForRequest?.kind === 'image' && e?.message
-      ? `⚠️ Couldn\'t analyze the photo. ${e.message}`
+    const imageError = hasImageAttachments && e?.message
+      ? `⚠️ Couldn\'t analyze the ${imageAttachmentsForRequest.length > 1 ? 'photos' : 'photo'}. ${e.message}`
       : '⚠️ Couldn\'t connect to AI. Please check your connection and try again.';
     appendMsg('ai', imageError);
     scrollChatToBottom();
@@ -5365,6 +5429,19 @@ function choosePhotoLibrary() {
   const input = document.getElementById('photo-library-input');
   if (input) input.click();
 }
+function startPhotoComparison() {
+  closeAddMenu();
+  if (typeof window.rkDirectGo === 'function') window.rkDirectGo('chat');
+  else if (typeof window.showPage === 'function') window.showPage('chat');
+  const input = document.getElementById('chat-input');
+  if (input) {
+    input.value = 'Compare these reef aquarium photos. Treat them as an ordered series. Describe the visible differences only, note improvements, declines, or changes, explain uncertainty, and give the safest practical next checks.';
+    input.focus();
+    try { autoResize(input); } catch(e) {}
+  }
+  const picker = document.getElementById('photo-library-input');
+  if (picker) picker.click();
+}
 function chooseDocumentUpload() {
   closeAddMenu();
   const input = document.getElementById('file-input');
@@ -5418,20 +5495,38 @@ async function prepareAskAiImage(file) {
 }
 
 async function handlePhotoLibraryUpload(event) {
-  const file = event?.target?.files?.[0];
-  if (!file) return;
+  const files = Array.from(event?.target?.files || []).filter(Boolean);
+  if (!files.length) return;
+  const existingImages = getAttachedImageItems();
+  const availableSlots = Math.max(0, 4 - existingImages.length);
+  if (!availableSlots && existingImages.length) {
+    showToast('⚠️ Up to 4 photos can be attached at once. Clear the current photos to add different ones.');
+    if (event?.target) event.target.value = '';
+    return;
+  }
+  const selectedFiles = files.slice(0, availableSlots || 4);
   try {
-    showToast('Preparing photo…');
-    const dataUrl = await prepareAskAiImage(file);
+    showToast(selectedFiles.length > 1 ? `Preparing ${selectedFiles.length} photos…` : 'Preparing photo…');
+    const preparedImages = [];
+    for (const file of selectedFiles) {
+      const dataUrl = await prepareAskAiImage(file);
+      preparedImages.push({
+        kind: 'image',
+        name: file.name || 'reef photo.jpg',
+        type: 'image/jpeg',
+        dataUrl,
+        originalType: file.type || 'image/*'
+      });
+    }
+    const mergedImages = [...existingImages, ...preparedImages].slice(0, 4);
     attachedFileContext = {
-      kind: 'image',
-      name: file.name || 'reef photo.jpg',
-      type: 'image/jpeg',
-      dataUrl,
-      originalType: file.type || 'image/*'
+      kind: 'image-set',
+      name: mergedImages.length === 1 ? mergedImages[0].name : `${mergedImages.length} reef photos`,
+      images: mergedImages
     };
     updateAttachmentStatus();
-    showToast('🖼 Photo ready for AI analysis');
+    const compareReady = mergedImages.length > 1 ? ' for comparison' : '';
+    showToast(`🖼 ${mergedImages.length} photo${mergedImages.length === 1 ? '' : 's'} ready for AI${compareReady}`);
   } catch(e) {
     console.warn('Photo preparation failed', e);
     clearAttachment();
