@@ -1,4 +1,4 @@
-// Reef Keeper Build 2K — Aquarium Observer health, daily summaries, and automatic change alerts
+// Reef Keeper Build 2L — Aquarium Observer health, daily summaries, alerts, and weekly/monthly timelapses
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -7,6 +7,7 @@
   const STATUS_ENDPOINT = '/api/observer-status';
   const DAILY_SUMMARY_ENDPOINT = '/api/observer-daily-summary';
   const ALERTS_ENDPOINT = '/api/observer-alerts';
+  const TIMELAPSES_ENDPOINT = '/api/observer-timelapses';
   const ALERT_REVIEWED_KEY = 'reef_observer_reviewed_alert_ids_v1';
   const ALERT_SEEN_KEY = 'reef_observer_seen_alert_ids_v1';
   const REFRESH_INTERVAL_MS = 60_000;
@@ -39,6 +40,7 @@
   let refreshInFlight = null;
   let dailySummary = null;
   let observerAlerts = null;
+  let observerTimelapses = null;
 
   function byId(id) { return document.getElementById(id); }
 
@@ -182,6 +184,126 @@
         previousImageUrl: String(source.previousImageUrl || '')
       }
     };
+  }
+
+
+  function normalizeTimelapseFeed(payload) {
+    const item = payload && typeof payload === 'object' ? payload : {};
+    const source = item.timelapses && typeof item.timelapses === 'object' ? item.timelapses : {};
+    const normalize = (slot, value) => {
+      const record = value && typeof value === 'object' ? value : {};
+      const generatedAt = parseDate(record.generatedAt);
+      const startCapturedAt = parseDate(record.startCapturedAt);
+      const endCapturedAt = parseDate(record.endCapturedAt);
+      const videoUrl = String(record.videoUrl || '').trim();
+      return {
+        slot,
+        available: record.available === true && Boolean(generatedAt && startCapturedAt && endCapturedAt && videoUrl),
+        state: cleanText(record.state, 'waiting_for_history'),
+        label: cleanText(record.label, slot === 'month' ? 'Rolling 30 days' : 'Rolling 7 days'),
+        message: cleanText(record.message),
+        generatedAt,
+        startCapturedAt,
+        endCapturedAt,
+        frameCount: Math.max(0, Number(record.frameCount) || 0),
+        durationSeconds: Math.max(0, Number(record.durationSeconds) || 0),
+        sizeBytes: Math.max(0, Number(record.sizeBytes) || 0),
+        coverageDays: Math.max(0, Number(record.coverageDays) || 0),
+        fps: Math.max(1, Number(record.fps) || 12),
+        resolution: cleanText(record.resolution, '640×360'),
+        videoVersion: cleanText(record.videoVersion || record.generatedAt),
+        videoUrl
+      };
+    };
+    return {
+      ok: item.ok !== false,
+      updatedAt: parseDate(item.updatedAt),
+      timelapses: {
+        week: normalize('week', source.week),
+        month: normalize('month', source.month)
+      }
+    };
+  }
+
+  function archiveCoverageDays(record = snapshot) {
+    const oldest = record?.health?.archive?.oldestCaptureAt;
+    const newest = record?.health?.archive?.newestCaptureAt;
+    if (!oldest || !newest) return 0;
+    return Math.max(0, (newest.getTime() - oldest.getTime()) / 86_400_000);
+  }
+
+  function timelapseWaitingText(slot, record = snapshot) {
+    const required = slot === 'month' ? 30 : 7;
+    const coverage = archiveCoverageDays(record);
+    if (!coverage) return `Waiting for ${required} days of archived captures.`;
+    if (coverage < required - 0.5) return `Archive covers ${coverage.toFixed(1)} of about ${required} days.`;
+    return 'The Pi will generate this timelapse during its next scheduled daily build.';
+  }
+
+  function renderObserverTimelapses(feed, record = snapshot) {
+    observerTimelapses = feed;
+    const entries = ['week', 'month'].map(slot => feed.timelapses[slot]);
+    const readyCount = entries.filter(item => item.available).length;
+    const badge = byId('observer-timelapse-badge');
+    if (badge) {
+      badge.className = `observer-timelapse-badge ${readyCount ? 'ready' : 'waiting'}`;
+      badge.textContent = readyCount === 2 ? '2 ready' : (readyCount === 1 ? '1 ready' : 'Building history');
+    }
+    setText('observer-timelapse-summary', readyCount
+      ? `${readyCount} automatic timelapse${readyCount === 1 ? ' is' : 's are'} ready to play.`
+      : 'The Pi will build compressed videos automatically as the local archive reaches 7 and 30 days.');
+
+    for (const item of entries) {
+      const prefix = `observer-timelapse-${item.slot}`;
+      const video = byId(`${prefix}-video`);
+      const placeholder = byId(`${prefix}-placeholder`);
+      const button = byId(`${prefix}-play`);
+      const status = byId(`${prefix}-status`);
+      const meta = byId(`${prefix}-meta`);
+      if (item.available) {
+        const version = encodeURIComponent(item.videoVersion || item.generatedAt?.toISOString() || Date.now());
+        const source = `${item.videoUrl}${item.videoUrl.includes('?') ? '&' : '?'}v=${version}`;
+        if (video && video.dataset.source !== source) {
+          video.pause?.();
+          video.src = source;
+          video.dataset.source = source;
+          video.load?.();
+        }
+        if (video) video.hidden = false;
+        if (placeholder) placeholder.hidden = true;
+        if (button) { button.disabled = false; button.textContent = 'Play timelapse'; }
+        if (status) status.textContent = `Generated ${formatCaptureTime(item.generatedAt?.toISOString())}`;
+        if (meta) meta.textContent = `${formatCaptureTime(item.startCapturedAt?.toISOString())} → ${formatCaptureTime(item.endCapturedAt?.toISOString())} · ${item.frameCount} frames · ${Math.max(1, Math.round(item.durationSeconds))} sec · ${formatBytes(item.sizeBytes)}`;
+      } else {
+        if (video) { video.hidden = true; video.removeAttribute('src'); video.dataset.source = ''; }
+        if (placeholder) placeholder.hidden = false;
+        if (button) { button.disabled = true; button.textContent = 'Not ready yet'; }
+        if (status) status.textContent = timelapseWaitingText(item.slot, record);
+        if (meta) meta.textContent = item.slot === 'month' ? 'One frame about every 6 hours' : 'One frame about every hour';
+      }
+    }
+  }
+
+  async function fetchObserverTimelapses() {
+    const response = await fetch(TIMELAPSES_ENDPOINT, { cache: 'no-store' });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Observer timelapses returned HTTP ${response.status}`);
+    return normalizeTimelapseFeed(data);
+  }
+
+  async function playObserverTimelapse(slot) {
+    const item = observerTimelapses?.timelapses?.[slot];
+    const video = byId(`observer-timelapse-${slot}-video`);
+    if (!item?.available || !video) {
+      if (typeof showToast === 'function') showToast('Timelapse is not ready yet');
+      return;
+    }
+    try {
+      video.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await video.play();
+    } catch (error) {
+      if (typeof showToast === 'function') showToast('Tap the video controls to play');
+    }
   }
 
   function storedAlertIds(key) {
@@ -645,6 +767,7 @@
     setText('observer-detail-drive-space', record.storageAvailableBytes ? `${formatBytes(record.storageAvailableBytes)} free · ${Number(record.storageUsedPercent || 0).toFixed(1)}% used` : '—');
     renderObserverHealth(record);
     renderHistoryOptions(record);
+    if (observerTimelapses) renderObserverTimelapses(observerTimelapses, record);
 
     const note = byId('observer-connection-note');
     if (note) {
@@ -683,14 +806,16 @@
     buttons.forEach(button => { button.disabled = true; });
     refreshInFlight = (async () => {
       try {
-        const [record, report, alerts] = await Promise.all([
+        const [record, report, alerts, timelapses] = await Promise.all([
           fetchObserverStatus(),
           fetchObserverDailySummary().catch(error => normalizeDailySummary({ ok: false, state: 'temporarily_unavailable', message: error.message || String(error) })),
-          fetchObserverAlerts().catch(() => normalizeObserverAlertFeed({ ok: false, alerts: [] }))
+          fetchObserverAlerts().catch(() => normalizeObserverAlertFeed({ ok: false, alerts: [] })),
+          fetchObserverTimelapses().catch(() => normalizeTimelapseFeed({ ok: false, timelapses: {} }))
         ]);
         renderObserver(record);
         renderDailySummary(report);
         renderObserverAlerts(alerts);
+        renderObserverTimelapses(timelapses, record);
         announceNewObserverAlerts(alerts);
         if (event && typeof showToast === 'function') {
           const message = record.health.status === 'healthy' ? '✅ Observer health refreshed' : '⚠️ Observer health needs attention';
@@ -858,6 +983,7 @@
   window.openObserverAlertComparison = openObserverAlertComparison;
   window.markObserverAlertReviewed = markObserverAlertReviewed;
   window.markAllObserverAlertsReviewed = markAllObserverAlertsReviewed;
+  window.playObserverTimelapse = playObserverTimelapse;
   window.ReefKeeperObserver = {
     refresh: refreshAquariumObserver,
     getSnapshot: () => snapshot,

@@ -103,3 +103,6 @@ It publishes only the current JPEG and sanitized status. The full dated image ar
 ### Build 2F.1 authentication hardening
 
 Observer write tokens are trimmed before constant-time comparison so accidental surrounding whitespace in the Vercel environment value does not cause a false 401 response.
+
+
+Build 2L adds rolling weekly and monthly Observer timelapses generated locally on the Raspberry Pi and delivered through private Vercel Blob storage.

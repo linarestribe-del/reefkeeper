@@ -1,3 +1,10 @@
+## 4.3.30 - Build 2L Weekly and Monthly Time-Lapses
+- Added private rolling 7-day and rolling 30-day Observer videos.
+- A separate daily Pi service selects one hourly frame for weekly video and one frame about every six hours for monthly video.
+- Only compact H.264 MP4 files are uploaded; the full five-minute archive remains local.
+- Added byte-range video delivery for reliable iPhone and Safari playback.
+- Added archive-progress states while the Pi accumulates enough history.
+
 ## 4.3.29 — Build 2K Automatic Change Alerts
 - Converts the daily visual comparison into evidence-limited structured alerts for water level, skimmer condition, leak/overflow evidence, equipment position, buildup, and camera quality.
 - Adds urgent/watch/info severity rules that explicitly avoid alerts caused only by lighting, reflections, framing, or image noise.

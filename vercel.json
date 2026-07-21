@@ -12,6 +12,9 @@
     },
     "api/observer-daily-summary.js": {
       "maxDuration": 60
+    },
+    "api/observer-timelapses.js": {
+      "maxDuration": 60
     }
   },
   "routes": [

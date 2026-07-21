@@ -7,7 +7,7 @@ const observer = fs.readFileSync(new URL('../observer.js', import.meta.url), 'ut
 const publisher = fs.readFileSync(new URL('../connector/observer-publisher.py', import.meta.url), 'utf8');
 const statusApi = fs.readFileSync(new URL('../api/observer-status.js', import.meta.url), 'utf8');
 
-assert.equal(OBSERVER_SCHEMA_VERSION, 5);
+assert.equal(OBSERVER_SCHEMA_VERSION, 6);
 assert.match(html, /id="observer-health-badge"/);
 assert.match(html, /id="observer-health-capture-row"/);
 assert.match(html, /id="observer-health-publisher-row"/);
@@ -50,7 +50,7 @@ const record = normalizeObserverStatus({
   publisherVersion: '2.2',
   health
 }, { imageAvailable: true, sizeBytes: 150000 });
-assert.equal(record.schemaVersion, 5);
+assert.equal(record.schemaVersion, 6);
 assert.equal(record.publisherVersion, '2.2');
 assert.equal(record.health.status, 'attention');
 assert.equal(record.imageAvailable, true);

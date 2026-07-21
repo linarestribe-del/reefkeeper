@@ -4858,3 +4858,83 @@ html.theme-dark .observer-alert-empty { background: rgba(82,183,136,.09); }
   .observer-alert-item-head { grid-template-columns: 32px minmax(0,1fr); }
   .observer-alert-item-head b { grid-column: 2; justify-self: start; }
 }
+
+
+/* Build 2L: weekly and monthly Observer timelapses */
+.observer-timelapse-card {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.91);
+  border: 1px solid rgba(0,119,182,0.16);
+  box-shadow: var(--shadow);
+}
+.observer-timelapse-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.observer-timelapse-summary { margin-top: 4px; color: var(--text-mid); font-size: 13px; line-height: 1.45; }
+.observer-timelapse-badge {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  background: rgba(125,135,145,.12);
+  color: var(--text-mid);
+}
+.observer-timelapse-badge.ready { background: rgba(23,151,95,.12); color: #08794a; }
+.observer-timelapse-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.observer-timelapse-item {
+  min-width: 0;
+  padding: 13px;
+  border-radius: 17px;
+  background: rgba(0,119,182,.045);
+  border: 1px solid rgba(0,119,182,.12);
+}
+.observer-timelapse-item-head { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.observer-timelapse-item-head > span { font-size: 25px; }
+.observer-timelapse-item-head div { min-width: 0; display: flex; flex-direction: column; }
+.observer-timelapse-item-head strong { color: var(--text-dark); font-size: 15px; }
+.observer-timelapse-item-head small, .observer-timelapse-item > small { color: var(--text-mid); font-size: 11px; line-height: 1.35; }
+.observer-timelapse-video { width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; background: #06131d; object-fit: contain; }
+.observer-timelapse-placeholder {
+  min-height: 126px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0,119,182,.26);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--text-mid);
+  text-align: center;
+  padding: 12px;
+}
+.observer-timelapse-placeholder[hidden] { display: none; }
+.observer-timelapse-placeholder span { font-size: 28px; }
+.observer-timelapse-placeholder strong { font-size: 12px; }
+.observer-timelapse-item > p { min-height: 36px; margin: 10px 0 4px; color: var(--text-dark); font-size: 12px; line-height: 1.4; }
+.observer-timelapse-item > button {
+  width: 100%;
+  margin-top: 10px;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--ocean-blue);
+  color: white;
+  font-weight: 900;
+  cursor: pointer;
+}
+.observer-timelapse-item > button:disabled { opacity: .48; cursor: default; }
+html.theme-dark .observer-timelapse-card { background: rgba(8,27,42,.94); border-color: rgba(155,216,240,.16); }
+html.theme-dark .observer-timelapse-item { background: rgba(155,216,240,.055); border-color: rgba(155,216,240,.13); }
+@media (max-width: 640px) {
+  .observer-timelapse-grid { grid-template-columns: 1fr; }
+  .observer-timelapse-placeholder { min-height: 150px; }
+}

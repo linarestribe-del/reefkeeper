@@ -9,10 +9,10 @@ assert.match(html, /onclick="showPage\('log'\)"[^>]*><span>📊<\/span><strong>P
 assert.match(app, /window\.showPage = function\(name, btn\)\s*\{\s*directGo\(name, btn\);\s*\}/, 'Final showPage override should call directGo once');
 assert.doesNotMatch(app, /window\.showPage = function\(name, btn\)\s*\{\s*showPage\(name, btn\)/, 'Final showPage override must not recurse');
 assert.match(html, /ai\/evidence-engine\.js\?v=20260717-build-1b/, 'Evidence engine must load before app.js');
-assert.ok(html.indexOf('ai/evidence-engine.js?v=20260717-build-1b') < html.indexOf('app.js?v=20260721-build-2k-change-alerts'), 'Evidence engine must load before app.js');
+assert.ok(html.indexOf('ai/evidence-engine.js?v=20260717-build-1b') < html.indexOf('app.js?v=20260721-build-2l-timelapses'), 'Evidence engine must load before app.js');
 assert.ok(html.indexOf('ai/trend-engine.js?v=20260718-build-2a') < html.indexOf('ai/trend-chart.js?v=20260718-build-2b'), 'Trend engine must load before the chart module');
-assert.ok(html.indexOf('ai/trend-chart.js?v=20260718-build-2b') < html.indexOf('app.js?v=20260721-build-2k-change-alerts'), 'Trend chart module must load before app.js');
-assert.ok(html.indexOf('observer.js?v=20260721-build-2k-change-alerts') > html.indexOf('app.js?v=20260721-build-2k-change-alerts'), 'Observer controller must load after app.js');
+assert.ok(html.indexOf('ai/trend-chart.js?v=20260718-build-2b') < html.indexOf('app.js?v=20260721-build-2l-timelapses'), 'Trend chart module must load before app.js');
+assert.ok(html.indexOf('observer.js?v=20260721-build-2l-timelapses') > html.indexOf('app.js?v=20260721-build-2l-timelapses'), 'Observer controller must load after app.js');
 const aiRouteIndex = vercel.routes.findIndex(route => route.src === '/ai/(.*)' && route.dest === '/ai/$1');
 const fallbackIndex = vercel.routes.findIndex(route => route.src === '/(.*)');
 assert.ok(aiRouteIndex >= 0 && aiRouteIndex < fallbackIndex, 'Vercel must serve /ai files before the SPA fallback');

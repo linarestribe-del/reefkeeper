@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260721-build-2k-change-alerts">
+<link rel="stylesheet" href="css/app.css?v=20260721-build-2l-timelapses">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1286,6 +1286,36 @@
           <button class="observer-primary-btn" id="observer-daily-compare-btn" type="button" onclick="openDailySummaryComparison()" disabled>Open comparison in Ask AI</button>
         </div>
         <p class="observer-history-note">The Pi selects frames near noon local time and waits about 20 minutes so the representative frame stays stable. Only the two daily frames are uploaded; the full five-minute archive remains local.</p>
+      </section>
+
+
+      <section class="observer-timelapse-card" id="observer-timelapse-card" aria-labelledby="observer-timelapse-title">
+        <div class="observer-timelapse-head">
+          <div>
+            <div class="observer-safety-title" id="observer-timelapse-title">Weekly and monthly time-lapses</div>
+            <div class="observer-timelapse-summary" id="observer-timelapse-summary">Checking the local archive for enough history…</div>
+          </div>
+          <span class="observer-timelapse-badge waiting" id="observer-timelapse-badge">Checking</span>
+        </div>
+        <div class="observer-timelapse-grid">
+          <article class="observer-timelapse-item">
+            <div class="observer-timelapse-item-head"><span>📅</span><div><strong>Weekly</strong><small>Rolling 7-day view</small></div></div>
+            <video id="observer-timelapse-week-video" class="observer-timelapse-video" controls playsinline preload="metadata" hidden></video>
+            <div id="observer-timelapse-week-placeholder" class="observer-timelapse-placeholder"><span>🎞️</span><strong>Building weekly history</strong></div>
+            <p id="observer-timelapse-week-status">Waiting for 7 days of archived captures.</p>
+            <small id="observer-timelapse-week-meta">One frame about every hour</small>
+            <button id="observer-timelapse-week-play" type="button" onclick="playObserverTimelapse('week')" disabled>Not ready yet</button>
+          </article>
+          <article class="observer-timelapse-item">
+            <div class="observer-timelapse-item-head"><span>🗓️</span><div><strong>Monthly</strong><small>Rolling 30-day view</small></div></div>
+            <video id="observer-timelapse-month-video" class="observer-timelapse-video" controls playsinline preload="metadata" hidden></video>
+            <div id="observer-timelapse-month-placeholder" class="observer-timelapse-placeholder"><span>🎬</span><strong>Building monthly history</strong></div>
+            <p id="observer-timelapse-month-status">Waiting for 30 days of archived captures.</p>
+            <small id="observer-timelapse-month-meta">One frame about every 6 hours</small>
+            <button id="observer-timelapse-month-play" type="button" onclick="playObserverTimelapse('month')" disabled>Not ready yet</button>
+          </article>
+        </div>
+        <p class="observer-history-note">The Raspberry Pi creates small H.264 videos from selected archive frames once per day. Only the finished videos are uploaded; the complete five-minute image archive remains on the local drive.</p>
       </section>
 
       <section class="observer-history-card">
@@ -3359,8 +3389,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260721-build-2k-change-alerts"></script>
-<script src="observer.js?v=20260721-build-2k-change-alerts"></script>
+<script src="app.js?v=20260721-build-2l-timelapses"></script>
+<script src="observer.js?v=20260721-build-2l-timelapses"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
