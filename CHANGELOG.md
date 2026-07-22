@@ -1,3 +1,10 @@
+## 4.3.38 — Maintenance 6D Data Snapshot Consolidation
+- Builds the Reef Timeline event collection once per render and reuses that immutable snapshot for filtering, intelligence totals, milestones, and the visible event list.
+- Reduces Timeline local-storage parsing from three passes to one pass without changing filters, ordering, counts, milestones, or saved data.
+- Passes the logs, actions, and completed-task arrays already loaded by Monthly Report, Emergency Binder, and Custom Report into Timeline generation, avoiding duplicate reads and parsing.
+- Adds static, VM-runtime, and Chromium coverage that verifies one storage read per Timeline source and one read each for logs, actions, and completed tasks in affected reports.
+- Makes no navigation, layout, storage-schema, API, AI access-key, Apex, Observer, Raspberry Pi, or Vercel route changes.
+
 ## 4.3.37 — Maintenance 6C Handler and Renderer Consolidation
 - Replaces 22 repeated tool-overlay `scrollToolToTop(...)` inline handlers with `data-scroll-tool` attributes and one delegated click handler.
 - Preserves both scroll controls in every tool header: tapping the title or the top-arrow button still scrolls that tool to the top.

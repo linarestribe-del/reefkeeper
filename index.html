@@ -1641,7 +1641,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.37 Maintenance 6C</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.38 Maintenance 6D</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -2384,7 +2384,7 @@ function copySystemCheckResults() {
     return out;
   }
 
-  function buildEvents() {
+  function buildEvents(source = {}) {
     const events = [];
 
     const photos = readTankPhotos();
@@ -2401,7 +2401,7 @@ function copySystemCheckResults() {
       });
     });
 
-    const logs = readJson('reef_logs', []);
+    const logs = Array.isArray(source.logs) ? source.logs : readJson('reef_logs', []);
     if (Array.isArray(logs)) {
       logs.forEach(log => {
         const parts = [];
@@ -2425,7 +2425,7 @@ function copySystemCheckResults() {
       });
     }
 
-    const actions = readJson('reef_actions', []);
+    const actions = Array.isArray(source.actions) ? source.actions : readJson('reef_actions', []);
     if (Array.isArray(actions)) {
       actions.forEach(action => {
         events.push({
@@ -2440,7 +2440,7 @@ function copySystemCheckResults() {
       });
     }
 
-    const completed = readJson('reef_completed_history', []);
+    const completed = Array.isArray(source.completed) ? source.completed : readJson('reef_completed_history', []);
     if (Array.isArray(completed)) {
       completed.forEach(item => {
         events.push({
@@ -2480,11 +2480,11 @@ function copySystemCheckResults() {
       .sort((a, b) => dateValue(b) - dateValue(a));
   }
 
-  function filteredEvents() {
+  function filteredEvents(allEvents = buildEvents()) {
     const search = String(document.getElementById('reef-timeline-search')?.value || '').trim().toLowerCase();
     const filter = document.getElementById('reef-timeline-filter')?.value || 'all';
 
-    return buildEvents().filter(event => {
+    return allEvents.filter(event => {
       const matchesFilter =
         filter === 'all' ||
         event.filter === filter ||
@@ -2499,25 +2499,24 @@ function copySystemCheckResults() {
     });
   }
 
-  function renderIntelligence(events) {
+  function renderIntelligence(allEvents) {
     const box = document.getElementById('reef-timeline-intelligence');
     if (!box) return;
 
-    const all = buildEvents();
-    const logs = all.filter(e => e.type === 'params').length;
-    const maintenance = all.filter(e => e.type === 'maintenance').length;
-    const completed = all.filter(e => e.type === 'completed').length;
-    const livestock = all.filter(e => e.type === 'livestock').length;
-    const photos = all.filter(e => e.type === 'photo').length;
+    const logs = allEvents.filter(e => e.type === 'params').length;
+    const maintenance = allEvents.filter(e => e.type === 'maintenance').length;
+    const completed = allEvents.filter(e => e.type === 'completed').length;
+    const livestock = allEvents.filter(e => e.type === 'livestock').length;
+    const photos = allEvents.filter(e => e.type === 'photo').length;
 
-    const newest = all[0];
-    const oldest = all[all.length - 1];
+    const newest = allEvents[0];
+    const oldest = allEvents[allEvents.length - 1];
 
     box.innerHTML = `
       <div class="timeline-intel-head">
         <div>
           <strong>Timeline Intelligence</strong>
-          <span>${all.length ? `Tracking ${all.length} reef events from ${oldest ? shortDate(oldest) : 'unknown'} to ${newest ? shortDate(newest) : 'today'}.` : 'No timeline events yet.'}</span>
+          <span>${allEvents.length ? `Tracking ${allEvents.length} reef events from ${oldest ? shortDate(oldest) : 'unknown'} to ${newest ? shortDate(newest) : 'today'}.` : 'No timeline events yet.'}</span>
         </div>
       </div>
       <div class="apex-native-summary" style="margin-top:10px;">
@@ -2530,19 +2529,18 @@ function copySystemCheckResults() {
     `;
   }
 
-  function renderMilestones(events) {
+  function renderMilestones(allEvents) {
     const box = document.getElementById('reef-timeline-milestones');
     if (!box) return;
 
-    const all = buildEvents();
-    if (!all.length) {
+    if (!allEvents.length) {
       box.innerHTML = '';
       return;
     }
 
-    const newest = all[0];
-    const recentTests = all.filter(e => e.type === 'params').slice(0, 1)[0];
-    const recentAction = all.filter(e => e.type === 'maintenance').slice(0, 1)[0];
+    const newest = allEvents[0];
+    const recentTests = allEvents.find(e => e.type === 'params');
+    const recentAction = allEvents.find(e => e.type === 'maintenance');
 
     const chips = [
       newest ? `Latest: ${newest.icon} ${compact(newest.title, 42)}` : '',
@@ -2560,12 +2558,13 @@ function copySystemCheckResults() {
     const count = document.getElementById('reef-timeline-count');
     if (!list) return;
 
-    const events = filteredEvents();
+    const allEvents = buildEvents();
+    const events = filteredEvents(allEvents);
 
     if (count) count.textContent = `${events.length} event${events.length === 1 ? '' : 's'}`;
 
-    renderIntelligence(events);
-    renderMilestones(events);
+    renderIntelligence(allEvents);
+    renderMilestones(allEvents);
 
     if (!events.length) {
       list.innerHTML = `
@@ -2746,15 +2745,15 @@ function copySystemCheckResults() {
     return [];
   }
 
-  function rkReportGetTimelineEvents() {
+  function rkReportGetTimelineEvents(source = {}) {
     try {
-      if (window.ReefKeeperTimeline?.buildEvents) return window.ReefKeeperTimeline.buildEvents();
+      if (window.ReefKeeperTimeline?.buildEvents) return window.ReefKeeperTimeline.buildEvents(source);
     } catch (error) {}
     return [];
   }
 
-  function rkReportLatestLogSummary() {
-    const logs = rkReportGetLogs().slice().sort((a,b) => new Date(b.isoDate || b.date || 0) - new Date(a.isoDate || a.date || 0));
+  function rkReportLatestLogSummary(sourceLogs = rkReportGetLogs()) {
+    const logs = sourceLogs.slice().sort((a,b) => new Date(b.isoDate || b.date || 0) - new Date(a.isoDate || a.date || 0));
     const latest = logs[0];
     if (!latest) return 'No saved parameter logs found.';
     const parts = [];
@@ -2769,15 +2768,21 @@ function copySystemCheckResults() {
   }
 
   function rkReportBaseData() {
-    return {
+    const data = {
       logs: rkReportGetLogs(),
       actions: rkReportGetActions(),
       completed: rkReportGetCompleted(),
       inventory: rkReportGetInventory(),
       memory: rkReportGetMemory(),
       equipment: rkReportGetEquipment(),
-      timeline: rkReportGetTimelineEvents()
+      timeline: []
     };
+    data.timeline = rkReportGetTimelineEvents({
+      logs: data.logs,
+      actions: data.actions,
+      completed: data.completed
+    });
+    return data;
   }
 
   function rkReportTitle(type) {
@@ -2802,7 +2807,7 @@ function copySystemCheckResults() {
       `Generated: ${rkReportDateTime(new Date())}`,
       ``,
       `## Current Snapshot`,
-      `Latest parameter log: ${rkReportLatestLogSummary()}`,
+      `Latest parameter log: ${rkReportLatestLogSummary(d.logs)}`,
       ``,
       `## Data Summary`,
       `Parameter logs: ${d.logs.length}`,
@@ -2887,7 +2892,7 @@ function copySystemCheckResults() {
       ``,
       `## Tank Snapshot`,
       `System: 120 gallon display with sump, Apex monitoring, skimmer, UV, GFO reactor, ATO, and reef lighting.`,
-      `Latest parameter log: ${rkReportLatestLogSummary()}`,
+      `Latest parameter log: ${rkReportLatestLogSummary(d.logs)}`,
       ``,
       `## Emergency First Checks`,
       `- Check temperature and pH from Apex.`,
@@ -2920,7 +2925,7 @@ function copySystemCheckResults() {
       `Timeline events: ${d.timeline.length}`,
       ``,
       `## Latest Snapshot`,
-      rkReportLatestLogSummary(),
+      rkReportLatestLogSummary(d.logs),
       ``,
       `## Relevant Recent Timeline`,
       d.timeline.slice(0, 20).map(e => `- ${rkReportDate(e.date || e.createdAt)} — ${e.title || 'Timeline event'}${e.detail ? `: ${rkReportCompact(e.detail, 200)}` : ''}`).join('\n') || 'No timeline events found.'
