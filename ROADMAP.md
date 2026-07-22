@@ -18,7 +18,7 @@
 - [x] Lock prior layout, navigation, handler, render, snapshot, and shared-helper cleanup regressions into the standard test command.
 - [x] Update architecture, rollback, release, checksum, and test documentation.
 - [x] Complete the two isolated UI fixes supplied by the user in v4.3.41 / Maintenance 7A.
-- [ ] Begin the next Aquarium Observer implementation phase from the verified v4.3.41 UI baseline.
+- [ ] Begin the next Aquarium Observer implementation phase from the verified v4.3.42 UI baseline.
 
 
 ## Maintenance 7A — Mobile Header and Ask AI Positioning — Complete in v4.3.41
@@ -28,6 +28,14 @@
 - [x] Keep the bottom navigation fixed and independently tappable.
 - [x] Position completed Ask AI responses at the beginning of the new answer.
 - [x] Add regression coverage without changing storage, APIs, Apex, Observer, or Pi services.
+
+
+## Maintenance 7B — iPhone Status Canvas — Complete in v4.3.42
+
+- [x] Paint the reef artwork on the root page canvas used by the iPhone standalone status area.
+- [x] Remove the duplicate image from `.ocean-bg` so the artwork does not restart below the status area.
+- [x] Add a matching status/theme fallback color.
+- [x] Preserve Maintenance 7A header scrolling and Ask AI answer positioning.
 
 ## Build 1A — AI Architecture Foundation — Complete in this package
 

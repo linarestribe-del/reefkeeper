@@ -4959,3 +4959,21 @@ html.theme-dark .ai-access-status[data-state="error"]{color:#ff9d9d;}
   .ai-access-actions{justify-content:flex-start;}
   .ai-access-status{text-align:left;}
 }
+
+
+/* Maintenance 7B: paint the reef artwork on the root canvas used by iOS for the status area. */
+html,
+body {
+  background-color: #2f83b3;
+  background-image:
+    linear-gradient(180deg, rgba(0, 55, 105, .32) 0, rgba(0, 55, 105, .12) 70px, rgba(0, 55, 105, 0) 170px),
+    url('/assets/images/reef-background.png');
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+/* The decorative layer stays transparent so the root image remains one continuous canvas. */
+.ocean-bg {
+  background: transparent !important;
+}

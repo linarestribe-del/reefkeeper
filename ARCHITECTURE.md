@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
 **Last updated:** July 22, 2026  
-**Current runtime family:** v4.3.41 / Build 2L.1  
-**Maintenance state:** Maintenance 7A mobile UI fixes on the Maintenance 6F stable checkpoint  
+**Current runtime family:** v4.3.42 / Build 2L.1  
+**Maintenance state:** Maintenance 7B iPhone status-canvas correction on the verified Maintenance 7A UI baseline  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -51,6 +51,17 @@ The checkpoint adds automated enforcement for:
 - repository integrity, synchronized duplicate runtime files, secret exclusions, and the 12-function Vercel limit.
 
 Future UI and Observer work must branch from this checkpoint and remain separately deployable and reversible.
+
+
+## Maintenance 7B iPhone status-canvas boundary
+
+Maintenance 7B changes only the browser root background presentation:
+
+- `html/body` own the reef background image so iOS can paint it through the standalone status area;
+- `.ocean-bg` remains as a structural decorative layer but no longer owns a second copy of the image;
+- a matching `theme-color` supplies a fallback where the operating system paints only a solid status surface.
+
+The scroll container, header placement, bottom navigation, chat positioning, application data, APIs, Apex, Observer, and Pi services are unchanged.
 
 ## Maintenance 7A mobile UI boundary
 

@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const html = fs.readFileSync('index.html', 'utf8');
 const app = fs.readFileSync('app.js', 'utf8');
 const css = fs.readFileSync('css/app.css', 'utf8');
+const rootCss = fs.readFileSync('app.css', 'utf8');
 
 assert.ok(
   html.includes('viewport-fit=cover'),
@@ -14,6 +15,14 @@ assert.ok(
   html.includes('apple-mobile-web-app-status-bar-style" content="black-translucent'),
   'The installed iPhone app must not reserve a solid status-bar strip.',
 );
+
+assert.ok(
+  html.includes('<meta name="theme-color" content="#2f83b3">'),
+  'The iPhone status area must have a reef-compatible fallback color.',
+);
+assert.match(css, /Maintenance 7B: paint the reef artwork[\s\S]*?html,[\s\S]*?body[\s\S]*?reef-background\.png/, 'The root canvas must paint the reef artwork used behind the iPhone status area.');
+assert.match(css, /\.ocean-bg\s*\{[\s\S]*?background:\s*transparent !important;/, 'The decorative background layer must not restart the reef image below the status area.');
+assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized.');
 
 const contentOpen = html.indexOf('<div class="app-content">');
 const header = html.indexOf('<div class="app-header"');
@@ -49,4 +58,4 @@ scheduled();
 assert.equal(options.block, 'start');
 assert.equal(options.behavior, 'smooth');
 
-console.log('Mobile header and Ask AI answer positioning checks passed.');
+console.log('Mobile status canvas, header, and Ask AI answer positioning checks passed.');

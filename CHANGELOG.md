@@ -1,3 +1,17 @@
+## 4.3.42 — Maintenance 7B iPhone Status Canvas
+
+### Fixed
+
+- Moved the reef background image to the root `html/body` canvas so iOS can use the same artwork when painting the standalone status area.
+- Made the separate `.ocean-bg` layer transparent to prevent the background image from restarting below the status area.
+- Added a reef-compatible `theme-color` fallback for iOS/browser chrome that cannot expose the root image.
+
+### Safety and compatibility
+
+- The verified Maintenance 7A scrollable header and Ask AI answer positioning are unchanged.
+- Bottom navigation, storage, APIs, AI protection, Apex, Observer, Raspberry Pi services, and Vercel routes are unchanged.
+- `4.3.41 / Maintenance 7A` remains the immediate rollback build.
+
 ## 4.3.41 — Maintenance 7A Mobile Header and Ask AI Positioning
 
 ### Fixed

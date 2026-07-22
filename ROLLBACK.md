@@ -4,11 +4,11 @@ This procedure restores the last known-good application without changing the Ras
 
 ## Known-good baseline
 
-- Application version: `4.3.41` after device verification
-- Release family: `Maintenance 7A — Mobile Header and Ask AI Positioning`
-- Saved source backup: `Reef_Keeper_Maintenance_7A_v4.3.41_MOBILE_UI_FIXES.zip`
-- Immediate verified rollback: `4.3.40 / Maintenance 6F`
-- Maintenance 7A changes only mobile shell scrolling/safe-area presentation and final Ask AI response positioning. Storage, APIs, Apex, Observer, environment variables, and Pi services are unchanged.
+- Application version: `4.3.42` after device verification
+- Release family: `Maintenance 7B — iPhone Status Canvas`
+- Saved source backup: `Reef_Keeper_Maintenance_7B_v4.3.42_IPHONE_STATUS_CANVAS.zip`
+- Immediate verified rollback: `4.3.41 / Maintenance 7A`
+- Maintenance 7B changes only the root background canvas and status-area fallback color. Maintenance 7A header scrolling and Ask AI response positioning remain intact. Storage, APIs, Apex, Observer, environment variables, and Pi services are unchanged.
 
 ## Fastest rollback: Vercel deployment
 
@@ -30,7 +30,7 @@ This procedure restores the last known-good application without changing the Ras
 
 ## Raspberry Pi rule
 
-Do not change the Pi during an application-only rollback unless the failed release explicitly installed a Pi update. Maintenance 7A does not require or modify the Pi.
+Do not change the Pi during an application-only rollback unless the failed release explicitly installed a Pi update. Maintenance 7B does not require or modify the Pi.
 
 ## Smoke-test checklist
 

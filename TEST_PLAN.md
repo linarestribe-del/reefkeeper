@@ -283,3 +283,11 @@ For each fixture, store expected observations, prohibited claims, maximum confid
 - Confirm new saved conversations retain explainability metadata and older conversations remain readable.
 - Confirm only `role` and `content` are sent to `/api/chat`.
 - Confirm no Why button, renamed core asset, navigation change, or saved-data migration is introduced.
+
+## Maintenance 7B automated status-canvas checks
+
+- Require the reef-compatible `theme-color` meta tag.
+- Require the reef asset on the root `html/body` canvas.
+- Require `.ocean-bg` to remain transparent so the image is not restarted below the iPhone status area.
+- Require root and `css/` stylesheet copies to remain identical.
+- Retain all Maintenance 7A header and Ask AI positioning assertions.
