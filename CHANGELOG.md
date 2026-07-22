@@ -1,3 +1,10 @@
+## 4.3.36 — Maintenance 6B Inline JavaScript Cleanup
+- Removes seven unreachable helper functions from `index.html` after repository-wide call-site verification.
+- Removes layered wrappers around `showPage` and `showWorkspace` that caused duplicate Home intelligence refreshes.
+- Replaces the DOM-ready plus forced window-load refresh sequence with one canonical initial Home render.
+- Preserves the working direct navigator, page-specific rendering, AI access control, Apex, Observer, storage, and Vercel routes.
+- Adds a permanent regression test that rejects the retired helpers and duplicate Home refresh hooks.
+
 ## 4.3.35 — Maintenance 6A Index Navigation Cleanup
 - Consolidates the layered v4.3.28, v4.3.38, v4.3.39, and v4.3.40 app-shell navigation and scrolling overrides into one canonical `index.html` style block.
 - Removes dead selectors for navigation elements that do not exist in the application.

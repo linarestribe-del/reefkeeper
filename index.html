@@ -1641,7 +1641,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.35 Maintenance 6A</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.36 Maintenance 6B</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3592,13 +3592,6 @@ function rkEquipmentAddDays(value, days) {
   return d.toISOString();
 }
 
-function rkEquipmentDateLabel(value) {
-  const iso = rkEquipmentIso(value);
-  if (!iso) return 'Not logged';
-  const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-}
-
 function rkEquipmentShortAge(value) {
   const days = rkEquipmentDaysAgo(value);
   if (days === null) return 'Not logged';
@@ -3844,16 +3837,6 @@ function editEquipmentItem(id) {
   try { showToast('Editing equipment item'); } catch(e) {}
 }
 
-function deleteEquipmentItem(id) {
-  if (!confirm('Delete this equipment item?')) return;
-  const next = rkEquipmentItems().filter(item => String(item.id) !== String(id));
-  rkSetEquipmentItems(next);
-  try { localStorage.setItem('reef_equipment_v1', JSON.stringify(next)); } catch(e) {}
-  try { renderEquipmentManager(); } catch(e) {}
-  try { updateMyTankSnapshotBadges?.(); } catch(e) {}
-  try { showToast('Equipment deleted'); } catch(e) {}
-}
-
 function handleEquipmentPhotoUpload(event) {
   const file = event?.target?.files?.[0];
   if (!file) return;
@@ -4030,34 +4013,8 @@ function rkHomeLatestLog() {
   } catch(e) { return null; }
 }
 
-function rkHomeScoreFromLog(log) {
-  // Backward-compatible fallback. The Home dashboard now uses ReefKeeperBrain when available.
-  const brainScore = window.ReefKeeperBrain?.getSnapshot?.()?.score;
-  if (Number.isFinite(brainScore)) return brainScore;
-  const values = {
-    po4: rkHomeNumber(log?.po4 ?? 0.65),
-    alk: rkHomeNumber(log?.alk ?? 10.0),
-    no3: rkHomeNumber(log?.no3 ?? 22),
-    ca: rkHomeNumber(log?.ca ?? 478),
-    mg: rkHomeNumber(log?.mg),
-    sal: rkHomeNumber(log?.sal)
-  };
-  let score = 100;
-  if (values.po4 !== null) score -= values.po4 > 0.5 ? 14 : values.po4 > 0.25 ? 9 : values.po4 > 0.12 ? 4 : 0;
-  if (values.alk !== null) score -= values.alk > 10.5 ? 8 : values.alk > 9.7 ? 4 : values.alk < 7.5 ? 8 : 0;
-  if (values.no3 !== null) score -= values.no3 > 25 ? 7 : values.no3 > 15 ? 4 : values.no3 < 1 ? 4 : 0;
-  if (values.ca !== null) score -= values.ca > 470 ? 4 : values.ca < 380 ? 5 : 0;
-  if (values.sal !== null) score -= values.sal > 1.027 || values.sal < 1.024 ? 4 : 0;
-  if (values.mg === null) score -= 2;
-  return Math.max(68, Math.min(100, Math.round(score)));
-}
-
 function rkHomeFormatLine(text, meta = '') {
   return `<div class="home-intel-line"><span>${escapeHtml(String(text || ''))}</span>${meta ? `<small>${escapeHtml(String(meta))}</small>` : ''}</div>`;
-}
-
-function rkHomeOpenLatestPhoto() {
-  try { openLongTermTool('tankhistory'); } catch(e) { showPage('vision'); }
 }
 
 function rkHomeDailyAction(action) {
@@ -4090,31 +4047,6 @@ function rkHomeRenderDailyAssistant(snapshot) {
 function refreshDailyReefBrief() {
   try { renderHomeIntelligence(); showToast('🤖 Daily Reef Brief refreshed'); }
   catch(e) { console.warn(e); showToast('Could not refresh brief'); }
-}
-
-function rkHomeTelemetrySnapshot() {
-  try { return window.ReefKeeperApexBridge?.getSnapshot?.() || JSON.parse(localStorage.getItem('reef_apex_bridge_snapshot_v1') || 'null'); }
-  catch(e) { return null; }
-}
-
-function rkHomeRequestCloudTelemetry(force = false) {
-  try {
-    const bridge = window.ReefKeeperApexBridge;
-    if (!bridge || typeof bridge.refreshCloudTelemetryIfNeeded !== 'function') return;
-    bridge.refreshCloudTelemetryIfNeeded({ force, silent:true });
-  } catch(e) { console.warn('Cloud telemetry request failed', e); }
-}
-
-function rkHomeTelemetryAge(value) {
-  const t = new Date(value || 0).getTime();
-  if (!Number.isFinite(t) || !t) return 'No data yet';
-  const mins = Math.max(0, Math.floor((Date.now() - t) / 60000));
-  if (mins < 1) return 'Updated just now';
-  if (mins < 60) return `Updated ${mins} min ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `Updated ${hrs} hr ago`;
-  const days = Math.floor(hrs / 24);
-  return `Updated ${days} day${days === 1 ? '' : 's'} ago`;
 }
 
 function rkHomeTelemetryValue(value, fallback = '—') {
@@ -4634,31 +4566,19 @@ function renderHomeIntelligence() {
 }
 
 (function installHomeIntelligenceHooks(){
-  const run = () => { try { renderHomeIntelligence(); renderHomeTelemetry(); } catch(e) { console.warn('Home intelligence render failed', e); } };
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(run, 250));
-  else setTimeout(run, 250);
-  const oldShowWorkspace = window.showWorkspace;
-  if (typeof oldShowWorkspace === 'function' && !oldShowWorkspace.__homeIntelWrapped) {
-    const wrapped = function(name, btn){
-      const result = oldShowWorkspace.apply(this, arguments);
-      if (name === 'home') setTimeout(run, 80);
-      return result;
-    };
-    wrapped.__homeIntelWrapped = true;
-    window.showWorkspace = wrapped;
-  }
-  const oldShowPage = window.showPage;
-  if (typeof oldShowPage === 'function' && !oldShowPage.__homeIntelWrapped) {
-    const wrapped = function(name, btn){
-      const result = oldShowPage.apply(this, arguments);
-      if (name === 'home') setTimeout(run, 80);
-      return result;
-    };
-    wrapped.__homeIntelWrapped = true;
-    window.showPage = wrapped;
-  }
+  const run = () => {
+    try { renderHomeIntelligence(); }
+    catch(e) { console.warn('Home intelligence render failed', e); }
+  };
+
   window.renderHomeIntelligence = renderHomeIntelligence;
   window.renderHomeTelemetry = renderHomeTelemetry;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(run, 250), { once:true });
+  } else {
+    setTimeout(run, 250);
+  }
 })();
 
 function startVisionPrompt(prompt, preferCamera) {
@@ -4672,18 +4592,6 @@ function startVisionPrompt(prompt, preferCamera) {
 }
 </script>
 
-<script>
-window.addEventListener('load', function () {
-  setTimeout(function () {
-    try {
-      if (typeof renderHomeIntelligence === 'function') renderHomeIntelligence();
-      if (typeof renderHomeTelemetry === 'function') renderHomeTelemetry();
-    } catch (e) {
-      console.warn('Forced Home intelligence render failed', e);
-    }
-  }, 800);
-});
-</script>
 
 </body>
 </html>

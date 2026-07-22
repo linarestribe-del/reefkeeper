@@ -1,12 +1,12 @@
 # Reef Keeper
 
-**Current application version:** `4.3.35`  
+**Current application version:** `4.3.36`  
 **Current release family:** Build 2L.1 — Aquarium Observer weekly/monthly time-lapses with the Vercel Hobby-plan consolidation  
-**Maintenance state:** Maintenance 6A consolidates the working app-shell navigation and scrolling CSS in `index.html` into one canonical block. Maintenance 5C AI access protection, Maintenance 5B abuse controls, and Maintenance 5A Apex data minimization remain in place.
+**Maintenance state:** Maintenance 6B removes unreachable inline JavaScript and consolidates duplicate Home refresh hooks. Maintenance 6A layout cleanup, Maintenance 5C AI access protection, Maintenance 5B abuse controls, and Maintenance 5A Apex data minimization remain in place.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 6A is documented in `MAINTENANCE_6A_RELEASE_MANIFEST.md` and `MAINTENANCE_6A_TEST_REPORT.md`.
+Maintenance 6B is documented in `MAINTENANCE_6B_RELEASE_MANIFEST.md` and `MAINTENANCE_6B_TEST_REPORT.md`.
 
 ## Current major capabilities
 
