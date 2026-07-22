@@ -1,12 +1,12 @@
 {
   "name": "reefkeeper-vercel-app",
-  "version": "4.3.31",
+  "version": "4.3.32",
   "private": true,
   "description": "Reef Keeper Vercel app with OpenAI, Apex, telemetry, and Aquarium Observer publishing APIs",
   "type": "module",
   "scripts": {
     "start": "vercel dev",
-    "test": "node tests/evidence-engine.test.mjs && node tests/decision-engine.test.cjs && node tests/explainability.test.cjs && node tests/trend-engine.test.cjs && node tests/trend-chart.test.cjs && node tests/navigation-regression.test.mjs && node tests/release-regression.test.cjs && node tests/chat-image-input.test.mjs && node tests/observer-ui.test.mjs && node tests/observer-bridge.test.mjs && node tests/vision-timeout.test.mjs && node tests/multi-image-ui.test.mjs && node tests/observer-history.test.mjs && node tests/observer-health.test.mjs && node tests/observer-daily-summary.test.mjs && node tests/observer-change-alerts.test.mjs && node tests/observer-timelapses.test.mjs && python3 -B tests/observer-timelapse-builder.test.py && node tests/repository-integrity.test.mjs && node tests/vercel-function-count.test.mjs",
+    "test": "node tests/evidence-engine.test.mjs && node tests/decision-engine.test.cjs && node tests/explainability.test.cjs && node tests/trend-engine.test.cjs && node tests/trend-chart.test.cjs && node tests/navigation-regression.test.mjs && node tests/release-regression.test.cjs && node tests/chat-image-input.test.mjs && node tests/observer-ui.test.mjs && node tests/observer-bridge.test.mjs && node tests/vision-timeout.test.mjs && node tests/multi-image-ui.test.mjs && node tests/observer-history.test.mjs && node tests/observer-health.test.mjs && node tests/observer-daily-summary.test.mjs && node tests/observer-change-alerts.test.mjs && node tests/observer-timelapses.test.mjs && node tests/apex-data-minimization.test.mjs && python3 -B tests/observer-timelapse-builder.test.py && node tests/repository-integrity.test.mjs && node tests/vercel-function-count.test.mjs",
     "test:repo": "node tests/repository-integrity.test.mjs",
     "test:functions": "node tests/vercel-function-count.test.mjs"
   },

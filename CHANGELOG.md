@@ -1,3 +1,17 @@
+## Maintenance 5A.1 — Release Alignment
+- Aligns the repository version, lockfile, release regression, documentation, and permanent Apex data-minimization regression coverage with the deployed Maintenance 5A runtime baseline.
+- Records commit `7be5d8d` as the user-confirmed working Apex data-minimization runtime baseline.
+- Adds no runtime, UI, Vercel route, environment-variable, Raspberry Pi, or Apex connector changes.
+- Keeps the application version at `4.3.32`, the version assigned to Maintenance 5A.
+
+## 4.3.32 — Maintenance 5A Apex Data Minimization
+- Sanitizes Apex data before it is stored by `/api/apex-sync`.
+- Sanitizes every `/api/apex-status` read so older KV records cannot expose the former raw controller payload.
+- Removes the Apex source URL, controller hostname, serial, link key, hardware/software metadata, raw text, device identifiers, and unrelated inputs/outlets from the public response.
+- Preserves the small `raw.istat.inputs` and `raw.istat.outputs` compatibility shape used by the current app, limited to telemetry, power, leak, equipment-state, and alarm fields Reef Keeper actually reads.
+- Adds regression coverage proving sensitive sample fields are excluded while required Apex values remain available.
+- No Raspberry Pi update or Vercel environment-variable change is required.
+
 ## Maintenance 1.1 — Public npm registry lockfile fix
 - Replaced environment-specific package-lock download URLs with public npm registry URLs.
 - Added `.npmrc` to make Vercel and GitHub Actions use `https://registry.npmjs.org/`.
