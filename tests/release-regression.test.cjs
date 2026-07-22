@@ -46,9 +46,17 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.32');
+assert.equal(pkg.version, '4.3.33');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
+assert(fs.existsSync('tests/ai-abuse-guard.test.mjs'));
+for (const file of ['chat.js', 'plan.js', 'livestock.js', 'photo-analysis.js']) {
+  assert.equal(fs.readFileSync(file, 'utf8'), fs.readFileSync(`api/${file}`, 'utf8'), `${file} root/API copies must remain synchronized`);
+  assert(fs.readFileSync(`api/${file}`, 'utf8').includes('Maintenance 5B'), `${file} must retain paid-AI request guards`);
+}
+assert(apiChat.includes('MAX_CHAT_MESSAGES = 24'));
+assert(apiChat.includes('MAX_CHAT_TEXT_CHARS = 96_000'));
+assert(apiChat.includes("rateLimitEnv: 'REEF_AI_CHAT_RATE_LIMIT'"));
 assert(vercel.routes.some((route) => route.src === '/ai/(.*)' && route.dest === '/ai/$1'));
 
 // Build 2C must not reintroduce the experimental Why control or rename core assets.

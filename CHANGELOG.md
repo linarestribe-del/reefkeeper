@@ -1,3 +1,12 @@
+## 4.3.33 — Maintenance 5B Paid AI Abuse Controls
+- Adds endpoint-specific request-body ceilings to `/api/chat`, `/api/plan`, `/api/livestock`, and `/api/photo-analysis` before OpenAI is called.
+- Caps chat input to the newest 24 supported messages and 96,000 cumulative text characters.
+- Adds strict supported-image data-URL validation to photo analysis.
+- Adds dependency-free per-client burst controls that return `429` and `Retry-After`.
+- Adds no Vercel function, UI change, Raspberry Pi change, new dependency, or required environment variable.
+- Refreshes the runtime-critical checksum file and removes stale references to the root Apex duplicates deleted in Maintenance 4A.
+- The limiter is best-effort per warm serverless instance; it reduces bursts but does not replace future caller authentication or durable platform-level rate limiting.
+
 ## Maintenance 5A.1 — Release Alignment
 - Aligns the repository version, lockfile, release regression, documentation, and permanent Apex data-minimization regression coverage with the deployed Maintenance 5A runtime baseline.
 - Records commit `7be5d8d` as the user-confirmed working Apex data-minimization runtime baseline.

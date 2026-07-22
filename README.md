@@ -1,8 +1,8 @@
 # Reef Keeper
 
-**Current application version:** `4.3.32`  
+**Current application version:** `4.3.33`  
 **Current release family:** Build 2L.1 — Aquarium Observer weekly/monthly time-lapses with the Vercel Hobby-plan consolidation  
-**Maintenance state:** Maintenance 5A is deployed and verified. Maintenance 5A.1 aligns repository versioning, documentation, and permanent regression coverage with the working runtime baseline commit `7be5d8d`; it makes no runtime or Raspberry Pi changes.
+**Maintenance state:** Maintenance 5B adds bounded request sizes, bounded chat history, strict photo data validation, and best-effort per-client burst controls to the four paid AI endpoints. Maintenance 5A Apex data minimization remains deployed and verified.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
@@ -56,6 +56,18 @@ Current Pi-side components include:
 - weekly/monthly time-lapse builder.
 
 Observer write authentication depends on `REEF_OBSERVER_WRITE_TOKEN`. Do not commit tokens, camera credentials, RTSP URLs, `.env` files, or local network details.
+
+## Paid AI endpoint safeguards
+
+Maintenance 5B applies to `/api/chat`, `/api/plan`, `/api/livestock`, and `/api/photo-analysis`. It adds:
+
+- endpoint-specific JSON body-size ceilings before OpenAI is called;
+- a 24-message / 96,000-character server-side chat-history ceiling;
+- explicit JPEG, PNG, WebP, or GIF data-URL validation for photo analysis;
+- per-client burst limits with `429` responses and `Retry-After`;
+- `Cache-Control: no-store` and `X-Content-Type-Options: nosniff` on guarded AI responses.
+
+The rate limiter is intentionally dependency-free and persists only within a warm Vercel function instance. It reduces accidental retries and simple bursts, but it is not durable distributed rate limiting and is not caller authentication. A later security phase should add an authenticated app-access layer or platform-level durable rate limiting. No new environment variable is required; optional `REEF_AI_*` variables can tune the defaults documented in `MAINTENANCE_5B_RELEASE_MANIFEST.md`.
 
 ## Apex integration note
 
