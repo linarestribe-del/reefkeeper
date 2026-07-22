@@ -18,9 +18,9 @@ assert.ok(!html.slice(intelligenceStart, milestonesStart).includes('buildEvents(
 assert.ok(!html.slice(milestonesStart, timelineStart).includes('buildEvents()'), 'Timeline milestones must not rebuild events.');
 assert.equal((html.slice(timelineStart, resizeStart).match(/buildEvents\(\)/g) || []).length, 1, 'Timeline render must build events exactly once.');
 assert.ok(html.includes('function buildEvents(source = {})'), 'Timeline builder must accept an optional preloaded source snapshot.');
-assert.ok(html.includes("const logs = Array.isArray(source.logs) ? source.logs : readJson('reef_logs', []);"), 'Timeline builder must reuse preloaded logs when supplied.');
-assert.ok(html.includes("const actions = Array.isArray(source.actions) ? source.actions : readJson('reef_actions', []);"), 'Timeline builder must reuse preloaded actions when supplied.');
-assert.ok(html.includes("const completed = Array.isArray(source.completed) ? source.completed : readJson('reef_completed_history', []);"), 'Timeline builder must reuse preloaded completed tasks when supplied.');
+assert.ok(html.includes("const logs = Array.isArray(source.logs) ? source.logs : rkReadStoredJson('reef_logs', []);"), 'Timeline builder must reuse preloaded logs when supplied.');
+assert.ok(html.includes("const actions = Array.isArray(source.actions) ? source.actions : rkReadStoredJson('reef_actions', []);"), 'Timeline builder must reuse preloaded actions when supplied.');
+assert.ok(html.includes("const completed = Array.isArray(source.completed) ? source.completed : rkReadStoredJson('reef_completed_history', []);"), 'Timeline builder must reuse preloaded completed tasks when supplied.');
 
 assert.ok(html.includes('function rkReportLatestLogSummary(sourceLogs = rkReportGetLogs())'), 'Report summary must accept an existing log snapshot.');
 assert.equal((html.match(/rkReportLatestLogSummary\(d\.logs\)/g) || []).length, 3, 'Monthly, emergency, and custom reports must reuse their loaded logs.');
@@ -35,6 +35,13 @@ function extractIife(marker) {
   const scriptEnd = html.indexOf('</script>', markerIndex);
   assert.ok(scriptStart >= 0 && scriptEnd > markerIndex, `Could not isolate script for ${marker}`);
   return html.slice(scriptStart + '<script>'.length, scriptEnd);
+}
+
+function extractSharedStorageHelpers() {
+  const start = html.indexOf('function rkReadStoredJson(key, fallback)');
+  const end = html.indexOf('function rkSystemCheckIcon(state)', start);
+  assert.ok(start >= 0 && end > start, 'Could not isolate shared storage helpers.');
+  return html.slice(start, end);
 }
 
 function makeStorage(data) {
@@ -116,6 +123,7 @@ const timelineSandbox = {
   Set
 };
 timelineSandbox.window = timelineSandbox;
+vm.runInNewContext(extractSharedStorageHelpers(), timelineSandbox, { filename: 'shared-storage-helpers.js' });
 vm.runInNewContext(extractIife("const PHOTO_KEY = 'reef_tank_history_photos_v1';"), timelineSandbox, { filename: 'timeline-inline.js' });
 timelineSandbox.window.ReefKeeperTimeline.render();
 
@@ -179,8 +187,9 @@ const reportSandbox = {
   Set
 };
 reportSandbox.window = reportSandbox;
+vm.runInNewContext(extractSharedStorageHelpers(), reportSandbox, { filename: 'shared-storage-helpers.js' });
 vm.runInNewContext(extractIife("const PHOTO_KEY = 'reef_tank_history_photos_v1';"), reportSandbox, { filename: 'timeline-report-inline.js' });
-vm.runInNewContext(extractIife('function rkReportEsc(value)'), reportSandbox, { filename: 'report-inline.js' });
+vm.runInNewContext(extractIife('function rkReportDate(value)'), reportSandbox, { filename: 'report-inline.js' });
 
 for (const type of ['monthly', 'emergency', 'custom']) {
   reportStorage.reads.clear();
