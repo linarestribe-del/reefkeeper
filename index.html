@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260722-maintenance-8a-r2-storage">
+<link rel="stylesheet" href="css/app.css?v=20260722-maintenance-8b-observer-monitoring">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1159,6 +1159,9 @@
           <div class="observer-health-row" id="observer-health-power-row">
             <span class="observer-health-icon">⚡</span><div><strong>Pi power</strong><small id="observer-health-power-detail">Checking…</small></div><b id="observer-health-power-state">—</b>
           </div>
+          <div class="observer-health-row" id="observer-health-daily-row">
+            <span class="observer-health-icon">📅</span><div><strong>Daily monitoring</strong><small id="observer-health-daily-detail">Checking summary schedule and retry budget…</small></div><b id="observer-health-daily-state">—</b>
+          </div>
           <div class="observer-health-row" id="observer-health-services-row">
             <span class="observer-health-icon">⏱️</span><div><strong>System services</strong><small id="observer-health-services-detail">Checking…</small></div><b id="observer-health-services-state">—</b>
           </div>
@@ -1178,8 +1181,8 @@
       <section class="observer-alert-card" id="observer-alert-card" aria-labelledby="observer-alert-title">
         <div class="observer-alert-head">
           <div>
-            <div class="observer-safety-title" id="observer-alert-title">Automatic change alerts</div>
-            <div class="observer-alert-summary" id="observer-alert-summary">Checking the latest daily comparison for visible changes…</div>
+            <div class="observer-safety-title" id="observer-alert-title">Observer alerts</div>
+            <div class="observer-alert-summary" id="observer-alert-summary">Checking Pi health and the latest daily visual comparison…</div>
           </div>
           <span class="observer-alert-badge clear" id="observer-alert-badge">Checking</span>
         </div>
@@ -1188,7 +1191,7 @@
         <div class="observer-card-actions observer-alert-actions">
           <button class="observer-secondary-btn" id="observer-alert-review-all" type="button" onclick="markAllObserverAlertsReviewed()" disabled>Mark all reviewed</button>
         </div>
-        <div class="observer-alert-note">Alerts are evidence-limited screening prompts, not proof of a leak, overflow, equipment failure, or water-quality problem. Verify the camera view and inspect the sump directly before acting.</div>
+        <div class="observer-alert-note">System alerts come from deterministic Pi health checks without AI. Visual alerts come only from the once-daily comparison and remain evidence-limited screening prompts. Verify the camera view and inspect the sump directly before acting.</div>
       </section>
 
       <section class="observer-daily-card" id="observer-daily-card" aria-labelledby="observer-daily-title">
@@ -1641,7 +1644,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.43 Maintenance 8A</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.44 Maintenance 8B</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3307,8 +3310,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260722-maintenance-8a-r2-storage"></script>
-<script src="observer.js?v=20260722-maintenance-8a-r2-storage"></script>
+<script src="app.js?v=20260722-maintenance-8b-observer-monitoring"></script>
+<script src="observer.js?v=20260722-maintenance-8b-observer-monitoring"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

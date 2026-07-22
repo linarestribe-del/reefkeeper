@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
 **Last updated:** July 22, 2026  
-**Current runtime family:** v4.3.43 / Build 2L.1  
-**Maintenance state:** Maintenance 8A Cloudflare R2 Observer storage migration on the verified Maintenance 7B UI baseline  
+**Current runtime family:** v4.3.44 / Observer publisher 2.3  
+**Maintenance state:** Maintenance 8B bounded daily-summary retries and deterministic operational alerts on the verified R2 baseline  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -264,3 +264,8 @@ Sensors and records
 ## Build 2C presentation layer
 
 `ai/explainability.js` converts Evidence and Decision Engine output into a compact record displayed directly inside new tank-context Ask AI responses. It does not make decisions or ask the language model to justify itself.
+
+
+## Maintenance 8B monitoring boundary
+
+The Pi publishes health metadata on its normal schedule. Operational alerts are derived deterministically from that metadata and publisher timestamps; they do not invoke OpenAI. Only the two representative daily frames are eligible for the once-daily visual comparison, with a maximum of three spaced attempts for a given daily frame.

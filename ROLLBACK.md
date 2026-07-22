@@ -2,28 +2,31 @@
 
 ## Current candidate
 
-- Release family: `Maintenance 8A — Observer R2 Migration`
-- Version: `4.3.43`
-- Stable source backup: `Reef_Keeper_Maintenance_7B_v4.3.42_IPHONE_STATUS_CANVAS.zip`
-- Candidate recovery package: `Reef_Keeper_Maintenance_8A_v4.3.43_R2_OBSERVER_MIGRATION.zip`
+- Release family: `Maintenance 8B — Observer Monitoring Safeguards`
+- Version: `4.3.44`
+- Stable source backup: `Reef_Keeper_Maintenance_8A_v4.3.43_R2_OBSERVER_MIGRATION.zip`
+- Candidate recovery package: `Reef_Keeper_Maintenance_8B_v4.3.44_OBSERVER_MONITORING.zip`
 
-## Before activation
+## Before Pi activation
 
-Keep `reefkeeper-observer-publish.timer` disabled until the R2 Production variables are configured and a manual publisher run succeeds.
+The v4.3.44 web build can be deployed while publisher 2.2 continues running. Before replacing the Pi script, stop the publisher timer, back up `/usr/local/bin/observer-publisher.py`, syntax-check publisher 2.3, and perform one manual service run.
 
 ## Application rollback
 
-1. Restore the verified v4.3.42 repository files or promote the last known-good v4.3.42 Vercel deployment.
-2. Do not remove the R2 bucket or credentials during an application rollback; they contain only the candidate Observer objects and can remain private.
-3. Leave the Pi publisher disabled because v4.3.42 writes to Vercel Blob, whose access is currently paused.
-4. Verify Home, Parameter Log, Settings, Ask AI, and Apex.
-
-The non-Observer application remains usable on v4.3.42 even while remote Observer storage is unavailable.
+1. Restore the verified v4.3.43 repository files or promote the last known-good v4.3.43 Vercel deployment.
+2. Keep the four private `REEF_OBSERVER_R2_*` Production variables in place.
+3. Verify Home, Parameter Log, Settings, Ask AI, Apex, and the current Observer image.
+4. If the problem is isolated to publisher 2.3, restore only the Pi script backup instead of rolling back the web app.
 
 ## Successful activation recovery point
 
-After v4.3.43 completes a manual publish and device verification, save its full ZIP as the new recovery baseline. A later rollback to v4.3.43 requires the four `REEF_OBSERVER_R2_*` Production environment variables to remain present.
+After v4.3.44 and publisher 2.3 complete live verification, save the full v4.3.44 ZIP and the backed-up publisher 2.2 script as the new recovery set.
 
 ## Raspberry Pi boundary
 
-Maintenance 8A does not modify capture, archive, camera, or timelapse files on the Pi. It only re-enables the existing publisher timer after server-side R2 activation is proven.
+Maintenance 8B changes only the Observer publisher script. Camera credentials, RTSP configuration, capture service, SSD mount, local archive, and timelapse builder remain unchanged.
+
+
+## Maintenance 8B Pi rollback
+
+If publisher 2.3 fails its manual service test, restore the previous `/usr/local/bin/observer-publisher.py` and restart `reefkeeper-observer-publish.timer`. The local capture service and archive remain independent.

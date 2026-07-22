@@ -1,12 +1,12 @@
 # Reef Keeper
 
-**Current application version:** `4.3.42`  
-**Current release family:** Build 2L.1 — Aquarium Observer weekly/monthly time-lapses with the Vercel Hobby-plan consolidation  
-**Maintenance state:** Maintenance 8A migrates Aquarium Observer remote storage from paused Vercel Blob to private Cloudflare R2 while preserving the verified v4.3.42 mobile UI baseline and all Maintenance 6F through 5A safeguards.
+**Current application version:** `4.3.44`  
+**Current release family:** Maintenance 8B — R2-backed Aquarium Observer monitoring safeguards  
+**Maintenance state:** Maintenance 8B adds bounded daily-summary retries and deterministic operational alerts on the private Cloudflare R2 Observer foundation while preserving the verified v4.3.43 R2 production baseline and all Maintenance 6F through 5A safeguards.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 8A is documented in `MAINTENANCE_8A_RELEASE_MANIFEST.md` and `MAINTENANCE_8A_TEST_REPORT.md`. Version `4.3.43` must remain staged until its private R2 environment variables are configured and a manual Pi publish succeeds.
+Maintenance 8B is documented in `MAINTENANCE_8B_RELEASE_MANIFEST.md` and `MAINTENANCE_8B_TEST_REPORT.md`. The web update is backward-compatible with publisher 2.2; publisher 2.3 is activated separately with a backup and one controlled service run.
 
 ## Current major capabilities
 
@@ -101,3 +101,8 @@ Maintenance 8A keeps the R2 bucket private. Configure these Vercel Production en
 - `REEF_OBSERVER_R2_BUCKET` (`reefkeeper-observer`)
 
 The R2 credentials belong only in Vercel. The Raspberry Pi continues using its existing Observer publish endpoint and write token.
+
+
+## Maintenance 8B daily monitoring
+
+Publisher 2.3 reports a Daily monitoring health component and limits failed daily-summary retries to three attempts per representative frame, spaced three hours apart by default. Camera, publisher, SSD, Pi power, archive, and daily-summary health issues can appear as operational alerts without sending camera frames to OpenAI.

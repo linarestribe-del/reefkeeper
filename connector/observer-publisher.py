@@ -24,7 +24,7 @@ CAPTURES_DIR = BASE_DIR / 'captures'
 CAPTURE_STATUS_PATH = BASE_DIR / 'status.json'
 PUBLISH_STATUS_PATH = BASE_DIR / 'publish-status.json'
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.2'
+PUBLISHER_VERSION = '2.3'
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
 PUBLISH_TIMER = 'reefkeeper-observer-publish.timer'
 CAPTURE_NAME_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.jpg$', re.I)
@@ -191,6 +191,81 @@ def select_daily_images(config: dict[str, Any], catalog: list[tuple[datetime, Pa
     return output
 
 
+def daily_summary_policy(config: dict[str, Any]) -> dict[str, int]:
+    retry_minutes = max(30, min(1440, int(config.get('daily_summary_retry_minutes') or 180)))
+    max_attempts = max(1, min(6, int(config.get('daily_summary_max_attempts') or 3)))
+    return {
+        'retryMinutes': retry_minutes,
+        'maxAttempts': max_attempts,
+    }
+
+
+def daily_summary_attempt_decision(config: dict[str, Any], previous_status: dict[str, Any], current_captured_at: str, now: datetime) -> dict[str, Any]:
+    policy = daily_summary_policy(config)
+    completed_current = safe_text(previous_status.get('dailySummaryCurrentCapturedAt') or '', 80)
+    attempted_current = safe_text(previous_status.get('dailySummaryAttemptCurrentCapturedAt') or '', 80)
+    same_attempt_frame = attempted_current == current_captured_at
+    attempts = max(0, int(previous_status.get('dailySummaryAttemptCount') or 0)) if same_attempt_frame else 0
+    next_attempt_at = parse_iso(previous_status.get('dailySummaryNextAttemptAt')) if same_attempt_frame else None
+
+    if completed_current == current_captured_at:
+        return {'action': 'current', 'status': 'current', 'attemptCount': attempts, **policy}
+    if attempts >= policy['maxAttempts']:
+        return {'action': 'paused', 'status': 'paused_after_retries', 'attemptCount': attempts, **policy}
+    if next_attempt_at and now < next_attempt_at:
+        return {
+            'action': 'wait',
+            'status': 'retry_scheduled',
+            'attemptCount': attempts,
+            'nextAttemptAt': next_attempt_at.isoformat(),
+            **policy,
+        }
+    return {'action': 'attempt', 'status': 'attempting', 'attemptCount': attempts, **policy}
+
+
+def daily_summary_health(config: dict[str, Any], previous_status: dict[str, Any], daily_images: list[dict[str, Any]]) -> dict[str, Any]:
+    policy = daily_summary_policy(config)
+    state = safe_text(previous_status.get('dailySummaryStatus') or 'waiting_for_frames', 40)
+    generated_at = parse_iso(previous_status.get('dailySummaryGeneratedAt'))
+    next_attempt_at = parse_iso(previous_status.get('dailySummaryNextAttemptAt'))
+    attempts = max(0, int(previous_status.get('dailySummaryAttemptCount') or 0))
+    frames_ready = len(daily_images) == 2
+    selected_current = next((item['capturedAt'] for item in daily_images if item.get('slot') == 'dailyCurrent'), '')
+    completed_current = safe_text(previous_status.get('dailySummaryCurrentCapturedAt') or '', 80)
+    attempted_current = safe_text(previous_status.get('dailySummaryAttemptCurrentCapturedAt') or '', 80)
+    completed_for_selected = bool(selected_current and completed_current == selected_current)
+    attempt_for_selected = bool(selected_current and attempted_current == selected_current)
+
+    status = 'pending'
+    message = 'Waiting for today and the prior-day representative frames.'
+    if frames_ready and completed_for_selected and state in {'generated', 'reused', 'current'}:
+        status = 'healthy'
+        message = 'Today’s daily visual summary has been generated.'
+    elif frames_ready and attempt_for_selected and state == 'paused_after_retries':
+        status = 'attention'
+        message = f'Daily visual summary paused after {attempts} failed attempts; it will reset with the next daily frame.'
+    elif frames_ready and attempt_for_selected and state in {'retry_scheduled', 'retrying'}:
+        status = 'attention'
+        if next_attempt_at:
+            message = f'Daily visual summary retry is scheduled for {next_attempt_at.astimezone().strftime("%b %-d at %-I:%M %p")}.'
+        else:
+            message = 'Daily visual summary will retry later without repeated five-minute AI calls.'
+    elif frames_ready:
+        message = 'Daily comparison frames are ready and awaiting the scheduled summary attempt.'
+
+    return {
+        'status': status,
+        'message': message,
+        'framesReady': frames_ready,
+        'state': state,
+        'generatedAt': generated_at.isoformat() if generated_at else None,
+        'nextAttemptAt': next_attempt_at.isoformat() if next_attempt_at else None,
+        'attemptCount': attempts,
+        'maxAttempts': policy['maxAttempts'],
+        'retryMinutes': policy['retryMinutes'],
+    }
+
+
 def derive_daily_summary_endpoint(publish_endpoint: str) -> str:
     if publish_endpoint.endswith('/observer-publish'):
         return publish_endpoint[:-len('/observer-publish')] + '/observer-daily-summary'
@@ -262,8 +337,10 @@ def health_issue(code: str, severity: str, message: str) -> dict[str, str]:
     return {'code': code, 'severity': severity, 'message': safe_text(message, 240)}
 
 
-def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: list[tuple[datetime, Path]]) -> dict[str, Any]:
+def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: list[tuple[datetime, Path]], previous_status: dict[str, Any] | None = None, daily_images: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     now = utc_now_dt()
+    previous_status = previous_status or {}
+    daily_images = daily_images if daily_images is not None else select_daily_images(config, catalog, now)
     interval = max(1, int(config.get('capture_interval_minutes') or 5))
     capture_timer_active, capture_timer_state = unit_state(CAPTURE_TIMER)
     publish_timer_active, publish_timer_state = unit_state(PUBLISH_TIMER)
@@ -350,6 +427,11 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
     if not catalog:
         issues.append(health_issue('archive_empty', 'warning', archive_message))
 
+    daily_summary = daily_summary_health(config, previous_status, daily_images)
+    if daily_summary['status'] == 'attention':
+        issue_code = 'daily_summary_paused' if daily_summary['state'] == 'paused_after_retries' else 'daily_summary_retry'
+        issues.append(health_issue(issue_code, 'warning', daily_summary['message']))
+
     critical = any(item['severity'] == 'critical' for item in issues)
     warning = any(item['severity'] == 'warning' for item in issues)
     overall = 'offline' if critical else ('attention' if warning else 'healthy')
@@ -390,6 +472,7 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
             'message': power_message,
             **power,
         },
+        'dailySummary': daily_summary,
         'archive': {
             'status': archive_status,
             'message': archive_message,
@@ -397,7 +480,7 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
             'oldestCaptureAt': catalog[0][0].isoformat() if catalog else None,
             'newestCaptureAt': catalog[-1][0].isoformat() if catalog else None,
             'historySlotsReady': ready_slots,
-            'dailySummaryFramesReady': len(select_daily_images(config, catalog, now)) == 2,
+            'dailySummaryFramesReady': len(daily_images) == 2,
         },
         'services': {
             'captureTimerActive': capture_timer_active,
@@ -477,7 +560,6 @@ def main() -> int:
         except Exception as error:
             capture = {'ok': False, 'error': f'Capture status unavailable: {error}'}
         catalog = capture_catalog()
-        health = collect_health(config, capture, catalog)
         captured_raw = str(capture.get('captured_at') or capture.get('capturedAt') or '')
         captured_at = parse_iso(captured_raw)
         previous_publish_status: dict[str, Any] = {}
@@ -485,7 +567,9 @@ def main() -> int:
             previous_publish_status = read_json(PUBLISH_STATUS_PATH)
         except Exception:
             previous_publish_status = {}
-        daily_images = select_daily_images(config, catalog, utc_now_dt())
+        now = utc_now_dt()
+        daily_images = select_daily_images(config, catalog, now)
+        health = collect_health(config, capture, catalog, previous_publish_status, daily_images)
 
         try:
             if not captured_at:
@@ -499,21 +583,42 @@ def main() -> int:
             daily_status = safe_text(previous_publish_status.get('dailySummaryStatus') or 'waiting', 40)
             daily_current = safe_text(previous_publish_status.get('dailySummaryCurrentCapturedAt') or '', 80)
             daily_generated = safe_text(previous_publish_status.get('dailySummaryGeneratedAt') or '', 80)
-            daily_error = ''
+            daily_error = safe_text(previous_publish_status.get('dailySummaryError') or '', 300)
+            daily_attempted_at = safe_text(previous_publish_status.get('dailySummaryAttemptedAt') or '', 80)
+            daily_attempt_current = safe_text(previous_publish_status.get('dailySummaryAttemptCurrentCapturedAt') or '', 80)
+            daily_attempt_count = max(0, int(previous_publish_status.get('dailySummaryAttemptCount') or 0))
+            daily_next_attempt = safe_text(previous_publish_status.get('dailySummaryNextAttemptAt') or '', 80)
             if len(daily_images) == 2:
                 current_daily = next(item for item in daily_images if item['slot'] == 'dailyCurrent')
-                if daily_current != current_daily['capturedAt']:
+                decision = daily_summary_attempt_decision(config, previous_publish_status, current_daily['capturedAt'], now)
+                if decision['action'] == 'attempt':
+                    if daily_attempt_current != current_daily['capturedAt']:
+                        daily_error = ''
+                    daily_attempt_current = current_daily['capturedAt']
+                    daily_attempt_count = decision['attemptCount'] + 1
+                    daily_attempted_at = utc_now()
+                    daily_next_attempt = ''
                     try:
                         daily_result = post_json(derive_daily_summary_endpoint(endpoint), token, {'dailyImages': daily_images}, timeout=55)
                         daily_status = 'reused' if daily_result.get('reused') else 'generated'
+                        daily_error = ''
                         daily_current = current_daily['capturedAt']
                         daily_generated = safe_text(daily_result.get('generatedAt') or utc_now(), 80)
                     except Exception as daily_exception:
-                        daily_status = 'retrying'
                         daily_error = safe_text(daily_exception, 300)
-                        print(f'DAILY_SUMMARY_RETRY: {daily_error}', file=sys.stderr)
+                        if daily_attempt_count >= decision['maxAttempts']:
+                            daily_status = 'paused_after_retries'
+                            print(f'DAILY_SUMMARY_PAUSED: {daily_error}', file=sys.stderr)
+                        else:
+                            delay = decision['retryMinutes'] * min(daily_attempt_count, 4)
+                            daily_next_attempt = (utc_now_dt() + timedelta(minutes=delay)).isoformat()
+                            daily_status = 'retry_scheduled'
+                            print(f'DAILY_SUMMARY_RETRY_SCHEDULED: {daily_error}', file=sys.stderr)
                 else:
-                    daily_status = 'current'
+                    daily_status = decision['status']
+                    daily_attempt_count = decision['attemptCount']
+                    daily_attempt_current = current_daily['capturedAt']
+                    daily_next_attempt = safe_text(decision.get('nextAttemptAt') or daily_next_attempt, 80)
             else:
                 daily_status = 'waiting_for_frames'
             try_write_status({
@@ -527,12 +632,16 @@ def main() -> int:
                 'dailySummaryCurrentCapturedAt': daily_current or None,
                 'dailySummaryGeneratedAt': daily_generated or None,
                 'dailySummaryError': daily_error,
+                'dailySummaryAttemptedAt': daily_attempted_at or None,
+                'dailySummaryAttemptCurrentCapturedAt': daily_attempt_current or None,
+                'dailySummaryAttemptCount': daily_attempt_count,
+                'dailySummaryNextAttemptAt': daily_next_attempt or None,
                 'publisherVersion': PUBLISHER_VERSION,
             })
             print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} daily={daily_status}")
             return 0
         except (OSError, ValueError) as local_error:
-            health = collect_health(config, capture, catalog)
+            health = collect_health(config, capture, catalog, previous_publish_status, daily_images)
             health['status'] = 'offline'
             health['summary'] = 'The publisher is reachable, but a local capture or storage problem prevents image upload.'
             health.setdefault('issues', []).append(health_issue('image_publish_unavailable', 'critical', str(local_error)))

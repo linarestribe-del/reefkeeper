@@ -1,3 +1,10 @@
+## Maintenance 8B — Observer Monitoring Safeguards — Candidate v4.3.44
+
+- [x] Bounded daily-summary retries.
+- [x] Deterministic system alerts without per-frame AI.
+- [x] Daily monitoring status in Observer Health.
+- [ ] Deploy the web overlay and activate publisher 2.3 with a controlled Pi service test.
+
 # Reef Keeper Roadmap
 
 **Last updated:** July 22, 2026
@@ -19,7 +26,7 @@
 - [x] Update architecture, rollback, release, checksum, and test documentation.
 - [x] Complete the two isolated UI fixes supplied by the user in v4.3.41 / Maintenance 7A.
 - [x] Migrate Aquarium Observer remote storage from paused Vercel Blob to private Cloudflare R2.
-- [ ] Complete live R2 activation and re-enable the Pi publisher timer after a successful manual publish.
+- [x] Complete live R2 activation and re-enable the Pi publisher timer after a successful manual publish.
 
 
 ## Maintenance 7A — Mobile Header and Ask AI Positioning — Complete in v4.3.41
@@ -32,11 +39,11 @@
 
 
 
-## Maintenance 8A — Observer R2 Migration — Candidate v4.3.43
+## Maintenance 8A — Observer R2 Migration — Complete in v4.3.43
 
 - Replaces Vercel Blob with private Cloudflare R2 storage.
 - Preserves existing Observer APIs and Pi publisher protocol.
-- Requires live Production environment-variable setup and one manual Pi publish before timer activation.
+- Live R2 authentication, manual publishing, automatic publishing, and current-image delivery were verified.
 
 ## Maintenance 7B — iPhone Status Canvas — Complete in v4.3.42
 

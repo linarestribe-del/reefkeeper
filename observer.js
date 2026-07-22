@@ -1,4 +1,4 @@
-// Reef Keeper Build 2L — Aquarium Observer health, daily summaries, alerts, and weekly/monthly timelapses
+// Reef Keeper Maintenance 8B — Aquarium Observer daily monitoring, operational alerts, visual summaries, and timelapses
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -124,6 +124,16 @@
       publisher: normalizeHealthComponent(source.publisher, 'Waiting for publisher health data.'),
       storage: normalizeHealthComponent(source.storage, 'Waiting for drive health data.'),
       power: normalizeHealthComponent(source.power, 'Waiting for Pi power health data.'),
+      dailySummary: {
+        ...normalizeHealthComponent(source.dailySummary, 'Waiting for daily monitoring data.'),
+        framesReady: source.dailySummary?.framesReady === true,
+        state: cleanText(source.dailySummary?.state, 'waiting_for_frames'),
+        generatedAt: parseDate(source.dailySummary?.generatedAt),
+        nextAttemptAt: parseDate(source.dailySummary?.nextAttemptAt),
+        attemptCount: Math.max(0, Number(source.dailySummary?.attemptCount) || 0),
+        maxAttempts: Math.max(1, Number(source.dailySummary?.maxAttempts) || 3),
+        retryMinutes: Math.max(30, Number(source.dailySummary?.retryMinutes) || 180)
+      },
       archive: {
         ...normalizeHealthComponent(archive, 'Waiting for archive health data.'),
         captureCount: Math.max(0, Number(archive.captureCount) || 0),
@@ -323,6 +333,8 @@
       const source = alert?.source && typeof alert.source === 'object' ? alert.source : {};
       return {
         id: cleanText(alert?.id, `observer-alert-${index}`),
+        kind: ['visual', 'system'].includes(alert?.kind || source.kind) ? (alert?.kind || source.kind) : 'visual',
+        issueCode: cleanText(alert?.issueCode || source.issueCode),
         severity: ['urgent', 'watch', 'info'].includes(alert?.severity) ? alert.severity : 'watch',
         category: cleanText(alert?.category, 'other'),
         title: cleanText(alert?.title, 'Observer change needs review'),
@@ -331,6 +343,8 @@
         confidence: cleanText(alert?.confidence),
         createdAt: parseDate(alert?.createdAt),
         source: {
+          kind: ['visual', 'system'].includes(source.kind) ? source.kind : 'visual',
+          issueCode: cleanText(source.issueCode),
           currentCapturedAt: parseDate(source.currentCapturedAt),
           previousCapturedAt: parseDate(source.previousCapturedAt)
         }
@@ -355,6 +369,12 @@
       equipment_position: '🔧',
       buildup: '🧽',
       camera_quality: '📷',
+      camera_capture: '📷',
+      publisher: '☁️',
+      storage: '💾',
+      power: '⚡',
+      archive: '🗂️',
+      daily_summary: '📅',
       other: '👁️'
     }[category] || '👁️';
   }
@@ -393,9 +413,14 @@
       badge.textContent = urgent ? 'Urgent' : (unreviewed.length ? `${unreviewed.length} new` : 'Clear');
     }
     if (card) card.classList.toggle('has-urgent', urgent);
-    setText('observer-alert-summary', currentAlerts.length
-      ? `${currentAlerts.length} visual change alert${currentAlerts.length === 1 ? '' : 's'} from the latest daily comparison.`
-      : 'No automatic visual change alert was created from the latest daily comparison.');
+    const currentSystem = currentAlerts.filter(alert => alert.kind === 'system');
+    const currentVisual = currentAlerts.filter(alert => alert.kind !== 'system');
+    const alertParts = [];
+    if (currentSystem.length) alertParts.push(`${currentSystem.length} system alert${currentSystem.length === 1 ? '' : 's'}`);
+    if (currentVisual.length) alertParts.push(`${currentVisual.length} visual alert${currentVisual.length === 1 ? '' : 's'}`);
+    setText('observer-alert-summary', alertParts.length
+      ? `${alertParts.join(' and ')} currently need review.`
+      : 'No current system or evidence-limited visual alert needs review.');
     setText('observer-alert-evaluated', feed.lastEvaluatedAt
       ? `Last evaluated ${formatCaptureTime(feed.lastEvaluatedAt.toISOString())}`
       : 'Waiting for the next daily comparison');
@@ -407,16 +432,16 @@
         const isReviewed = reviewed.has(alert.id);
         const classes = ['observer-alert-item', alert.severity, isReviewed ? 'reviewed' : '', isCurrent ? 'current' : 'history'].filter(Boolean).join(' ');
         return `<article class="${classes}">
-          <div class="observer-alert-item-head"><span class="observer-alert-icon">${alertCategoryIcon(alert.category)}</span><div><strong>${cleanText(alert.title)}</strong><small>${alertSeverityLabel(alert.severity)} · ${formatCaptureTime(alert.createdAt?.toISOString())}${isCurrent ? ' · latest comparison' : ''}</small></div><b>${alertSeverityLabel(alert.severity)}</b></div>
-          ${alert.evidence ? `<p><strong>Visible evidence:</strong> ${cleanText(alert.evidence)}</p>` : ''}
+          <div class="observer-alert-item-head"><span class="observer-alert-icon">${alertCategoryIcon(alert.category)}</span><div><strong>${cleanText(alert.title)}</strong><small>${alert.kind === 'system' ? 'System monitor' : 'Daily visual comparison'} · ${alertSeverityLabel(alert.severity)} · ${formatCaptureTime(alert.createdAt?.toISOString())}${isCurrent ? ' · current' : ''}</small></div><b>${alertSeverityLabel(alert.severity)}</b></div>
+          ${alert.evidence ? `<p><strong>Evidence:</strong> ${cleanText(alert.evidence)}</p>` : ''}
           ${alert.recommendedCheck ? `<p><strong>Recommended check:</strong> ${cleanText(alert.recommendedCheck)}</p>` : ''}
           ${alert.confidence ? `<p class="observer-alert-confidence">${cleanText(alert.confidence)}</p>` : ''}
           <div class="observer-alert-item-actions">
-            ${isCurrent && dailySummary?.ok ? `<button type="button" onclick="openObserverAlertComparison('${alert.id}')">Open comparison</button>` : ''}
+            ${isCurrent && alert.kind !== 'system' && dailySummary?.ok ? `<button type="button" onclick="openObserverAlertComparison('${alert.id}')">Open comparison</button>` : ''}
             <button type="button" onclick="markObserverAlertReviewed('${alert.id}')">${isReviewed ? 'Reviewed' : 'Mark reviewed'}</button>
           </div>
         </article>`;
-      }).join('') : '<div class="observer-alert-empty"><strong>No visual change alerts.</strong><span>Reef Keeper will add an alert only when the daily comparison contains visible evidence that deserves verification.</span></div>';
+      }).join('') : '<div class="observer-alert-empty"><strong>No Observer alerts.</strong><span>System checks run without AI; visual alerts are created only from the once-daily evidence-limited comparison.</span></div>';
     }
     const reviewAll = byId('observer-alert-review-all');
     if (reviewAll) reviewAll.disabled = feed.alerts.length === 0 || feed.alerts.every(alert => reviewed.has(alert.id));
@@ -431,7 +456,7 @@
     saveAlertIds(ALERT_SEEN_KEY, seen);
     if (!fresh.length || typeof showToast !== 'function') return;
     const urgent = fresh.some(alert => alert.severity === 'urgent');
-    showToast(urgent ? '🚨 New urgent Observer change alert' : `👁️ ${fresh.length} new Observer change alert${fresh.length === 1 ? '' : 's'}`);
+    showToast(urgent ? '🚨 New urgent Observer alert' : `👁️ ${fresh.length} new Observer alert${fresh.length === 1 ? '' : 's'}`);
   }
 
   async function fetchObserverAlerts() {
@@ -519,7 +544,7 @@
       health.capture.message = `Latest capture is ${formatAge(captured).toLowerCase()}.`;
     }
 
-    const componentStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.archive.status];
+    const componentStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.dailySummary.status, health.archive.status].filter(state => state !== 'pending');
     if (componentStates.includes('offline')) health.status = 'offline';
     else if (componentStates.includes('attention')) health.status = 'attention';
     else if (componentStates.every(state => state === 'healthy')) health.status = 'healthy';
@@ -668,6 +693,11 @@
     setHealthRow('storage', health.storage.status, storageDetail);
     setHealthRow('power', health.power.status, `${health.power.message}${health.power.throttledHex ? ` (${health.power.throttledHex})` : ''}`);
 
+    const dailyDetail = health.dailySummary.nextAttemptAt
+      ? `${health.dailySummary.message} Next attempt ${formatCaptureTime(health.dailySummary.nextAttemptAt.toISOString())}.`
+      : health.dailySummary.message;
+    setHealthRow('daily', health.dailySummary.status, dailyDetail);
+
     const servicesHealthy = health.services.captureTimerActive && health.services.publishTimerActive;
     const servicesState = servicesHealthy ? 'healthy' : 'attention';
     const servicesDetail = `Capture timer: ${health.services.captureTimerState}; publisher timer: ${health.services.publishTimerState}.`;
@@ -713,6 +743,8 @@
       diagnosticLine('Storage', `${healthLabel(health.storage.status)} — mounted=${health.storage.mounted === true}, writable=${health.storage.writable === true}`),
       diagnosticLine('Storage space', `${formatBytes(health.storage.availableBytes)} free; ${Number(health.storage.usedPercent || 0).toFixed(1)}% used`),
       diagnosticLine('Pi power', `${health.power.message}${health.power.throttledHex ? ` (${health.power.throttledHex})` : ''}`),
+      diagnosticLine('Daily monitoring', `${healthLabel(health.dailySummary.status)} — ${health.dailySummary.message}`),
+      diagnosticLine('Daily attempts', `${health.dailySummary.attemptCount}/${health.dailySummary.maxAttempts}${health.dailySummary.nextAttemptAt ? `; next ${health.dailySummary.nextAttemptAt.toISOString()}` : ''}`),
       diagnosticLine('Archive count', health.archive.captureCount),
       diagnosticLine('History ready', ready),
       'Issues:',
@@ -952,7 +984,7 @@
 
   function openObserverAlertComparison(id) {
     const alert = (observerAlerts?.alerts || []).find(item => item.id === id);
-    if (!alert || !dailySummary?.ok) {
+    if (!alert || alert.kind === 'system' || !dailySummary?.ok) {
       if (typeof showToast === 'function') showToast('The comparison frames for this alert are not available.');
       return;
     }

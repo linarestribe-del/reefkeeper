@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { buildObserverOperationalAlerts } from '../api/observer-alerts.js';
 import {
   normalizeObserverAlertFeed,
   normalizeObserverChangeAlert
@@ -20,6 +21,7 @@ const alert = normalizeObserverChangeAlert({
 });
 assert.equal(alert.severity, 'urgent');
 assert.equal(alert.category, 'leak_overflow');
+assert.equal(alert.kind, 'visual');
 assert.equal(alert.source.currentCapturedAt, '2026-07-21T19:00:00.000Z');
 
 const feed = normalizeObserverAlertFeed({
@@ -46,6 +48,37 @@ assert.match(dailyApi, /Allowed categories: water_level, skimmer, leak_overflow/
 assert.match(dailyApi, /Use urgent only for clearly visible/);
 assert.match(dailyApi, /saveAlertEvaluation/);
 assert.match(alertsApi, /fallbackFeedFromDailySummary/);
+assert.match(alertsApi, /buildObserverOperationalAlerts/);
+assert.match(alertsApi, /Deterministic Raspberry Pi health check/);
+assert.match(alertsApi, /image_publish_unavailable/);
 assert.match(r2Store, /change-alerts\.json/);
 
-console.log('Observer automatic change alert tests passed.');
+
+const operational = buildObserverOperationalAlerts({
+  configured: true,
+  capturedAt: '2026-07-22T18:10:00Z',
+  publishedAt: '2026-07-22T18:14:00Z',
+  health: {
+    checkedAt: '2026-07-22T18:14:00Z',
+    status: 'attention',
+    issues: [
+      { code: 'storage_low', severity: 'warning', message: 'Observer drive is 91.0% full.' },
+      { code: 'power_historical', severity: 'info', message: 'Past undervoltage flag.' }
+    ]
+  }
+}, new Date('2026-07-22T18:20:00Z'));
+assert.equal(operational.length, 1);
+assert.equal(operational[0].kind, 'system');
+assert.equal(operational[0].category, 'storage');
+assert.equal(operational[0].severity, 'watch');
+assert.match(operational[0].confidence, /no image analysis or OpenAI call/i);
+
+const stale = buildObserverOperationalAlerts({
+  configured: true,
+  capturedAt: '2026-07-22T16:00:00Z',
+  publishedAt: '2026-07-22T16:00:00Z',
+  health: { checkedAt: '2026-07-22T16:00:00Z', issues: [] }
+}, new Date('2026-07-22T18:20:00Z'));
+assert.ok(stale.some(item => item.issueCode === 'publisher_remote_stale' && item.severity === 'urgent'));
+
+console.log('Observer automatic and operational alert tests passed.');

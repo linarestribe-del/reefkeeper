@@ -1,3 +1,10 @@
+## 4.3.44 — Maintenance 8B Observer Monitoring Safeguards
+
+- Added deterministic operational alerts from Pi health metadata without per-frame AI.
+- Added a three-attempt, three-hour-spaced retry budget for the once-daily visual summary.
+- Added Daily monitoring status to Observer Health and diagnostics.
+- Updated the Pi Observer publisher to version 2.3.
+
 ## 4.3.43 — Maintenance 8A Observer R2 Migration
 
 - Replaced the paused Vercel Blob Observer backend with private Cloudflare R2 S3-compatible storage.

@@ -301,3 +301,13 @@ For each fixture, store expected observations, prohibited claims, maximum confid
 - Confirm status JSON reads and image stream metadata normalize to the existing Observer API contract.
 - Confirm the existing Pi publisher and all 12 Vercel functions remain unchanged in route count and authentication behavior.
 - Live activation must occur with the Pi publisher timer disabled, followed by one manual publish before the timer is re-enabled.
+
+
+## Maintenance 8B Observer monitoring checks
+
+- Confirm operational alerts are created from warning/critical health issues without an OpenAI request.
+- Confirm informational health history does not create an alert.
+- Confirm publisher timestamps older than 20 minutes create a warning and older than 60 minutes create an urgent alert.
+- Confirm daily-summary retries are delayed and capped at three attempts per current daily frame.
+- Confirm the retry budget resets for the next daily frame.
+- Confirm the Observer Health card renders Daily monitoring state.

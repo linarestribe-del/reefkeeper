@@ -77,3 +77,17 @@ node apex-connector.mjs
 
 ## Build 2J daily visual summary
 Publisher version 2.2 selects one representative capture near noon local time for the current day and one for the prior day. After a 20-minute settling delay, it sends only those two frames to the authenticated `/api/observer-daily-summary` endpoint. The server generates and stores one evidence-limited visual report per day. The full five-minute archive remains local.
+
+
+## Maintenance 8B Observer publisher 2.3
+
+Publisher 2.3 keeps the successful daily visual comparison at one report per daily frame and bounds failures to three attempts by default, separated by 180 minutes. Optional private Pi configuration keys are:
+
+```json
+{
+  "daily_summary_retry_minutes": 180,
+  "daily_summary_max_attempts": 3
+}
+```
+
+The defaults require no configuration edit. The publisher also includes daily-monitoring state in the existing non-secret health payload. Deterministic operational alerts are created server-side from that health metadata; no per-frame image is sent to OpenAI.

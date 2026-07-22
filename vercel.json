@@ -48,6 +48,10 @@
       "dest": "/apex-bridge.js"
     },
     {
+      "src": "/connector/(.*)",
+      "dest": "/connector/$1"
+    },
+    {
       "src": "/reef-background.png",
       "dest": "/reef-background.png"
     },
