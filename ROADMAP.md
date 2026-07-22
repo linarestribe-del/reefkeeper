@@ -1,6 +1,6 @@
 # Reef Keeper Roadmap
 
-**Last updated:** July 18, 2026
+**Last updated:** July 21, 2026
 
 ## Current Stable Line — v4.3.x
 
@@ -8,6 +8,17 @@
 - Parameter, maintenance, reminder, livestock, equipment, Tank Memory, Reef Library, Timeline, and AI Vision workflows.
 - Ask AI context assembled from local app data and live Apex status.
 - Current priority: preserve stability while migrating intelligence out of ad hoc prompt assembly.
+
+## Maintenance 6F — Stable Post-Cleanup Checkpoint — Complete in v4.3.40
+
+- [x] Preserve v4.3.39 runtime behavior while versioning a clean recovery baseline.
+- [x] Add automated JavaScript and inline-script syntax checks.
+- [x] Add duplicate top-level browser function detection.
+- [x] Add literal DOM-reference integrity checks with documented dynamic/optional elements.
+- [x] Lock prior layout, navigation, handler, render, snapshot, and shared-helper cleanup regressions into the standard test command.
+- [x] Update architecture, rollback, release, checksum, and test documentation.
+- [ ] Complete two isolated UI fixes supplied by the user.
+- [ ] Begin the next Aquarium Observer implementation phase from the verified UI baseline.
 
 ## Build 1A — AI Architecture Foundation — Complete in this package
 

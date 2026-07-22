@@ -4,10 +4,11 @@ This procedure restores the last known-good application without changing the Ras
 
 ## Known-good baseline
 
-- Application version: `4.3.31`
-- Release family: `Build 2L.1 — Hobby Plan Fix`
-- Saved source backup: the repository ZIP preserved immediately before Maintenance 1
-- Maintenance 1 changes repository safeguards only; runtime application files are intentionally unchanged.
+- Application version: `4.3.40`
+- Release family: `Maintenance 6F — Stable Post-Cleanup Checkpoint`
+- Saved source backup: `Reef_Keeper_Maintenance_6F_v4.3.40_STABLE_BASELINE.zip`
+- Previous verified rollback: `4.3.39 / Maintenance 6E`
+- Maintenance 6F changes release metadata, documentation, and automated safeguards only; application workflows, storage, APIs, and Pi services are unchanged.
 
 ## Fastest rollback: Vercel deployment
 
@@ -29,7 +30,7 @@ This procedure restores the last known-good application without changing the Ras
 
 ## Raspberry Pi rule
 
-Do not change the Pi during an application-only rollback unless the failed release explicitly installed a Pi update. Maintenance 1 does not require or modify the Pi.
+Do not change the Pi during an application-only rollback unless the failed release explicitly installed a Pi update. Maintenance 6F does not require or modify the Pi.
 
 ## Smoke-test checklist
 

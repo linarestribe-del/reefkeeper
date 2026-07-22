@@ -1,12 +1,12 @@
 # Reef Keeper
 
-**Current application version:** `4.3.39`  
+**Current application version:** `4.3.40`  
 **Current release family:** Build 2L.1 — Aquarium Observer weekly/monthly time-lapses with the Vercel Hobby-plan consolidation  
-**Maintenance state:** Maintenance 6E consolidates duplicate inline storage and HTML-escaping helpers. Maintenance 6D data-snapshot reuse, Maintenance 6C handler/render consolidation, Maintenance 6B JavaScript cleanup, Maintenance 6A layout cleanup, Maintenance 5C AI access protection, Maintenance 5B abuse controls, and Maintenance 5A Apex data minimization remain in place.
+**Maintenance state:** Maintenance 6F establishes the stable post-cleanup checkpoint with automated JavaScript syntax, global-function, DOM-reference, retired-patch, repository-integrity, and Vercel-function safeguards. Maintenance 6E through 5A remain in place.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 6E is documented in `MAINTENANCE_6E_RELEASE_MANIFEST.md` and `MAINTENANCE_6E_TEST_REPORT.md`.
+Maintenance 6F is documented in `MAINTENANCE_6F_RELEASE_MANIFEST.md` and `MAINTENANCE_6F_TEST_REPORT.md`. This is the required baseline for the next two UI fixes and the Observer implementation phase.
 
 ## Current major capabilities
 
@@ -39,7 +39,7 @@ npm ci
 npm test
 ```
 
-The test command includes application regressions, Pi time-lapse selection tests, repository-integrity checks, and a Vercel function-count check.
+The test command includes application regressions, JavaScript and inline-script syntax validation, duplicate global-function detection, literal DOM-reference validation, Pi time-lapse selection tests, repository-integrity checks, and a Vercel function-count check. Use `npm run test:stability` for the hardening subset.
 
 ## Deployment constraint
 

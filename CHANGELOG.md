@@ -1,3 +1,25 @@
+## 4.3.40 — Maintenance 6F Stable Post-Cleanup Checkpoint
+
+### Added
+
+- Added repository-wide JavaScript syntax validation under Node.js 22.
+- Added independent syntax validation for every inline `index.html` script.
+- Added duplicate top-level browser function detection with the documented `showPage` compatibility router as the only allowed duplicate.
+- Added literal DOM-reference validation for static, dynamically created, and documented optional elements.
+- Added a stable-baseline regression that requires all prior cleanup safeguards, release files, and the 12-function Vercel limit checks to remain in the standard suite.
+- Added `npm run test:stability` for the hardening subset.
+
+### Updated
+
+- Marked `4.3.40 / Maintenance 6F` as the required baseline for two isolated UI fixes followed by the next Aquarium Observer phase.
+- Updated release, architecture, roadmap, rollback, development, test-plan, and checksum documentation.
+
+### Safety and compatibility
+
+- No feature logic, navigation behavior, storage key or schema, API function, Vercel route, AI protection, Apex integration, Observer behavior, or Raspberry Pi service changed.
+- The only visible runtime difference is the Settings version label.
+- `4.3.39 / Maintenance 6E` remains the immediate rollback build.
+
 ## 4.3.39 — Maintenance 6E Shared Inline Helper Consolidation
 - Replaces duplicate JSON storage readers used by System Check, Reef Timeline, and Reports with one `rkReadStoredJson` helper.
 - Replaces duplicate array-only storage readers used by Equipment and Home with one `rkReadStoredArray` helper.

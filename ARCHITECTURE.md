@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
 **Last updated:** July 21, 2026  
-**Current runtime family:** v4.3.31 / Build 2L.1  
-**Maintenance state:** Maintenance 1 repository safeguards; runtime behavior unchanged  
+**Current runtime family:** v4.3.40 / Build 2L.1  
+**Maintenance state:** Maintenance 6F stable checkpoint after Maintenance 5A–6E hardening and cleanup  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -37,6 +37,20 @@ Maintenance 1 does not refactor runtime code. It adds:
 - an explicit rollback procedure and release manifest.
 
 The fragile navigation, inline-script, duplicate-file, Apex, and security work remain separate future builds.
+
+## Maintenance 6F stable checkpoint
+
+Maintenance 6F changes no application workflow, storage schema, API route, Pi service, or Observer behavior. It establishes `4.3.40` as the post-cleanup baseline before two isolated UI fixes and the next Observer phase.
+
+The checkpoint adds automated enforcement for:
+
+- syntax validity of repository JavaScript and every inline `index.html` script;
+- duplicate top-level browser function declarations, with only the documented `showPage` compatibility router allowed;
+- literal DOM references, including static, dynamically created, and explicitly optional legacy elements;
+- continued exclusion of the retired layered navigation and Home-render patches;
+- repository integrity, synchronized duplicate runtime files, secret exclusions, and the 12-function Vercel limit.
+
+Future UI and Observer work must branch from this checkpoint and remain separately deployable and reversible.
 
 ## Core Philosophy
 

@@ -1,6 +1,6 @@
 # Reef Keeper Test Plan
 
-**Last updated:** July 17, 2026
+**Last updated:** July 21, 2026
 
 ## Standard Preview Checklist
 
@@ -94,6 +94,28 @@ Run this checklist before merging every feature branch.
 - [ ] No horizontal scrolling.
 - [ ] Bottom navigation remains usable.
 - [ ] Cards have proper spacing.
+
+## Maintenance 6F automated stabilization checks
+
+Run from the repository root:
+
+```bash
+npm ci
+npm test
+```
+
+The standard suite must now verify:
+
+- [x] every `.js`, `.mjs`, and `.cjs` file parses under Node.js 22;
+- [x] every inline `index.html` script parses independently;
+- [x] no new duplicate top-level browser function declaration is introduced;
+- [x] the documented `showPage` compatibility router remains the only allowed duplicate;
+- [x] literal `getElementById` and simple `#id` selector references resolve to static, dynamically created, or documented optional elements;
+- [x] retired navigation, Home wrapper, inline handler, data-snapshot, and helper implementations remain absent;
+- [x] required release, checksum, CI, rollback, and repository files remain present;
+- [x] the Vercel deployment remains at or below 12 serverless functions.
+
+Use `npm run test:stability` to run only the checkpoint safeguards.
 
 ## Build 1A Documentation Verification
 

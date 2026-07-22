@@ -1,6 +1,6 @@
 # Reef Keeper Development Guidelines
 
-**Last updated:** July 17, 2026
+**Last updated:** July 21, 2026
 
 ## Core Rules
 
@@ -14,6 +14,14 @@
 8. Camera analysis records observations; the Decision Engine forms conclusions.
 9. AI access to aquarium equipment remains read-only.
 10. `AI_ENGINE.md` governs all AI behavior and data contracts.
+
+## Stable-baseline rule
+
+- Begin all post-cleanup UI and Observer work from the verified `4.3.40 / Maintenance 6F` package.
+- Do not combine the two planned UI corrections with Observer code or Pi-service changes.
+- Run `npm test` before every deployment and `npm run test:stability` after any edit to `index.html`, browser scripts, repository structure, or Vercel functions.
+- Any new intentional duplicate global function or unresolved literal DOM reference requires a documented test allowlist entry and release-manifest rationale.
+- Preserve the prior production deployment and full source ZIP until device smoke testing passes.
 
 ## AI Change Rule
 
