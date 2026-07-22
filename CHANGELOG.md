@@ -1,3 +1,11 @@
+## 4.3.37 — Maintenance 6C Handler and Renderer Consolidation
+- Replaces 22 repeated tool-overlay `scrollToolToTop(...)` inline handlers with `data-scroll-tool` attributes and one delegated click handler.
+- Preserves both scroll controls in every tool header: tapping the title or the top-arrow button still scrolls that tool to the top.
+- Consolidates the duplicated primary and fallback Home snapshot DOM rendering into one `rkHomeRenderSnapshot` function.
+- Keeps the Home data acquisition paths separate while ensuring telemetry refresh occurs once through the shared renderer.
+- Adds permanent regression coverage for the delegated controls and shared Home rendering contract.
+- Makes no navigation, storage, API, AI access-key, Apex, Observer, Raspberry Pi, or Vercel route changes.
+
 ## 4.3.36 — Maintenance 6B Inline JavaScript Cleanup
 - Removes seven unreachable helper functions from `index.html` after repository-wide call-site verification.
 - Removes layered wrappers around `showPage` and `showWorkspace` that caused duplicate Home intelligence refreshes.

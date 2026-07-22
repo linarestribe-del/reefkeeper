@@ -1641,7 +1641,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.36 Maintenance 6B</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.37 Maintenance 6C</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -1686,9 +1686,9 @@
 <div class="tool-overlay" id="tool-memory-overlay" onclick="handleToolOverlayClick(event, 'memory')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-memory-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-memory-title" type="button" onclick="scrollToolToTop('memory')">Tank Memory</button>
+      <button class="tool-panel-title" id="tool-memory-title" type="button" data-scroll-tool="memory">Tank Memory</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" onclick="scrollToolToTop('memory')" aria-label="Scroll tank memory to top">⌃</button>
+        <button class="tool-top-btn" data-scroll-tool="memory" aria-label="Scroll tank memory to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('memory')" aria-label="Close tank memory">×</button>
       </div>
     </div>
@@ -1701,9 +1701,9 @@
 <div class="tool-overlay" id="tool-inventory-overlay" onclick="handleToolOverlayClick(event, 'inventory')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-inventory-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-inventory-title" type="button" onclick="scrollToolToTop('inventory')">Livestock & Coral Inventory</button>
+      <button class="tool-panel-title" id="tool-inventory-title" type="button" data-scroll-tool="inventory">Livestock & Coral Inventory</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" onclick="scrollToolToTop('inventory')" aria-label="Scroll inventory to top">⌃</button>
+        <button class="tool-top-btn" data-scroll-tool="inventory" aria-label="Scroll inventory to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('inventory')" aria-label="Close inventory">×</button>
       </div>
     </div>
@@ -1765,9 +1765,9 @@
 <div class="tool-overlay" id="tool-tankhistory-overlay" onclick="handleToolOverlayClick(event, 'tankhistory')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-tankhistory-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-tankhistory-title" type="button" onclick="scrollToolToTop('tankhistory')">Reef Timeline</button>
+      <button class="tool-panel-title" id="tool-tankhistory-title" type="button" data-scroll-tool="tankhistory">Reef Timeline</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" onclick="scrollToolToTop('tankhistory')" aria-label="Scroll tank history to top">⌃</button>
+        <button class="tool-top-btn" data-scroll-tool="tankhistory" aria-label="Scroll tank history to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('tankhistory')" aria-label="Close tank history">×</button>
       </div>
     </div>
@@ -1811,9 +1811,9 @@
 <div class="tool-overlay" id="tool-familytree-overlay" onclick="handleToolOverlayClick(event, 'familytree')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-familytree-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-familytree-title" type="button" onclick="scrollToolToTop('familytree')">Coral Family Tree</button>
+      <button class="tool-panel-title" id="tool-familytree-title" type="button" data-scroll-tool="familytree">Coral Family Tree</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" onclick="scrollToolToTop('familytree')" aria-label="Scroll coral family tree to top">⌃</button>
+        <button class="tool-top-btn" data-scroll-tool="familytree" aria-label="Scroll coral family tree to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('familytree')" aria-label="Close coral family tree">×</button>
       </div>
     </div>
@@ -1829,9 +1829,9 @@
 <div class="tool-overlay" id="tool-equipment-overlay" onclick="handleToolOverlayClick(event, 'equipment')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-equipment-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-equipment-title" type="button" onclick="scrollToolToTop('equipment')">Equipment</button>
+      <button class="tool-panel-title" id="tool-equipment-title" type="button" data-scroll-tool="equipment">Equipment</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" onclick="scrollToolToTop('equipment')" aria-label="Scroll equipment to top">⌃</button>
+        <button class="tool-top-btn" data-scroll-tool="equipment" aria-label="Scroll equipment to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('equipment')" aria-label="Close equipment">×</button>
       </div>
     </div>
@@ -1885,9 +1885,9 @@
 <div class="tool-overlay" id="tool-strategy-overlay" onclick="handleToolOverlayClick(event, 'strategy')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-strategy-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-strategy-title" type="button" onclick="scrollToolToTop('strategy')">Strategy & Maintenance Rules</button>
+      <button class="tool-panel-title" id="tool-strategy-title" type="button" data-scroll-tool="strategy">Strategy & Maintenance Rules</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" onclick="scrollToolToTop('strategy')" aria-label="Scroll strategy to top">⌃</button>
+        <button class="tool-top-btn" data-scroll-tool="strategy" aria-label="Scroll strategy to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('strategy')" aria-label="Close strategy">×</button>
       </div>
     </div>
@@ -1907,9 +1907,9 @@
 <div class="tool-overlay" id="tool-summary-overlay" onclick="handleToolOverlayClick(event, 'summary')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="tool-summary-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="tool-summary-title" type="button" onclick="scrollToolToTop('summary')">Summary & Monthly Review</button>
+      <button class="tool-panel-title" id="tool-summary-title" type="button" data-scroll-tool="summary">Summary & Monthly Review</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" onclick="scrollToolToTop('summary')" aria-label="Scroll summary to top">⌃</button>
+        <button class="tool-top-btn" data-scroll-tool="summary" aria-label="Scroll summary to top">⌃</button>
         <button class="tool-close-btn" onclick="closeLongTermTool('summary')" aria-label="Close summary">×</button>
       </div>
     </div>
@@ -1928,9 +1928,9 @@
 <div class="tool-overlay" id="tool-knowledge-overlay" onclick="handleToolOverlayClick(event, 'knowledge')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="knowledge-tool-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="knowledge-tool-title" type="button" onclick="scrollToolToTop('knowledge')">Tank Knowledge Base</button>
+      <button class="tool-panel-title" id="knowledge-tool-title" type="button" data-scroll-tool="knowledge">Tank Knowledge Base</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" type="button" onclick="scrollToolToTop('knowledge')" aria-label="Scroll knowledge base to top">⌃</button>
+        <button class="tool-top-btn" type="button" data-scroll-tool="knowledge" aria-label="Scroll knowledge base to top">⌃</button>
         <button class="tool-close-btn" type="button" onclick="closeLongTermTool('knowledge')" aria-label="Close tank knowledge base">×</button>
       </div>
     </div>
@@ -1961,9 +1961,9 @@
 <div class="tool-overlay" id="tool-library-overlay" onclick="handleToolOverlayClick(event, 'library')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="library-tool-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="library-tool-title" type="button" onclick="scrollToolToTop('library')">Reef Library</button>
+      <button class="tool-panel-title" id="library-tool-title" type="button" data-scroll-tool="library">Reef Library</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" type="button" onclick="scrollToolToTop('library')" aria-label="Scroll reef library to top">⌃</button>
+        <button class="tool-top-btn" type="button" data-scroll-tool="library" aria-label="Scroll reef library to top">⌃</button>
         <button class="tool-close-btn" type="button" onclick="closeLongTermTool('library')" aria-label="Close reef library">×</button>
       </div>
     </div>
@@ -1993,9 +1993,9 @@
 <div class="tool-overlay" id="tool-report-overlay" onclick="handleToolOverlayClick(event, 'report')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="report-tool-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="report-tool-title" type="button" onclick="scrollToolToTop('report')">Generate Reports</button>
+      <button class="tool-panel-title" id="report-tool-title" type="button" data-scroll-tool="report">Generate Reports</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" type="button" onclick="scrollToolToTop('report')" aria-label="Scroll reports to top">⌃</button>
+        <button class="tool-top-btn" type="button" data-scroll-tool="report" aria-label="Scroll reports to top">⌃</button>
         <button class="tool-close-btn" type="button" onclick="closeLongTermTool('report')" aria-label="Close reports">×</button>
       </div>
     </div>
@@ -2031,9 +2031,9 @@
 <div class="tool-overlay" id="tool-system-overlay" onclick="handleToolOverlayClick(event, 'system')">
   <div class="tool-panel" role="dialog" aria-modal="true" aria-labelledby="system-tool-title">
     <div class="tool-panel-head">
-      <button class="tool-panel-title" id="system-tool-title" type="button" onclick="scrollToolToTop('system')">System Check</button>
+      <button class="tool-panel-title" id="system-tool-title" type="button" data-scroll-tool="system">System Check</button>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="tool-top-btn" type="button" onclick="scrollToolToTop('system')" aria-label="Scroll system check to top">⌃</button>
+        <button class="tool-top-btn" type="button" data-scroll-tool="system" aria-label="Scroll system check to top">⌃</button>
         <button class="tool-close-btn" type="button" onclick="closeLongTermTool('system')" aria-label="Close system check">×</button>
       </div>
     </div>
@@ -3370,6 +3370,16 @@ function showPage(name, btn) {
 }
 
 
+function installToolScrollDelegation() {
+  document.addEventListener('click', event => {
+    const trigger = event.target?.closest?.('[data-scroll-tool]');
+    if (!trigger) return;
+    const tool = String(trigger.dataset.scrollTool || '').trim();
+    if (tool && typeof scrollToolToTop === 'function') scrollToolToTop(tool);
+  });
+}
+installToolScrollDelegation();
+
 function rkScrollAndFlash(target) {
   if (!target) return;
   try { target.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
@@ -4474,6 +4484,46 @@ function rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders) {
 }
 
 
+function rkHomeRenderSnapshot(snapshot) {
+  const data = snapshot || {};
+  const scoreEl = document.getElementById('home-intel-score');
+  const statusLabelEl = document.getElementById('home-status-label');
+  const statusValueEl = document.getElementById('home-status-value');
+  const monitoringValueEl = document.getElementById('home-monitoring-value');
+  const lastTestValueEl = document.getElementById('home-last-test-value');
+  const todayEl = document.getElementById('home-intel-today');
+  const watchingEl = document.getElementById('home-intel-watching');
+
+  if (scoreEl) scoreEl.textContent = data.score ?? '—';
+
+  const status = data.status || {};
+  if (statusLabelEl) statusLabelEl.textContent = `${status.emoji || '🟡'} Reef Status`;
+  if (statusValueEl) statusValueEl.textContent = status.label || 'Review';
+
+  const lastTest = data.lastTest || {};
+  if (lastTestValueEl) lastTestValueEl.textContent = lastTest.label || 'No local tests';
+
+  const watching = Array.isArray(data.watching) ? data.watching : [];
+  if (monitoringValueEl) {
+    monitoringValueEl.textContent = watching.length
+      ? `${watching.length} Item${watching.length === 1 ? '' : 's'}`
+      : 'Nothing New';
+  }
+
+  const today = Array.isArray(data.today) ? data.today : [];
+  if (todayEl) {
+    todayEl.innerHTML = today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+
+  if (watchingEl) {
+    watchingEl.innerHTML = watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
+  }
+
+  rkHomeRenderBrainExplanation(data);
+  rkHomeRenderDailyAssistant(data);
+  renderHomeTelemetry();
+}
+
 async function renderHomeIntelligenceFallback() {
   const latest = rkHomeLatestLog();
   const reminders = rkHomeParseArray('reef_ai_reminders').filter(r => r && !r.completed);
@@ -4487,82 +4537,13 @@ async function renderHomeIntelligenceFallback() {
   }
 
   const snapshot = rkHomeBuildFallbackSnapshotFromApex(apexStatus, latest, reminders);
-
-  const scoreEl = document.getElementById('home-intel-score');
-  const statusLabelEl = document.getElementById('home-status-label');
-  const statusValueEl = document.getElementById('home-status-value');
-  const monitoringValueEl = document.getElementById('home-monitoring-value');
-  const lastTestValueEl = document.getElementById('home-last-test-value');
-  const todayEl = document.getElementById('home-intel-today');
-  const watchingEl = document.getElementById('home-intel-watching');
-
-  if (scoreEl) scoreEl.textContent = snapshot.score;
-  if (statusLabelEl) statusLabelEl.textContent = `${snapshot.status.emoji} Reef Status`;
-  if (statusValueEl) statusValueEl.textContent = snapshot.status.label;
-  if (lastTestValueEl) lastTestValueEl.textContent = snapshot.lastTest.label;
-  if (monitoringValueEl) {
-    monitoringValueEl.textContent = snapshot.watching.length
-      ? `${snapshot.watching.length} Item${snapshot.watching.length === 1 ? '' : 's'}`
-      : 'Nothing New';
-  }
-
-  if (todayEl) {
-    todayEl.innerHTML = snapshot.today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
-  }
-
-  if (watchingEl) {
-    watchingEl.innerHTML = snapshot.watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
-  }
-
-  rkHomeRenderBrainExplanation(snapshot);
-  rkHomeRenderDailyAssistant(snapshot);
-  renderHomeTelemetry();
+  rkHomeRenderSnapshot(snapshot);
 }
-
 
 function renderHomeIntelligence() {
   const snapshot = window.ReefKeeperBrain?.getSnapshot?.();
-
-  if (!snapshot) {
-    return renderHomeIntelligenceFallback();
-  }
-
-  const scoreEl = document.getElementById('home-intel-score');
-  const statusLabelEl = document.getElementById('home-status-label');
-  const statusValueEl = document.getElementById('home-status-value');
-  const monitoringValueEl = document.getElementById('home-monitoring-value');
-  const lastTestValueEl = document.getElementById('home-last-test-value');
-  const todayEl = document.getElementById('home-intel-today');
-  const watchingEl = document.getElementById('home-intel-watching');
-
-  if (scoreEl) scoreEl.textContent = snapshot.score ?? '—';
-
-  const status = snapshot.status || {};
-  if (statusLabelEl) statusLabelEl.textContent = `${status.emoji || '🟡'} Reef Status`;
-  if (statusValueEl) statusValueEl.textContent = status.label || 'Review';
-
-  const lastTest = snapshot.lastTest || {};
-  if (lastTestValueEl) lastTestValueEl.textContent = lastTest.label || 'No local tests';
-
-  const watching = Array.isArray(snapshot.watching) ? snapshot.watching : [];
-  if (monitoringValueEl) {
-    monitoringValueEl.textContent = watching.length
-      ? `${watching.length} Item${watching.length === 1 ? '' : 's'}`
-      : 'Nothing New';
-  }
-
-  const today = Array.isArray(snapshot.today) ? snapshot.today : [];
-  if (todayEl) {
-    todayEl.innerHTML = today.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
-  }
-
-  if (watchingEl) {
-    watchingEl.innerHTML = watching.slice(0, 4).map(item => rkHomeFormatLine(item.title, item.detail)).join('');
-  }
-
-  rkHomeRenderBrainExplanation(snapshot);
-  rkHomeRenderDailyAssistant(snapshot);
-  renderHomeTelemetry();
+  if (!snapshot) return renderHomeIntelligenceFallback();
+  rkHomeRenderSnapshot(snapshot);
 }
 
 (function installHomeIntelligenceHooks(){
