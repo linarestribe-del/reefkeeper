@@ -43,11 +43,15 @@ const savedEnv = {
   REEF_AI_CHAT_RATE_LIMIT: process.env.REEF_AI_CHAT_RATE_LIMIT,
   REEF_AI_PLAN_RATE_LIMIT: process.env.REEF_AI_PLAN_RATE_LIMIT,
   REEF_AI_LIVESTOCK_RATE_LIMIT: process.env.REEF_AI_LIVESTOCK_RATE_LIMIT,
-  REEF_AI_PHOTO_RATE_LIMIT: process.env.REEF_AI_PHOTO_RATE_LIMIT
+  REEF_AI_PHOTO_RATE_LIMIT: process.env.REEF_AI_PHOTO_RATE_LIMIT,
+  REEF_AI_ACCESS_KEY: process.env.REEF_AI_ACCESS_KEY,
+  REEF_AI_ACCESS_KEYS: process.env.REEF_AI_ACCESS_KEYS
 };
 
 try {
   process.env.OPENAI_API_KEY = 'test-key';
+  delete process.env.REEF_AI_ACCESS_KEY;
+  delete process.env.REEF_AI_ACCESS_KEYS;
   process.env.REEF_AI_RATE_WINDOW_SECONDS = '600';
   globalThis.__reefkeeperAiRateBuckets?.clear();
 

@@ -1,8 +1,8 @@
 # Reef Keeper
 
-**Current application version:** `4.3.33`  
+**Current application version:** `4.3.34`  
 **Current release family:** Build 2L.1 — Aquarium Observer weekly/monthly time-lapses with the Vercel Hobby-plan consolidation  
-**Maintenance state:** Maintenance 5B adds bounded request sizes, bounded chat history, strict photo data validation, and best-effort per-client burst controls to the four paid AI endpoints. Maintenance 5A Apex data minimization remains deployed and verified.
+**Maintenance state:** Maintenance 5C adds staged shared-key authentication to the four paid AI endpoints. Maintenance 5B request-size and burst controls and Maintenance 5A Apex data minimization remain in place.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
@@ -67,7 +67,9 @@ Maintenance 5B applies to `/api/chat`, `/api/plan`, `/api/livestock`, and `/api/
 - per-client burst limits with `429` responses and `Retry-After`;
 - `Cache-Control: no-store` and `X-Content-Type-Options: nosniff` on guarded AI responses.
 
-The rate limiter is intentionally dependency-free and persists only within a warm Vercel function instance. It reduces accidental retries and simple bursts, but it is not durable distributed rate limiting and is not caller authentication. A later security phase should add an authenticated app-access layer or platform-level durable rate limiting. No new environment variable is required; optional `REEF_AI_*` variables can tune the defaults documented in `MAINTENANCE_5B_RELEASE_MANIFEST.md`.
+The rate limiter is intentionally dependency-free and persists only within a warm Vercel function instance. It reduces accidental retries and simple bursts, but it is not durable distributed rate limiting. Optional `REEF_AI_*` variables can tune the defaults documented in `MAINTENANCE_5B_RELEASE_MANIFEST.md`.
+
+Maintenance 5C adds durable shared-key caller authentication. After `REEF_AI_ACCESS_KEY` is configured in Vercel, the app must send the matching device-local key to all four paid AI endpoints. Configure the key under Settings → AI on every device. The key is not included in Reef Keeper backup exports. See `MAINTENANCE_5C_RELEASE_MANIFEST.md` for staged activation, rotation, verification, and rollback instructions.
 
 ## Apex integration note
 

@@ -1,3 +1,60 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
+
+// Reef Keeper Maintenance 5C — durable shared-key access control for paid AI endpoints.
+// The access layer is staged: endpoints remain available until REEF_AI_ACCESS_KEY (or
+// REEF_AI_ACCESS_KEYS) is configured in Vercel. Once configured, every paid AI POST
+// must present the same key in X-Reef-AI-Access-Key or Authorization: Bearer.
+const REEF_AI_ACCESS_HEADER = 'x-reef-ai-access-key';
+
+function aiConfiguredAccessKeys() {
+  const raw = [process.env.REEF_AI_ACCESS_KEY, process.env.REEF_AI_ACCESS_KEYS]
+    .filter(value => typeof value === 'string' && value.trim())
+    .join('\n');
+  return [...new Set(raw.split(/[\n,]+/).map(value => value.trim()).filter(Boolean).slice(0, 8))];
+}
+
+function aiPresentedAccessKey(req) {
+  const direct = aiHeader(req, REEF_AI_ACCESS_HEADER).trim();
+  if (direct) return direct.slice(0, 512);
+  const authorization = aiHeader(req, 'authorization').trim();
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim().slice(0, 512) : '';
+}
+
+function aiAccessKeyMatches(presented, configured) {
+  if (!presented || !configured) return false;
+  const presentedHash = createHash('sha256').update(presented, 'utf8').digest();
+  const configuredHash = createHash('sha256').update(configured, 'utf8').digest();
+  return timingSafeEqual(presentedHash, configuredHash);
+}
+
+function enforcePaidAiAccess(req, res) {
+  const configuredKeys = aiConfiguredAccessKeys();
+  res.setHeader?.('Cache-Control', 'no-store, max-age=0');
+  res.setHeader?.('Vary', 'X-Reef-AI-Access-Key, Authorization');
+
+  // Staged deployment safety: adding the code does not interrupt the app. Protection
+  // becomes mandatory only after an access key is configured in Vercel.
+  if (configuredKeys.length === 0) {
+    res.setHeader?.('X-Reef-AI-Access', 'not-configured');
+    return false;
+  }
+
+  const presented = aiPresentedAccessKey(req);
+  const accepted = configuredKeys.some(configured => aiAccessKeyMatches(presented, configured));
+  if (accepted) {
+    res.setHeader?.('X-Reef-AI-Access', 'accepted');
+    return false;
+  }
+
+  res.setHeader?.('X-Reef-AI-Access', 'denied');
+  res.status(401).json({
+    error: 'AI access key required. Open Settings → AI and enter the Reef Keeper access key.',
+    code: 'REEF_AI_ACCESS_REQUIRED'
+  });
+  return true;
+}
+
 // Reef Keeper Maintenance 5B — request-size and best-effort burst controls for paid AI endpoints.
 // The in-memory limiter persists only within a warm serverless instance. It reduces accidental
 // and simple burst abuse, but it is not a substitute for a future authenticated access layer.
@@ -103,6 +160,8 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (enforcePaidAiAccess(req, res)) return;
 
   if (guardPaidAiRequest(req, res, {
     name: 'plan',

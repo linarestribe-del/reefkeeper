@@ -11,7 +11,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260721-build-2l1-hobby-plan-fix">
+<link rel="stylesheet" href="css/app.css?v=20260721-maintenance-5c-ai-access">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1669,6 +1669,18 @@
             <span class="context-slider"></span>
           </label>
         </div>
+        <div class="settings-row ai-access-settings-row">
+          <div class="settings-copy"><strong>AI access key</strong><span>Stored only on this device and sent only to Reef Keeper's paid AI endpoints.</span></div>
+          <div class="ai-access-controls">
+            <input id="reef-ai-access-key" class="ai-access-input" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="512" placeholder="Enter access key">
+            <div class="ai-access-actions">
+              <button class="long-term-btn" type="button" onclick="saveReefAiAccessKey()">Save</button>
+              <button class="long-term-btn secondary" type="button" onclick="testReefAiAccessKey()">Test</button>
+              <button class="long-term-btn secondary" type="button" onclick="clearReefAiAccessKey()">Clear</button>
+            </div>
+            <div id="reef-ai-access-status" class="ai-access-status" aria-live="polite">No AI access key saved on this device.</div>
+          </div>
+        </div>
       </div>
 
       <div class="settings-card" id="apex-settings-card">
@@ -1705,7 +1717,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.21 Last Backup Export</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.34 Maintenance 5C</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -2314,7 +2326,7 @@ async function runSystemCheck() {
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: (window.ReefKeeperAiAccess?.headers?.({ 'Content-Type': 'application/json' }) || { 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         modelMode: 'quick',
         system: 'You are a Reef Keeper system-check endpoint test. Return strict JSON only.',
@@ -3161,7 +3173,7 @@ function copySystemCheckResults() {
     try {
       const response = await fetch('/api/chat', {
         method:'POST',
-        headers:{ 'Content-Type':'application/json' },
+        headers:(window.ReefKeeperAiAccess?.headers?.({ 'Content-Type':'application/json' }) || { 'Content-Type':'application/json' }),
         body: JSON.stringify({
           modelMode:'balanced',
           system:'You write concise reef aquarium monthly reports. Use the provided local Reef Keeper data. Return plain text with headings. Do not invent facts.',
@@ -3389,7 +3401,7 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260721-build-2l1-hobby-plan-fix"></script>
+<script src="app.js?v=20260721-maintenance-5c-ai-access"></script>
 <script src="observer.js?v=20260721-build-2l1-hobby-plan-fix"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
@@ -3429,6 +3441,7 @@ function showPage(name, btn) {
   }
   if (pageName === 'settings') {
     try { ReefKeeperApex?.renderApexSettings?.(); } catch(e) {}
+    try { window.syncReefAiAccessUi?.(); } catch(e) {}
   }
 }
 

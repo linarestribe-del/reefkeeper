@@ -1,3 +1,11 @@
+## 4.3.34 — Maintenance 5C Paid AI Access Protection
+- Adds staged shared-key authentication to `/api/chat`, `/api/plan`, `/api/livestock`, and `/api/photo-analysis`.
+- Adds a masked Settings → AI access-key field with Save, Test, and Clear controls.
+- Rejects missing or incorrect keys with HTTP `401` before OpenAI is called once Vercel enforcement is configured.
+- Keeps initial deployment non-breaking until `REEF_AI_ACCESS_KEY` or `REEF_AI_ACCESS_KEYS` is added in Vercel.
+- Stores the key only on the current device and excludes it from Reef Keeper backup exports.
+- Supports controlled key rotation without adding a Vercel function, dependency, Pi change, Apex change, or Observer change.
+
 ## 4.3.33 — Maintenance 5B Paid AI Abuse Controls
 - Adds endpoint-specific request-body ceilings to `/api/chat`, `/api/plan`, `/api/livestock`, and `/api/photo-analysis` before OpenAI is called.
 - Caps chat input to the newest 24 supported messages and 96,000 cumulative text characters.

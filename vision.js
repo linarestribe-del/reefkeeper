@@ -126,7 +126,7 @@ async function handleVisionFile(event) {
     if (structured) {
       const pseudoItem = target || { id:'', name: mode.label, type: mode.itemType || 'other', notes: mode.prompt };
       const response = await fetch('/api/photo-analysis', {
-        method:'POST', headers:{ 'Content-Type':'application/json' },
+        method:'POST', headers:(window.ReefKeeperAiAccess?.headers?.({ 'Content-Type':'application/json' }) || { 'Content-Type':'application/json' }),
         body: JSON.stringify({
           item: pseudoItem,
           image: { name:file.name || 'reef vision photo', type:file.type || 'image/jpeg', dataUrl },

@@ -271,6 +271,112 @@ function initModelMode() {
   setModelMode(getModelMode());
 }
 
+// ── Maintenance 5C: device-local AI access key ────────────────────────────
+const REEF_AI_ACCESS_STORAGE_KEY = 'reef_ai_access_key_v1';
+
+function getReefAiAccessKey() {
+  try { return String(localStorage.getItem(REEF_AI_ACCESS_STORAGE_KEY) || '').trim(); }
+  catch(e) { return ''; }
+}
+
+function reefAiHeaders(baseHeaders = {}) {
+  const headers = { ...(baseHeaders || {}) };
+  const key = getReefAiAccessKey();
+  if (key) headers['X-Reef-AI-Access-Key'] = key;
+  return headers;
+}
+
+function setReefAiAccessKey(value) {
+  const key = String(value || '').trim().slice(0, 512);
+  try {
+    if (key) localStorage.setItem(REEF_AI_ACCESS_STORAGE_KEY, key);
+    else localStorage.removeItem(REEF_AI_ACCESS_STORAGE_KEY);
+  } catch(e) {}
+  syncReefAiAccessUi();
+  return key;
+}
+
+function setReefAiAccessStatus(message, state = '') {
+  const status = document.getElementById('reef-ai-access-status');
+  if (!status) return;
+  status.textContent = String(message || '');
+  status.dataset.state = state;
+}
+
+function syncReefAiAccessUi() {
+  const input = document.getElementById('reef-ai-access-key');
+  const key = getReefAiAccessKey();
+  if (input && document.activeElement !== input) input.value = key;
+  setReefAiAccessStatus(key ? 'Access key saved on this device.' : 'No AI access key saved on this device.', key ? 'saved' : 'empty');
+}
+
+function saveReefAiAccessKey() {
+  const input = document.getElementById('reef-ai-access-key');
+  const key = setReefAiAccessKey(input?.value || '');
+  if (!key) {
+    setReefAiAccessStatus('Enter the access key, then tap Save.', 'error');
+    try { showToast('⚠️ Enter the AI access key first'); } catch(e) {}
+    return;
+  }
+  setReefAiAccessStatus('Access key saved on this device.', 'saved');
+  try { showToast('🔐 AI access key saved'); } catch(e) {}
+}
+
+function clearReefAiAccessKey() {
+  setReefAiAccessKey('');
+  const input = document.getElementById('reef-ai-access-key');
+  if (input) input.value = '';
+  setReefAiAccessStatus('AI access key removed from this device.', 'empty');
+  try { showToast('AI access key cleared'); } catch(e) {}
+}
+
+async function testReefAiAccessKey() {
+  const input = document.getElementById('reef-ai-access-key');
+  const typed = String(input?.value || '').trim();
+  if (typed && typed !== getReefAiAccessKey()) setReefAiAccessKey(typed);
+  setReefAiAccessStatus('Checking AI access…', 'checking');
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: reefAiHeaders({ 'Content-Type': 'application/json' }),
+      body: '{}'
+    });
+    const accessState = response.headers.get('x-reef-ai-access') || '';
+    if (accessState === 'accepted') {
+      setReefAiAccessStatus('Connected. Vercel accepted this device key.', 'saved');
+      try { showToast('✅ AI access connected'); } catch(e) {}
+      return;
+    }
+    if (accessState === 'not-configured') {
+      setReefAiAccessStatus('Key saved. Vercel protection is not enabled yet.', 'checking');
+      try { showToast('AI protection is staged but not enabled'); } catch(e) {}
+      return;
+    }
+    if (response.status === 401 || accessState === 'denied') {
+      setReefAiAccessStatus('Access denied. Check the key and save it again.', 'error');
+      try { showToast('⚠️ AI access key was not accepted'); } catch(e) {}
+      return;
+    }
+    setReefAiAccessStatus(`Access check returned HTTP ${response.status}.`, response.ok ? 'saved' : 'error');
+  } catch(e) {
+    setReefAiAccessStatus('Could not reach the AI access check.', 'error');
+  }
+}
+
+window.ReefKeeperAiAccess = {
+  getKey: getReefAiAccessKey,
+  setKey: setReefAiAccessKey,
+  headers: reefAiHeaders,
+  sync: syncReefAiAccessUi,
+  test: testReefAiAccessKey
+};
+window.getReefAiAccessKey = getReefAiAccessKey;
+window.reefAiHeaders = reefAiHeaders;
+window.saveReefAiAccessKey = saveReefAiAccessKey;
+window.clearReefAiAccessKey = clearReefAiAccessKey;
+window.testReefAiAccessKey = testReefAiAccessKey;
+window.syncReefAiAccessUi = syncReefAiAccessUi;
+
 
 function scrollActivePageToTop(event) {
   if (event) {
@@ -543,7 +649,7 @@ async function askOpenAI(userMsg, history, modelMode = getModelMode(), attachmen
   try {
     response = await fetch(API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: reefAiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         system: selectedSystem,
         messages,
@@ -2650,7 +2756,7 @@ async function fillInventoryWithAI() {
   try {
     const response = await fetch('/api/livestock', {
       method:'POST',
-      headers:{ 'Content-Type':'application/json' },
+      headers:reefAiHeaders({ 'Content-Type':'application/json' }),
       body: JSON.stringify({ commonName })
     });
     const data = await response.json().catch(() => ({}));
@@ -3440,6 +3546,7 @@ function importReefBackup(event) {
       initStaticReminderChecks();
       initModelMode();
       initTankContextToggle();
+      syncReefAiAccessUi();
 
       if (typeof renderEquipmentManager === 'function') renderEquipmentManager();
       if (typeof applyEquipmentSearchFilter === 'function') applyEquipmentSearchFilter();
@@ -4901,7 +5008,7 @@ async function generateAiDaysOffPlan(forceRegenerate) {
     const selectedSystem = getUseTankContext() ? `${TANK_CONTEXT}${getLocalTankMemorySummary('days off work plan')}` : GENERAL_REEF_CONTEXT;
     const response = await fetch(PLAN_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: reefAiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         system: selectedSystem,
         modelMode: getModelMode(),
@@ -5231,6 +5338,7 @@ renderActionHistory();
 renderCompletedHistory();
 initModelMode();
 initTankContextToggle();
+syncReefAiAccessUi();
 renderSavedReminders();
 renderReminderCenter();
 renderHiddenTasksPanel();
