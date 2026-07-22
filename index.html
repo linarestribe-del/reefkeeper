@@ -499,25 +499,6 @@
 
 
 <style id="reefkeeper-v4-3-28-home-mobile-dashboard-fix">
-  /* Keep bottom tabs visible above long Home dashboard cards */
-  .bottom-nav,
-  .tab-bar,
-  .bottom-tabs,
-  .nav-tabs,
-  #bottom-nav {
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    z-index: 9999 !important;
-  }
-
-  .app-content,
-  .page,
-  #page-home {
-    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
-  }
-
   /* Condense Live Apex further so Temperature fits */
   #page-home .home-telemetry-card {
     padding: 11px !important;
@@ -654,77 +635,8 @@
 
 
 
-<style id="reefkeeper-v4-3-38-restore-original-nav-layout">
-  html,
-  body {
-    height: 100% !important;
-    overflow: hidden !important;
-  }
-
-  .app {
-    height: 100vh !important;
-    height: 100dvh !important;
-    max-width: 480px !important;
-    margin: 0 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-  }
-
-  .app-header {
-    flex-shrink: 0 !important;
-  }
-
-  .app-content {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding-bottom: 16px !important;
-  }
-
-  .page.active {
-    display: block !important;
-  }
-
-  .page.mytank-page.active {
-    display: block !important;
-  }
-
-  .bottom-nav {
-    flex-shrink: 0 !important;
-    display: flex !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    max-width: 480px !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    z-index: 100 !important;
-  }
-
-  .bottom-nav .nav-btn {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-  }
-</style>
-
-
-<style id="reefkeeper-v4-3-39-nav-click-fix">
-  .bottom-nav,
-  .bottom-nav .nav-btn,
-  .bottom-nav .nav-btn * {
-    pointer-events: auto !important;
-  }
-
-  .bottom-nav {
-    z-index: 99999 !important;
-  }
-</style>
-
-
-<style id="reefkeeper-v4-3-40-nonhome-scroll-fix">
-  /* The app-content shell is the only scroll container. */
+<style id="reefkeeper-app-shell-navigation">
+  /* Canonical app-shell layout. The app-content element is the only scroll container. */
   html,
   body {
     height: 100% !important;
@@ -748,7 +660,11 @@
     padding-bottom: calc(118px + env(safe-area-inset-bottom)) !important;
   }
 
-  /* Non-Home pages must grow naturally inside app-content, not become their own clipped panel. */
+  .page {
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+  }
+
+  /* Non-Home pages grow naturally inside app-content instead of becoming clipped panels. */
   #page-tank,
   #page-vision,
   #page-observer,
@@ -787,8 +703,12 @@
     max-height: none;
   }
 
-  /* Keep the bottom tabs visible and tappable. */
+  /* Keep the global bottom tabs fixed, visible, and tappable. */
   .bottom-nav {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
     flex-shrink: 0 !important;
     display: flex !important;
     flex-direction: row !important;
@@ -803,6 +723,10 @@
   .bottom-nav .nav-btn {
     flex: 1 1 0 !important;
     min-width: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  .bottom-nav .nav-btn * {
     pointer-events: auto !important;
   }
 </style>
@@ -1717,7 +1641,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.34 Maintenance 5C</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.35 Maintenance 6A</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>

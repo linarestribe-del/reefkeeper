@@ -1,3 +1,10 @@
+## 4.3.35 — Maintenance 6A Index Navigation Cleanup
+- Consolidates the layered v4.3.28, v4.3.38, v4.3.39, and v4.3.40 app-shell navigation and scrolling overrides into one canonical `index.html` style block.
+- Removes dead selectors for navigation elements that do not exist in the application.
+- Preserves the verified fixed bottom navigation, single `.app-content` scroll container, Home clearance, and non-Home page growth behavior.
+- Adds a permanent regression test that rejects the retired patch blocks and verifies the canonical layout contract.
+- Makes no API, AI access-key, Apex, Observer, Raspberry Pi, storage, or Vercel route changes.
+
 ## 4.3.34 — Maintenance 5C Paid AI Access Protection
 - Adds staged shared-key authentication to `/api/chat`, `/api/plan`, `/api/livestock`, and `/api/photo-analysis`.
 - Adds a masked Settings → AI access-key field with Save, Test, and Clear controls.
