@@ -1,6 +1,6 @@
 # Reef Keeper Test Plan
 
-**Last updated:** July 21, 2026
+**Last updated:** July 22, 2026
 
 ## Standard Preview Checklist
 
@@ -92,8 +92,25 @@ Run this checklist before merging every feature branch.
 
 - [ ] No overlapping text.
 - [ ] No horizontal scrolling.
-- [ ] Bottom navigation remains usable.
+- [ ] Reef background extends through the iPhone status area without a solid blue band.
+- [ ] Reef Keeper title/tagline scrolls with the page and does not clip Home content.
+- [ ] Bottom navigation remains fixed and usable.
+- [ ] Completed Ask AI responses open at the beginning of the answer.
 - [ ] Cards have proper spacing.
+
+
+## Maintenance 7A automated UI checks
+
+The standard `npm test` suite must verify:
+
+- [x] `viewport-fit=cover` and translucent iPhone standalone status-bar metadata remain present;
+- [x] `.app-header` remains inside `.app-content` and before the active page content;
+- [x] `.bottom-nav` remains outside the scroll container;
+- [x] safe-area scroll padding and chat-message scroll margins remain active;
+- [x] completed Ask AI success and error responses use `scrollChatMessageToTop`;
+- [x] the positioning helper aligns the new message with `block: start` after the render frame.
+
+Device verification remains required because the iPhone safe-area and installed-web-app status bar cannot be fully reproduced by the repository VM tests.
 
 ## Maintenance 6F automated stabilization checks
 

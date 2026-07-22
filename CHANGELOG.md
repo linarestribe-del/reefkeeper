@@ -1,3 +1,20 @@
+## 4.3.41 — Maintenance 7A Mobile Header and Ask AI Positioning
+
+### Fixed
+
+- Moved the Reef Keeper logo/tagline into the single `.app-content` scroll container so the complete top section scrolls away with the page instead of remaining fixed and clipping Home content.
+- Enabled iPhone safe-area coverage with `viewport-fit=cover` and a translucent standalone status bar so the reef background replaces the solid blue status strip.
+- Changed completed Ask AI responses to align at the beginning of the new answer rather than automatically revealing its final line.
+- Applied the same top-of-response positioning to Ask AI connection and image-analysis errors.
+
+### Safety and compatibility
+
+- Bottom navigation remains fixed outside the scroll container.
+- Existing question, typing, attachment, reminder, history, and chat-storage behavior is unchanged.
+- Added a dedicated regression test for header placement, safe-area metadata, and final-answer positioning.
+- No storage keys, APIs, AI access protection, Apex integration, Observer behavior, Raspberry Pi services, or Vercel routes changed.
+- `4.3.40 / Maintenance 6F` remains the immediate rollback build.
+
 ## 4.3.40 — Maintenance 6F Stable Post-Cleanup Checkpoint
 
 ### Added

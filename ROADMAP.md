@@ -1,6 +1,6 @@
 # Reef Keeper Roadmap
 
-**Last updated:** July 21, 2026
+**Last updated:** July 22, 2026
 
 ## Current Stable Line — v4.3.x
 
@@ -17,8 +17,17 @@
 - [x] Add literal DOM-reference integrity checks with documented dynamic/optional elements.
 - [x] Lock prior layout, navigation, handler, render, snapshot, and shared-helper cleanup regressions into the standard test command.
 - [x] Update architecture, rollback, release, checksum, and test documentation.
-- [ ] Complete two isolated UI fixes supplied by the user.
-- [ ] Begin the next Aquarium Observer implementation phase from the verified UI baseline.
+- [x] Complete the two isolated UI fixes supplied by the user in v4.3.41 / Maintenance 7A.
+- [ ] Begin the next Aquarium Observer implementation phase from the verified v4.3.41 UI baseline.
+
+
+## Maintenance 7A — Mobile Header and Ask AI Positioning — Complete in v4.3.41
+
+- [x] Let the Reef Keeper title/tagline scroll with the page.
+- [x] Remove the reserved solid iPhone status-bar strip by extending the reef background through the safe area.
+- [x] Keep the bottom navigation fixed and independently tappable.
+- [x] Position completed Ask AI responses at the beginning of the new answer.
+- [x] Add regression coverage without changing storage, APIs, Apex, Observer, or Pi services.
 
 ## Build 1A — AI Architecture Foundation — Complete in this package
 

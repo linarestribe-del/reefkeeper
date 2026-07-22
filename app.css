@@ -216,9 +216,8 @@ html, body {
 
 /* Header */
 .app-header {
-  padding: 42px 20px 12px;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 20px 18px;
   text-align: center;
-  flex-shrink: 0;
   cursor: pointer;
   user-select: none;
 }
@@ -245,6 +244,7 @@ html, body {
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding: 0 16px 16px;
+  scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
   scrollbar-width: none;
 }
 .app-content::-webkit-scrollbar { display: none; }
@@ -431,6 +431,7 @@ html, body {
 }
 .msg {
   margin-bottom: 12px;
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 12px);
   display: flex;
   flex-direction: column;
   animation: msgIn 0.25s ease;

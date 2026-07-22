@@ -4,11 +4,11 @@ This procedure restores the last known-good application without changing the Ras
 
 ## Known-good baseline
 
-- Application version: `4.3.40`
-- Release family: `Maintenance 6F — Stable Post-Cleanup Checkpoint`
-- Saved source backup: `Reef_Keeper_Maintenance_6F_v4.3.40_STABLE_BASELINE.zip`
-- Previous verified rollback: `4.3.39 / Maintenance 6E`
-- Maintenance 6F changes release metadata, documentation, and automated safeguards only; application workflows, storage, APIs, and Pi services are unchanged.
+- Application version: `4.3.41` after device verification
+- Release family: `Maintenance 7A — Mobile Header and Ask AI Positioning`
+- Saved source backup: `Reef_Keeper_Maintenance_7A_v4.3.41_MOBILE_UI_FIXES.zip`
+- Immediate verified rollback: `4.3.40 / Maintenance 6F`
+- Maintenance 7A changes only mobile shell scrolling/safe-area presentation and final Ask AI response positioning. Storage, APIs, Apex, Observer, environment variables, and Pi services are unchanged.
 
 ## Fastest rollback: Vercel deployment
 
@@ -30,14 +30,15 @@ This procedure restores the last known-good application without changing the Ras
 
 ## Raspberry Pi rule
 
-Do not change the Pi during an application-only rollback unless the failed release explicitly installed a Pi update. Maintenance 6F does not require or modify the Pi.
+Do not change the Pi during an application-only rollback unless the failed release explicitly installed a Pi update. Maintenance 7A does not require or modify the Pi.
 
 ## Smoke-test checklist
 
-- Home page opens.
-- Bottom navigation works.
+- Home page opens with the reef background extending behind the iPhone status area.
+- The Reef Keeper title/tagline scrolls away with Home content.
+- Bottom navigation remains fixed and works.
 - Parameter Log opens.
-- Ask AI text request works.
+- Ask AI text request works and opens at the beginning of the completed answer.
 - One-photo analysis works.
 - Multi-photo comparison works.
 - Aquarium Observer loads the latest image.

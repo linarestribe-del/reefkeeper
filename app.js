@@ -1389,6 +1389,19 @@ function scrollChatToBottom() {
   });
 }
 
+function scrollChatMessageToTop(message) {
+  if (!message) return;
+  requestAnimationFrame(() => {
+    try {
+      message.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    } catch (e) {
+      const content = document.querySelector('.app-content');
+      if (!content || typeof message.offsetTop !== 'number') return;
+      content.scrollTop = Math.max(0, message.offsetTop - 12);
+    }
+  });
+}
+
 async function sendChat(event) {
   if (event) {
     event.preventDefault();
@@ -1454,21 +1467,21 @@ async function sendChat(event) {
     const result = await askOpenAI(textForAI, chatHistory.slice(0, -1), getModelMode(), hasImageAttachments ? imageAttachmentsForRequest : []);
     removeTyping();
     const assistantAnswer = result.answer || 'I received your question, but the answer came back empty.';
-    appendMsg('ai', assistantAnswer, { explainability: result.explainability || null });
+    const answerMessage = appendMsg('ai', assistantAnswer, { explainability: result.explainability || null });
     appendSuggestedReminders(result.reminders);
     chatHistory.push({ role: 'assistant', content: assistantAnswer, explainability: result.explainability || null });
     if (chatHistory.length > 80) chatHistory = chatHistory.slice(-80);
     saveCurrentConversation();
     if (attachmentForRequest && attachedFileContext === attachmentForRequest) clearAttachment();
-    scrollChatToBottom();
+    scrollChatMessageToTop(answerMessage);
   } catch(e) {
     console.error('Ask AI failed:', e);
     removeTyping();
     const imageError = hasImageAttachments && e?.message
       ? `⚠️ Couldn\'t analyze the ${imageAttachmentsForRequest.length > 1 ? 'photos' : 'photo'}. ${e.message}`
       : '⚠️ Couldn\'t connect to AI. Please check your connection and try again.';
-    appendMsg('ai', imageError);
-    scrollChatToBottom();
+    const errorMessage = appendMsg('ai', imageError);
+    scrollChatMessageToTop(errorMessage);
   }
 }
 

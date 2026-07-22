@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
-**Last updated:** July 21, 2026  
-**Current runtime family:** v4.3.40 / Build 2L.1  
-**Maintenance state:** Maintenance 6F stable checkpoint after Maintenance 5A–6E hardening and cleanup  
+**Last updated:** July 22, 2026  
+**Current runtime family:** v4.3.41 / Build 2L.1  
+**Maintenance state:** Maintenance 7A mobile UI fixes on the Maintenance 6F stable checkpoint  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -51,6 +51,17 @@ The checkpoint adds automated enforcement for:
 - repository integrity, synchronized duplicate runtime files, secret exclusions, and the 12-function Vercel limit.
 
 Future UI and Observer work must branch from this checkpoint and remain separately deployable and reversible.
+
+## Maintenance 7A mobile UI boundary
+
+Maintenance 7A changes only the browser shell and final Ask AI response positioning:
+
+- `.app-header` is the first child of `.app-content`, so the title and tagline scroll with the active page;
+- the fixed bottom navigation remains outside `.app-content`;
+- iPhone standalone mode uses full safe-area coverage rather than reserving a solid status-bar band;
+- successful and failed Ask AI responses retain the newly rendered message node and align that node at the start of the scroll viewport after rendering.
+
+No evidence, decision, prompt, API, storage, Apex, Observer, or Pi boundary changes in this release.
 
 ## Core Philosophy
 
