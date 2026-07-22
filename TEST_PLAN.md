@@ -291,3 +291,13 @@ For each fixture, store expected observations, prohibited claims, maximum confid
 - Require `.ocean-bg` to remain transparent so the image is not restarted below the iPhone status area.
 - Require root and `css/` stylesheet copies to remain identical.
 - Retain all Maintenance 7A header and Ask AI positioning assertions.
+
+## Maintenance 8A Cloudflare R2 migration checks
+
+- Confirm `lib/observer-r2.js` is the active Observer remote-storage implementation and `lib/observer-blob.js` is only a compatibility re-export.
+- Confirm the `@vercel/blob` package and all Vercel Blob runtime imports are absent.
+- Confirm R2 requests require the four `REEF_OBSERVER_R2_*` environment variables.
+- Confirm PUT and GET requests use AWS Signature Version 4, fixed private object paths, payload hashes, and redirect rejection.
+- Confirm status JSON reads and image stream metadata normalize to the existing Observer API contract.
+- Confirm the existing Pi publisher and all 12 Vercel functions remain unchanged in route count and authentication behavior.
+- Live activation must occur with the Pi publisher timer disabled, followed by one manual publish before the timer is re-enabled.

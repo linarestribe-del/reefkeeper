@@ -47,7 +47,7 @@ const videoApi = fs.readFileSync(new URL('../api/observer-image.js', import.meta
 const builder = fs.readFileSync(new URL('../connector/timelapse-builder.py', import.meta.url), 'utf8');
 const service = fs.readFileSync(new URL('../connector/reefkeeper-observer-timelapse.service', import.meta.url), 'utf8');
 const timer = fs.readFileSync(new URL('../connector/reefkeeper-observer-timelapse.timer', import.meta.url), 'utf8');
-const blob = fs.readFileSync(new URL('../lib/observer-blob.js', import.meta.url), 'utf8');
+const r2Store = fs.readFileSync(new URL('../lib/observer-r2.js', import.meta.url), 'utf8');
 const vercel = JSON.parse(fs.readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
 assert.match(html, /id="observer-timelapse-card"/);
@@ -59,7 +59,7 @@ assert.match(metadataApi, /readObserverTimelapseFeed/);
 assert.match(publishApi, /decodeObserverMp4/);
 assert.match(publishApi, /writeObserverTimelapseFeed/);
 assert.match(videoApi, /Content-Range/);
-assert.match(blob, /OBSERVER_TIMELAPSE_SLOTS/);
+assert.match(r2Store, /OBSERVER_TIMELAPSE_SLOTS/);
 assert.match(builder, /def generate_timelapse/);
 assert.match(builder, /def process_slot/);
 assert.match(builder, /libx264/);

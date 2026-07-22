@@ -50,17 +50,23 @@ assert.doesNotMatch(serialized, /\/mnt\/reef-ssd/, 'status must not persist loca
 const publishApi = fs.readFileSync(new URL('../api/observer-publish.js', import.meta.url), 'utf8');
 const imageApi = fs.readFileSync(new URL('../api/observer-image.js', import.meta.url), 'utf8');
 const statusApi = fs.readFileSync(new URL('../api/observer-status.js', import.meta.url), 'utf8');
-const blobStore = fs.readFileSync(new URL('../lib/observer-blob.js', import.meta.url), 'utf8');
+const r2Store = fs.readFileSync(new URL('../lib/observer-r2.js', import.meta.url), 'utf8');
+const compatibilityStore = fs.readFileSync(new URL('../lib/observer-blob.js', import.meta.url), 'utf8');
 const publisher = fs.readFileSync(new URL('../connector/observer-publisher.py', import.meta.url), 'utf8');
 const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-assert.match(pkg.dependencies?.['@vercel/blob'] || '', /^\^?2\.[3-9]|^[3-9]/, 'private Blob support requires @vercel/blob >= 2.3');
+assert.equal(pkg.dependencies?.['@vercel/blob'], undefined, 'Observer migration must remove the Vercel Blob dependency');
+assert.match(compatibilityStore, /export \* from '.\/observer-r2\.js'/, 'legacy storage entry must forward only to R2');
+assert.doesNotMatch(compatibilityStore, /from ['"]@vercel\/blob['"]/, 'legacy storage entry must not load Vercel Blob');
 assert.match(publishApi, /secureTokenMatch/, 'publisher endpoint must authenticate uploads');
 assert.match(publishApi, /writeObserverImage\(latestImage, 'latest'\)/, 'publisher endpoint must write image bytes');
-assert.match(blobStore, /access:\s*'private'/, 'Observer objects must use private Blob storage');
-assert.match(blobStore, /allowOverwrite:\s*true/, 'latest objects must be replaceable at fixed paths');
-assert.match(blobStore, /useCache:\s*false/, 'reads must not serve an older overwritten capture');
-assert.match(imageApi, /Readable\.fromWeb/, 'private image route must stream the Blob response');
+for (const name of ['REEF_OBSERVER_R2_ENDPOINT', 'REEF_OBSERVER_R2_ACCESS_KEY_ID', 'REEF_OBSERVER_R2_SECRET_ACCESS_KEY', 'REEF_OBSERVER_R2_BUCKET']) {
+  assert.match(r2Store, new RegExp(name), `R2 storage must require ${name}`);
+}
+assert.match(r2Store, /AWS4-HMAC-SHA256/, 'R2 requests must use AWS Signature Version 4');
+assert.match(r2Store, /canonicalObjectPath/, 'R2 objects must use fixed private bucket paths');
+assert.match(r2Store, /redirect:\s*'error'/, 'R2 requests must not follow redirects that could expose signed headers');
+assert.match(imageApi, /Readable\.fromWeb/, 'private image route must stream the R2 response');
 assert.match(imageApi, /private, no-store/, 'current image delivery must not be cached by the browser');
 assert.match(statusApi, /Image bytes are accepted only by \/api\/observer-publish/, 'metadata route must reject image bytes');
 assert.doesNotMatch(publisher, /192\.168\./, 'Pi publisher must not hard-code a private address');

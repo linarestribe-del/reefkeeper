@@ -22,7 +22,7 @@ import {
   readObserverTimelapseFeed,
   writeObserverTimelapse,
   writeObserverTimelapseFeed
-} from '../lib/observer-blob.js';
+} from '../lib/observer-r2.js';
 
 export default async function handler(req, res) {
   setObserverHeaders(res, 'POST,OPTIONS');
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
     const latestImage = decodeObserverJpeg(body.imageBase64);
     const historyImages = decodeObserverHistoryImages(body.historyImages);
     const publishedAt = new Date().toISOString();
-    const latestBlob = await writeObserverImage(latestImage, 'latest');
+    const latestObject = await writeObserverImage(latestImage, 'latest');
 
     const comparisons = {};
     for (const history of historyImages) {
@@ -97,7 +97,7 @@ export default async function handler(req, res) {
     const record = normalizeObserverStatus(body, {
       ok: body.ok !== false,
       imageAvailable: true,
-      imageVersion: body.capturedAt || body.captured_at || latestBlob.etag || publishedAt,
+      imageVersion: body.capturedAt || body.captured_at || latestObject.etag || publishedAt,
       publishedAt,
       sizeBytes: latestImage.length,
       comparisons

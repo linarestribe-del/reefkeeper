@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
 **Last updated:** July 22, 2026  
-**Current runtime family:** v4.3.42 / Build 2L.1  
-**Maintenance state:** Maintenance 7B iPhone status-canvas correction on the verified Maintenance 7A UI baseline  
+**Current runtime family:** v4.3.43 / Build 2L.1  
+**Maintenance state:** Maintenance 8A Cloudflare R2 Observer storage migration on the verified Maintenance 7B UI baseline  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -12,7 +12,7 @@
 Browser / iPhone app
   -> local browser records and UI
   -> 12 Vercel serverless functions
-  -> OpenAI APIs, private Vercel Blob, and Apex/telemetry storage
+  -> OpenAI APIs, private Cloudflare R2 through signed S3 requests, and Apex/telemetry storage
 
 Raspberry Pi
   -> Tapo camera capture every five minutes
@@ -52,6 +52,15 @@ The checkpoint adds automated enforcement for:
 
 Future UI and Observer work must branch from this checkpoint and remain separately deployable and reversible.
 
+
+
+## Maintenance 8A Observer storage boundary
+
+- The Raspberry Pi continues posting authenticated capture payloads to the existing Vercel Observer endpoints.
+- Vercel signs private S3-compatible requests to Cloudflare R2 using credentials stored only in Production environment variables.
+- The browser never receives R2 credentials or direct private-bucket URLs; media remains available only through same-origin API routes.
+- The local SSD remains the complete archive. R2 stores only fixed current/history images, metadata feeds, and compressed timelapses.
+- The Vercel Blob SDK and Blob store are no longer part of the active Observer architecture.
 
 ## Maintenance 7B iPhone status-canvas boundary
 

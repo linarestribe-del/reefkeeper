@@ -18,7 +18,7 @@ import {
   writeObserverDailySummary,
   writeObserverAlerts,
   writeObserverImage
-} from '../lib/observer-blob.js';
+} from '../lib/observer-r2.js';
 
 function extractResponseText(data) {
   if (typeof data?.output_text === 'string') return data.output_text.trim();

@@ -1,3 +1,12 @@
+## 4.3.43 — Maintenance 8A Observer R2 Migration
+
+- Replaced the paused Vercel Blob Observer backend with private Cloudflare R2 S3-compatible storage.
+- Kept the existing authenticated Raspberry Pi publisher endpoint, same-origin image/video routes, daily summaries, change alerts, and timelapse interfaces.
+- Added dependency-free AWS Signature Version 4 request signing using Node.js built-ins.
+- Removed the `@vercel/blob` package and all Vercel Blob runtime code from the application and lockfile.
+- Added R2 storage integration tests and required environment-variable validation.
+- The Raspberry Pi publisher remains disabled until the R2 variables are configured and the migration is verified.
+
 ## 4.3.42 — Maintenance 7B iPhone Status Canvas
 
 ### Fixed

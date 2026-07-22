@@ -44,7 +44,7 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const observer = fs.readFileSync(new URL('../observer.js', import.meta.url), 'utf8');
 const api = fs.readFileSync(new URL('../api/observer-daily-summary.js', import.meta.url), 'utf8');
 const publisher = fs.readFileSync(new URL('../connector/observer-publisher.py', import.meta.url), 'utf8');
-const blob = fs.readFileSync(new URL('../lib/observer-blob.js', import.meta.url), 'utf8');
+const r2Store = fs.readFileSync(new URL('../lib/observer-r2.js', import.meta.url), 'utf8');
 const vercel = JSON.parse(fs.readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 
 assert.match(html, /id="observer-daily-card"/);
@@ -54,7 +54,7 @@ assert.match(observer, /openDailySummaryComparison/);
 assert.match(api, /decodeObserverDailyImages/);
 assert.match(api, /Return JSON only/);
 assert.match(api, /writeObserverDailySummary/);
-assert.match(blob, /daily-summary\.json/);
+assert.match(r2Store, /daily-summary\.json/);
 assert.match(publisher, /def select_daily_images/);
 assert.match(publisher, /daily_summary_hour_local/);
 assert.match(publisher, /daily_summary_delay_minutes/);

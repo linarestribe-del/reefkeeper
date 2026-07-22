@@ -2,11 +2,11 @@
 
 **Current application version:** `4.3.42`  
 **Current release family:** Build 2L.1 — Aquarium Observer weekly/monthly time-lapses with the Vercel Hobby-plan consolidation  
-**Maintenance state:** Maintenance 7B completes the iPhone status-area correction on top of the verified Maintenance 7A UI baseline. The reef artwork now paints the root page canvas used by iOS, while the scrollable header and Ask AI answer positioning remain unchanged. All Maintenance 6F through 5A safeguards remain in place.
+**Maintenance state:** Maintenance 8A migrates Aquarium Observer remote storage from paused Vercel Blob to private Cloudflare R2 while preserving the verified v4.3.42 mobile UI baseline and all Maintenance 6F through 5A safeguards.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 7B is documented in `MAINTENANCE_7B_RELEASE_MANIFEST.md` and `MAINTENANCE_7B_TEST_REPORT.md`. After device verification, `4.3.42` becomes the required UI baseline for the next Aquarium Observer phase.
+Maintenance 8A is documented in `MAINTENANCE_8A_RELEASE_MANIFEST.md` and `MAINTENANCE_8A_TEST_REPORT.md`. Version `4.3.43` must remain staged until its private R2 environment variables are configured and a manual Pi publish succeeds.
 
 ## Current major capabilities
 
@@ -15,7 +15,7 @@ Maintenance 7B is documented in `MAINTENANCE_7B_RELEASE_MANIFEST.md` and `MAINTE
 - Ask AI with tank context, document input, single-photo analysis, and 2–4 photo comparison
 - Apex telemetry display
 - Aquarium Observer latest image, historical comparisons, health checks, daily summaries, change alerts, and rolling time-lapses
-- Private Observer uploads from the Raspberry Pi to Vercel Blob
+- Private Observer uploads from the Raspberry Pi through Vercel APIs to Cloudflare R2
 
 ## Repository layout
 
@@ -47,7 +47,7 @@ The Vercel Hobby deployment currently uses all **12** available functions. New b
 
 ## Aquarium Observer
 
-The Raspberry Pi keeps the complete five-minute archive on the external drive. Only selected current/history images, daily comparison material, alert data, and finished compressed time-lapses are published to private Vercel Blob storage.
+The Raspberry Pi keeps the complete five-minute archive on the external drive. Only selected current/history images, daily comparison material, alert data, and finished compressed time-lapses are published to private Cloudflare R2 storage.
 
 Current Pi-side components include:
 
@@ -90,3 +90,14 @@ The repository presently contains both `/api/apex-sync` + `/api/apex-status` and
 ## Rollback
 
 See [`ROLLBACK.md`](ROLLBACK.md) for the exact restoration procedure and smoke-test checklist.
+
+## Cloudflare R2 Observer configuration
+
+Maintenance 8A keeps the R2 bucket private. Configure these Vercel Production environment variables before re-enabling the Pi publisher:
+
+- `REEF_OBSERVER_R2_ENDPOINT`
+- `REEF_OBSERVER_R2_ACCESS_KEY_ID`
+- `REEF_OBSERVER_R2_SECRET_ACCESS_KEY`
+- `REEF_OBSERVER_R2_BUCKET` (`reefkeeper-observer`)
+
+The R2 credentials belong only in Vercel. The Raspberry Pi continues using its existing Observer publish endpoint and write token.

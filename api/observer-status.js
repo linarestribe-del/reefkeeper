@@ -1,4 +1,4 @@
-// Reef Keeper Build 2J — Aquarium Observer status and health bridge backed by private Vercel Blob
+// Reef Keeper Build 2J — Aquarium Observer status and health bridge backed by private Cloudflare R2
 
 import {
   awaitingObserverStatus,
@@ -10,7 +10,7 @@ import {
   secureTokenMatch,
   setObserverHeaders
 } from '../lib/observer-common.js';
-import { readObserverStatus, writeObserverStatus, readObserverTimelapseFeed } from '../lib/observer-blob.js';
+import { readObserverStatus, writeObserverStatus, readObserverTimelapseFeed } from '../lib/observer-r2.js';
 
 function awaitingTimelapseFeed() {
   return normalizeObserverTimelapseFeed({

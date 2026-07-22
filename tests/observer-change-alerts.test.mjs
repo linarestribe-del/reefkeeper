@@ -35,7 +35,7 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const observer = fs.readFileSync(new URL('../observer.js', import.meta.url), 'utf8');
 const dailyApi = fs.readFileSync(new URL('../api/observer-daily-summary.js', import.meta.url), 'utf8');
 const alertsApi = fs.readFileSync(new URL('../api/observer-alerts.js', import.meta.url), 'utf8');
-const blob = fs.readFileSync(new URL('../lib/observer-blob.js', import.meta.url), 'utf8');
+const r2Store = fs.readFileSync(new URL('../lib/observer-r2.js', import.meta.url), 'utf8');
 
 assert.match(html, /id="observer-alert-card"/);
 assert.match(html, /id="observer-alert-list"/);
@@ -46,6 +46,6 @@ assert.match(dailyApi, /Allowed categories: water_level, skimmer, leak_overflow/
 assert.match(dailyApi, /Use urgent only for clearly visible/);
 assert.match(dailyApi, /saveAlertEvaluation/);
 assert.match(alertsApi, /fallbackFeedFromDailySummary/);
-assert.match(blob, /change-alerts\.json/);
+assert.match(r2Store, /change-alerts\.json/);
 
 console.log('Observer automatic change alert tests passed.');

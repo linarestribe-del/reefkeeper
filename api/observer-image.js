@@ -2,7 +2,7 @@
 
 import { Readable } from 'node:stream';
 import { normalizeObserverSlot, normalizeObserverTimelapseSlot } from '../lib/observer-common.js';
-import { readObserverImage, readObserverTimelapse } from '../lib/observer-blob.js';
+import { readObserverImage, readObserverTimelapse } from '../lib/observer-r2.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {

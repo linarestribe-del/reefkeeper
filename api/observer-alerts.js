@@ -9,7 +9,7 @@ import {
 import {
   readObserverAlerts,
   readObserverDailySummary
-} from '../lib/observer-blob.js';
+} from '../lib/observer-r2.js';
 
 function fallbackFeedFromDailySummary(summary) {
   const item = summary && typeof summary === 'object' ? summary : {};
