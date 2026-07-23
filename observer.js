@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 8B — Aquarium Observer daily monitoring, operational alerts, visual summaries, and timelapses
+// Reef Keeper Maintenance 8C — Aquarium Observer local visual monitoring, operational alerts, summaries, and timelapses
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -115,6 +115,7 @@
       : [];
     const services = source.services && typeof source.services === 'object' ? source.services : {};
     const archive = source.archive && typeof source.archive === 'object' ? source.archive : {};
+    const local = source.localMonitoring && typeof source.localMonitoring === 'object' ? source.localMonitoring : {};
     return {
       status: healthState(source.status),
       summary: cleanText(source.summary, 'Observer health data has not arrived yet.'),
@@ -133,6 +134,38 @@
         attemptCount: Math.max(0, Number(source.dailySummary?.attemptCount) || 0),
         maxAttempts: Math.max(1, Number(source.dailySummary?.maxAttempts) || 3),
         retryMinutes: Math.max(30, Number(source.dailySummary?.retryMinutes) || 180)
+      },
+      localMonitoring: {
+        ...normalizeHealthComponent(local, 'Waiting for local visual monitoring data.'),
+        enabled: local.enabled !== false,
+        evaluatedAt: parseDate(local.evaluatedAt),
+        mode: cleanText(local.mode, 'unknown'),
+        imageQuality: {
+          ...normalizeHealthComponent(local.imageQuality, 'Waiting for image-quality analysis.'),
+          meanBrightness: Math.max(0, Math.min(255, Number(local.imageQuality?.meanBrightness) || 0)),
+          contrast: Math.max(0, Number(local.imageQuality?.contrast) || 0),
+          edgeEnergy: Math.max(0, Number(local.imageQuality?.edgeEnergy) || 0),
+          obstructionStreak: Math.max(0, Number(local.imageQuality?.obstructionStreak) || 0)
+        },
+        scene: {
+          ...normalizeHealthComponent(local.scene, 'Learning the stable sump view.'),
+          baselineReady: local.scene?.baselineReady === true,
+          changeScore: Math.max(0, Math.min(1, Number(local.scene?.changeScore) || 0)),
+          shiftX: Math.trunc(Number(local.scene?.shiftX) || 0),
+          shiftY: Math.trunc(Number(local.scene?.shiftY) || 0),
+          movementLikely: local.scene?.movementLikely === true,
+          streak: Math.max(0, Number(local.scene?.streak) || 0)
+        },
+        waterLevel: {
+          ...normalizeHealthComponent(local.waterLevel, 'Water-level monitoring is not calibrated.'),
+          configured: local.waterLevel?.configured === true,
+          confidence: Math.max(0, Math.min(1, Number(local.waterLevel?.confidence) || 0)),
+          baselineYPercent: Math.max(0, Math.min(100, Number(local.waterLevel?.baselineYPercent) || 0)),
+          currentYPercent: Math.max(0, Math.min(100, Number(local.waterLevel?.currentYPercent) || 0)),
+          deltaPercent: Math.max(-100, Math.min(100, Number(local.waterLevel?.deltaPercent) || 0)),
+          direction: cleanText(local.waterLevel?.direction, 'unknown'),
+          streak: Math.max(0, Number(local.waterLevel?.streak) || 0)
+        }
       },
       archive: {
         ...normalizeHealthComponent(archive, 'Waiting for archive health data.'),
@@ -544,12 +577,12 @@
       health.capture.message = `Latest capture is ${formatAge(captured).toLowerCase()}.`;
     }
 
-    const componentStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.dailySummary.status, health.archive.status].filter(state => state !== 'pending');
+    const componentStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.dailySummary.status, health.localMonitoring.status, health.archive.status].filter(state => state !== 'pending');
     if (componentStates.includes('offline')) health.status = 'offline';
     else if (componentStates.includes('attention')) health.status = 'attention';
     else if (componentStates.every(state => state === 'healthy')) health.status = 'healthy';
 
-    if (health.status === 'healthy') health.summary = 'Camera capture, remote publishing, storage, services, and Pi power checks are healthy.';
+    if (health.status === 'healthy') health.summary = 'Camera capture, remote publishing, storage, services, Pi power, and local visual checks are healthy.';
     else if (health.status === 'attention') health.summary = 'Observer is still reporting, but one or more checks need attention.';
     else if (health.status === 'offline') health.summary = health.publisher.status === 'offline'
       ? 'The app is not receiving current Observer health reports.'
@@ -676,6 +709,37 @@
     if (detailNode) detailNode.textContent = detail || 'No details received.';
   }
 
+  function setLocalMonitorItem(name, state, detail, label) {
+    const item = byId(`observer-local-${name}-item`);
+    const stateNode = byId(`observer-local-${name}-state`);
+    const detailNode = byId(`observer-local-${name}-detail`);
+    const normalized = healthState(state);
+    if (item) item.className = `observer-local-monitor-item ${normalized}`;
+    if (stateNode) stateNode.textContent = label || healthLabel(normalized);
+    if (detailNode) detailNode.textContent = detail || 'No details received.';
+  }
+
+  function renderLocalMonitoring(local) {
+    const source = local && typeof local === 'object' ? local : normalizeHealth({}).localMonitoring;
+    const badge = byId('observer-local-monitor-badge');
+    if (badge) {
+      badge.className = `observer-health-badge ${source.status}`;
+      badge.textContent = source.enabled === false ? 'Disabled' : healthLabel(source.status);
+    }
+    setText('observer-local-monitor-summary', source.message);
+    const qualityDetail = `${source.imageQuality.message}${source.mode && source.mode !== 'unknown' ? ` Mode: ${source.mode}.` : ''}`;
+    setLocalMonitorItem('image', source.imageQuality.status, qualityDetail);
+    const sceneDetail = source.scene.baselineReady
+      ? `${source.scene.message} Change score: ${source.scene.changeScore.toFixed(2)}.`
+      : source.scene.message;
+    setLocalMonitorItem('scene', source.scene.status, sceneDetail, source.scene.baselineReady ? healthLabel(source.scene.status) : 'Learning');
+    const waterLabel = source.waterLevel.configured ? healthLabel(source.waterLevel.status) : 'Not set';
+    const waterDetail = source.waterLevel.configured && source.waterLevel.confidence
+      ? `${source.waterLevel.message} Confidence: ${Math.round(source.waterLevel.confidence * 100)}%.`
+      : source.waterLevel.message;
+    setLocalMonitorItem('water', source.waterLevel.status, waterDetail, waterLabel);
+  }
+
   function renderObserverHealth(record) {
     const health = record.health;
     const badge = byId('observer-health-badge');
@@ -697,6 +761,8 @@
       ? `${health.dailySummary.message} Next attempt ${formatCaptureTime(health.dailySummary.nextAttemptAt.toISOString())}.`
       : health.dailySummary.message;
     setHealthRow('daily', health.dailySummary.status, dailyDetail);
+    setHealthRow('local', health.localMonitoring.status, health.localMonitoring.message);
+    renderLocalMonitoring(health.localMonitoring);
 
     const servicesHealthy = health.services.captureTimerActive && health.services.publishTimerActive;
     const servicesState = servicesHealthy ? 'healthy' : 'attention';
@@ -745,6 +811,10 @@
       diagnosticLine('Pi power', `${health.power.message}${health.power.throttledHex ? ` (${health.power.throttledHex})` : ''}`),
       diagnosticLine('Daily monitoring', `${healthLabel(health.dailySummary.status)} — ${health.dailySummary.message}`),
       diagnosticLine('Daily attempts', `${health.dailySummary.attemptCount}/${health.dailySummary.maxAttempts}${health.dailySummary.nextAttemptAt ? `; next ${health.dailySummary.nextAttemptAt.toISOString()}` : ''}`),
+      diagnosticLine('Local visual monitoring', `${healthLabel(health.localMonitoring.status)} — ${health.localMonitoring.message}`),
+      diagnosticLine('Image quality', `${healthLabel(health.localMonitoring.imageQuality.status)} — ${health.localMonitoring.imageQuality.message}`),
+      diagnosticLine('Scene stability', `${healthLabel(health.localMonitoring.scene.status)} — score=${health.localMonitoring.scene.changeScore.toFixed(3)}; ${health.localMonitoring.scene.message}`),
+      diagnosticLine('Water level', health.localMonitoring.waterLevel.configured ? `${healthLabel(health.localMonitoring.waterLevel.status)} — delta=${health.localMonitoring.waterLevel.deltaPercent.toFixed(2)}%; confidence=${health.localMonitoring.waterLevel.confidence.toFixed(2)}` : 'Not calibrated'),
       diagnosticLine('Archive count', health.archive.captureCount),
       diagnosticLine('History ready', ready),
       'Issues:',

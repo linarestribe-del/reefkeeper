@@ -311,3 +311,16 @@ For each fixture, store expected observations, prohibited claims, maximum confid
 - Confirm daily-summary retries are delayed and capped at three attempts per current daily frame.
 - Confirm the retry budget resets for the next daily frame.
 - Confirm the Observer Health card renders Daily monitoring state.
+
+
+## Maintenance 8C local sump monitoring checks
+
+- Confirm Publisher 2.4 performs reduced grayscale analysis locally and contains no OpenAI call.
+- Confirm the first stable frame learns a lighting-mode baseline and later stable frames report healthy.
+- Confirm obstruction and framing alerts require repeated captures.
+- Confirm separate dark, normal, and bright baselines prevent a first lighting-mode transition from becoming an alert.
+- Confirm water-level tracking is disabled until an ROI and baseline are calibrated.
+- Confirm a clear synthetic horizontal edge is detected with confidence and repeated warning/urgent thresholds generate deterministic issue codes.
+- Confirm only compact metrics enter the Observer status payload; baseline signatures stay in local `monitor-status.json`.
+- Confirm Local visual monitor health, Local sump monitoring details, diagnostics, and system alerts render in the app.
+- Confirm existing R2 image publishing, daily summary, comparisons, timelapses, and 12-function limit remain intact.

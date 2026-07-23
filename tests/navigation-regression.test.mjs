@@ -9,10 +9,10 @@ assert.match(html, /onclick="showPage\('log'\)"[^>]*><span>📊<\/span><strong>P
 assert.match(app, /window\.showPage = function\(name, btn\)\s*\{\s*directGo\(name, btn\);\s*\}/, 'Final showPage override should call directGo once');
 assert.doesNotMatch(app, /window\.showPage = function\(name, btn\)\s*\{\s*showPage\(name, btn\)/, 'Final showPage override must not recurse');
 assert.match(html, /ai\/evidence-engine\.js\?v=20260717-build-1b/, 'Evidence engine must load before app.js');
-assert.ok(html.indexOf('ai/evidence-engine.js?v=20260717-build-1b') < html.indexOf('app.js?v=20260722-maintenance-8b-observer-monitoring'), 'Evidence engine must load before app.js');
+assert.ok(html.indexOf('ai/evidence-engine.js?v=20260717-build-1b') < html.indexOf('app.js?v=20260723-maintenance-8c-local-monitoring'), 'Evidence engine must load before app.js');
 assert.ok(html.indexOf('ai/trend-engine.js?v=20260718-build-2a') < html.indexOf('ai/trend-chart.js?v=20260718-build-2b'), 'Trend engine must load before the chart module');
-assert.ok(html.indexOf('ai/trend-chart.js?v=20260718-build-2b') < html.indexOf('app.js?v=20260722-maintenance-8b-observer-monitoring'), 'Trend chart module must load before app.js');
-assert.ok(html.indexOf('observer.js?v=20260722-maintenance-8b-observer-monitoring') > html.indexOf('app.js?v=20260722-maintenance-8b-observer-monitoring'), 'Observer controller must load after app.js');
+assert.ok(html.indexOf('ai/trend-chart.js?v=20260718-build-2b') < html.indexOf('app.js?v=20260723-maintenance-8c-local-monitoring'), 'Trend chart module must load before app.js');
+assert.ok(html.indexOf('observer.js?v=20260723-maintenance-8c-local-monitoring') > html.indexOf('app.js?v=20260723-maintenance-8c-local-monitoring'), 'Observer controller must load after app.js');
 const aiRouteIndex = vercel.routes.findIndex(route => route.src === '/ai/(.*)' && route.dest === '/ai/$1');
 const fallbackIndex = vercel.routes.findIndex(route => route.src === '/(.*)');
 assert.ok(aiRouteIndex >= 0 && aiRouteIndex < fallbackIndex, 'Vercel must serve /ai files before the SPA fallback');

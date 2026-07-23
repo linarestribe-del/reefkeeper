@@ -28,7 +28,7 @@
 
 ## Pi activation
 
-After the web deployment is verified, replace only `/usr/local/bin/observer-publisher.py` with the packaged `connector/observer-publisher.py`, preserve the existing `/etc/reefkeeper-observer/publisher.json`, then run one manual publisher service test before restarting the timer.
+After the web deployment is verified, discover the active publisher path from the systemd service `ExecStart` value before replacing the script. The verified installation uses `/opt/reefkeeper-observer/observer-publisher.py`; do not assume `/usr/local/bin/observer-publisher.py`. Preserve `/etc/reefkeeper-observer/publisher.json`, then run one manual publisher service test before restarting the timer.
 
 ## Rollback
 

@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260722-maintenance-8b-observer-monitoring">
+<link rel="stylesheet" href="css/app.css?v=20260723-maintenance-8c-local-monitoring">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1162,6 +1162,9 @@
           <div class="observer-health-row" id="observer-health-daily-row">
             <span class="observer-health-icon">📅</span><div><strong>Daily monitoring</strong><small id="observer-health-daily-detail">Checking summary schedule and retry budget…</small></div><b id="observer-health-daily-state">—</b>
           </div>
+          <div class="observer-health-row" id="observer-health-local-row">
+            <span class="observer-health-icon">👁️</span><div><strong>Local visual monitor</strong><small id="observer-health-local-detail">Learning image quality and the stable sump view…</small></div><b id="observer-health-local-state">—</b>
+          </div>
           <div class="observer-health-row" id="observer-health-services-row">
             <span class="observer-health-icon">⏱️</span><div><strong>System services</strong><small id="observer-health-services-detail">Checking…</small></div><b id="observer-health-services-state">—</b>
           </div>
@@ -1177,6 +1180,28 @@
         </div>
       </section>
 
+
+      <section class="observer-local-monitor-card" id="observer-local-monitor-card" aria-labelledby="observer-local-monitor-title">
+        <div class="observer-local-monitor-head">
+          <div>
+            <div class="observer-safety-title" id="observer-local-monitor-title">Local sump monitoring</div>
+            <div class="observer-local-monitor-summary" id="observer-local-monitor-summary">The Raspberry Pi is learning the stable sump view.</div>
+          </div>
+          <span class="observer-health-badge pending" id="observer-local-monitor-badge">Learning</span>
+        </div>
+        <div class="observer-local-monitor-grid">
+          <div class="observer-local-monitor-item pending" id="observer-local-image-item">
+            <span>📷</span><div><strong>Image quality</strong><small id="observer-local-image-detail">Waiting for local analysis…</small></div><b id="observer-local-image-state">Checking</b>
+          </div>
+          <div class="observer-local-monitor-item pending" id="observer-local-scene-item">
+            <span>🧭</span><div><strong>Scene stability</strong><small id="observer-local-scene-detail">Learning the fixed camera view…</small></div><b id="observer-local-scene-state">Learning</b>
+          </div>
+          <div class="observer-local-monitor-item pending" id="observer-local-water-item">
+            <span>🌊</span><div><strong>Sump water level</strong><small id="observer-local-water-detail">Calibration has not been completed.</small></div><b id="observer-local-water-state">Not set</b>
+          </div>
+        </div>
+        <div class="observer-local-monitor-note">These checks run on the Raspberry Pi from reduced grayscale frames. They do not send every capture to AI. Water-level alerts remain disabled until a visible sump region is calibrated.</div>
+      </section>
 
       <section class="observer-alert-card" id="observer-alert-card" aria-labelledby="observer-alert-title">
         <div class="observer-alert-head">
@@ -1644,7 +1669,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.44 Maintenance 8B</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.45 Maintenance 8C</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3310,8 +3335,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260722-maintenance-8b-observer-monitoring"></script>
-<script src="observer.js?v=20260722-maintenance-8b-observer-monitoring"></script>
+<script src="app.js?v=20260723-maintenance-8c-local-monitoring"></script>
+<script src="observer.js?v=20260723-maintenance-8c-local-monitoring"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

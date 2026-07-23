@@ -2,31 +2,30 @@
 
 ## Current candidate
 
-- Release family: `Maintenance 8B — Observer Monitoring Safeguards`
-- Version: `4.3.44`
-- Stable source backup: `Reef_Keeper_Maintenance_8A_v4.3.43_R2_OBSERVER_MIGRATION.zip`
-- Candidate recovery package: `Reef_Keeper_Maintenance_8B_v4.3.44_OBSERVER_MONITORING.zip`
+- Release family: `Maintenance 8C — Local Sump Monitoring`
+- Version: `4.3.45`
+- Stable source backup: `Reef_Keeper_Maintenance_8B_v4.3.44_OBSERVER_MONITORING.zip`
+- Candidate recovery package: `Reef_Keeper_Maintenance_8C_v4.3.45_LOCAL_SUMP_MONITORING.zip`
 
-## Before Pi activation
+## Web rollback
 
-The v4.3.44 web build can be deployed while publisher 2.2 continues running. Before replacing the Pi script, stop the publisher timer, back up `/usr/local/bin/observer-publisher.py`, syntax-check publisher 2.3, and perform one manual service run.
+1. Restore the verified v4.3.44 repository files or promote the last known-good v4.3.44 Vercel deployment.
+2. Keep the existing private R2 and Observer environment variables unchanged.
+3. Verify Home, Parameter Log, Settings, Ask AI, Apex, current Observer image, daily summary, and timelapses.
 
-## Application rollback
+## Pi installation boundary
 
-1. Restore the verified v4.3.43 repository files or promote the last known-good v4.3.43 Vercel deployment.
-2. Keep the four private `REEF_OBSERVER_R2_*` Production variables in place.
-3. Verify Home, Parameter Log, Settings, Ask AI, Apex, and the current Observer image.
-4. If the problem is isolated to publisher 2.3, restore only the Pi script backup instead of rolling back the web app.
+The active Publisher 2.3 service path must be read from systemd `ExecStart`; the verified installation uses `/opt/reefkeeper-observer/observer-publisher.py`. Before Publisher 2.4 is installed, stop the publisher timer, create a validated backup at that actual path, install the new script and calibration helper, and run one controlled service execution. Do not assume `/usr/local/bin/observer-publisher.py`.
 
-## Successful activation recovery point
+## Pi rollback
 
-After v4.3.44 and publisher 2.3 complete live verification, save the full v4.3.44 ZIP and the backed-up publisher 2.2 script as the new recovery set.
+1. Stop `reefkeeper-observer-publish.timer` and `reefkeeper-observer-publish.service`.
+2. Restore the validated Publisher 2.3 backup to the systemd `ExecStart` script path.
+3. Re-enable and start `reefkeeper-observer-publish.timer`.
+4. Require a fresh successful publish reporting Publisher 2.3.
 
-## Raspberry Pi boundary
+Camera capture, RTSP credentials, SSD mount, five-minute archive, R2 credentials, daily-summary endpoint, and timelapse builder are outside the Publisher 2.4 replacement and remain unchanged.
 
-Maintenance 8B changes only the Observer publisher script. Camera credentials, RTSP configuration, capture service, SSD mount, local archive, and timelapse builder remain unchanged.
+## Monitoring-only rollback
 
-
-## Maintenance 8B Pi rollback
-
-If publisher 2.3 fails its manual service test, restore the previous `/usr/local/bin/observer-publisher.py` and restart `reefkeeper-observer-publish.timer`. The local capture service and archive remain independent.
+Water-level calibration is stored separately at `/etc/reefkeeper-observer/monitoring.json`. Disable water-level monitoring with the packaged calibration helper or move that file aside. Local scene baselines may be reset by moving `/mnt/reef-ssd/aquarium-observer/monitor-status.json`; the publisher will learn fresh baselines on subsequent captures.

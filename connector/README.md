@@ -91,3 +91,10 @@ Publisher 2.3 keeps the successful daily visual comparison at one report per dai
 ```
 
 The defaults require no configuration edit. The publisher also includes daily-monitoring state in the existing non-secret health payload. Deterministic operational alerts are created server-side from that health metadata; no per-frame image is sent to OpenAI.
+
+
+## Maintenance 8C Observer publisher 2.4
+
+Publisher 2.4 decodes one 128×72 grayscale working frame per publish cycle and performs image-quality, stable-scene, and optional calibrated water-level screening locally. It does not send each frame to OpenAI. Lighting-specific baseline signatures stay in `/mnt/reef-ssd/aquarium-observer/monitor-status.json`. Optional non-secret settings live in `/etc/reefkeeper-observer/monitoring.json`.
+
+Water-level tracking starts disabled. Use `observer-water-level-calibrate.py` only after selecting a visible region around the sump water line. The tool updates the monitoring file without reading or editing the publisher endpoint or token. Install Publisher 2.4 with `install-observer-publisher-2.4.sh`; the updater discovers the active systemd path, verifies both downloaded files, creates a backup, and rolls back automatically if the controlled publish fails.

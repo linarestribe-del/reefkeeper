@@ -7,19 +7,21 @@ const observer = fs.readFileSync(new URL('../observer.js', import.meta.url), 'ut
 const publisher = fs.readFileSync(new URL('../connector/observer-publisher.py', import.meta.url), 'utf8');
 const statusApi = fs.readFileSync(new URL('../api/observer-status.js', import.meta.url), 'utf8');
 
-assert.equal(OBSERVER_SCHEMA_VERSION, 7);
+assert.equal(OBSERVER_SCHEMA_VERSION, 8);
 assert.match(html, /id="observer-health-badge"/);
 assert.match(html, /id="observer-health-capture-row"/);
 assert.match(html, /id="observer-health-publisher-row"/);
 assert.match(html, /id="observer-health-storage-row"/);
 assert.match(html, /id="observer-health-power-row"/);
 assert.match(html, /id="observer-health-daily-row"/);
+assert.match(html, /id="observer-health-local-row"/);
+assert.match(html, /id="observer-local-monitor-card"/);
 assert.match(html, /copyObserverDiagnosticReport\(\)/);
 assert.match(observer, /PUBLISH_STALE_AFTER_MS/);
 assert.match(observer, /The publisher is online, but camera capture needs attention/);
 assert.match(observer, /Reef Keeper Aquarium Observer diagnostic/);
 assert.doesNotMatch(observer, /REEF_OBSERVER_WRITE_TOKEN|publisher\.json|Authorization: Bearer/);
-assert.match(publisher, /PUBLISHER_VERSION = '2\.3'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.4'/);
 assert.match(publisher, /vcgencmd/);
 assert.match(publisher, /os\.path\.ismount/);
 assert.match(publisher, /systemctl', 'is-active'/);
@@ -54,7 +56,7 @@ const record = normalizeObserverStatus({
   publisherVersion: '2.2',
   health
 }, { imageAvailable: true, sizeBytes: 150000 });
-assert.equal(record.schemaVersion, 7);
+assert.equal(record.schemaVersion, 8);
 assert.equal(record.publisherVersion, '2.2');
 assert.equal(record.health.status, 'attention');
 assert.equal(record.imageAvailable, true);

@@ -1,3 +1,12 @@
+## 4.3.45 — Maintenance 8C Local Sump Monitoring
+
+- Added Raspberry Pi image-quality and repeated obstruction screening without per-frame AI.
+- Added dark/normal/bright stable-scene baselines, small-shift compensation, camera-movement detection, and persistent scene-change alerts.
+- Added optional calibrated sump water-level tracking with confidence, debounce, warning, and urgent thresholds.
+- Added a Local visual monitor health row, Local sump monitoring detail card, diagnostic output, and deterministic alert mappings.
+- Added a separate non-secret monitoring configuration and water-level calibration helper.
+- Updated Observer Publisher to 2.4 and Observer schema to 8 while retaining the 12/12 Vercel function boundary.
+
 ## 4.3.44 — Maintenance 8B Observer Monitoring Safeguards
 
 - Added deterministic operational alerts from Pi health metadata without per-frame AI.

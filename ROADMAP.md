@@ -1,3 +1,14 @@
+## Maintenance 8C — Local Sump Monitoring — Candidate v4.3.45
+
+- [x] Add local image-quality and obstruction screening without OpenAI.
+- [x] Add lighting-specific stable-scene learning and repeated camera-shift/scene-change confirmation.
+- [x] Add calibration-ready water-level tracking with warning and urgent thresholds.
+- [x] Add compact Observer UI, diagnostics, schema normalization, and deterministic alert mappings.
+- [x] Keep Vercel at 12/12 functions and preserve R2, daily summaries, and timelapses.
+- [ ] Complete controlled Publisher 2.4 installation on the Pi.
+- [ ] Select and calibrate the visible sump water-level region from a current image.
+- [ ] Observe at least one day of stable local metrics before tuning thresholds.
+
 ## Maintenance 8B — Observer Monitoring Safeguards — Candidate v4.3.44
 
 - [x] Bounded daily-summary retries.

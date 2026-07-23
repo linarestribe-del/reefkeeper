@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 8B — visual and deterministic operational Observer alerts
+// Reef Keeper Maintenance 8C — visual, local-monitor, and deterministic operational Observer alerts
 
 import {
   cleanObserverString,
@@ -30,7 +30,14 @@ const SYSTEM_ALERT_DETAILS = Object.freeze({
   power_current: ['power', 'Raspberry Pi power or throttling warning', 'Check the Pi power supply, cable, temperature, and throttling status.'],
   archive_empty: ['archive', 'Observer archive is empty', 'Confirm archived captures are being written to the SSD.'],
   daily_summary_retry: ['daily_summary', 'Daily visual summary is waiting to retry', 'No immediate action is required; review the error if the retry remains pending.'],
-  daily_summary_paused: ['daily_summary', 'Daily visual summary paused after repeated failures', 'Review the publisher log and OpenAI availability; the attempt budget resets with the next daily frame.']
+  daily_summary_paused: ['daily_summary', 'Daily visual summary paused after repeated failures', 'Review the publisher log and OpenAI availability; the attempt budget resets with the next daily frame.'],
+  camera_view_obstructed: ['camera_quality', 'Sump camera view may be obstructed', 'Check the camera lens and confirm that salt spray, condensation, a hand, cable, or equipment is not blocking the view.'],
+  camera_view_shifted: ['camera_quality', 'Sump camera framing appears to have moved', 'Compare the current image with the learned view and reposition the camera if the sump is no longer framed correctly.'],
+  sump_scene_changed: ['other', 'Persistent sump-view change needs review', 'Inspect the current sump image for moved equipment, open cabinet doors, maintenance activity, or another persistent visual change.'],
+  water_level_watch: ['water_level', 'Possible sump water-level shift', 'Verify the sump water level directly and check the ATO, return section, and visible plumbing before taking action.'],
+  water_level_urgent: ['water_level', 'Possible urgent sump water-level shift', 'Inspect the sump immediately for overflow, low return-section level, ATO malfunction, or displaced plumbing.'],
+  local_monitor_state_error: ['camera_quality', 'Local visual monitor could not save its baseline', 'Check that the Observer SSD is writable and review the publisher service log.'],
+  local_monitor_unavailable: ['camera_quality', 'Local visual monitoring is unavailable', 'Check that ffmpeg is installed and review the Observer publisher service log.']
 });
 
 function fallbackFeedFromDailySummary(summary) {

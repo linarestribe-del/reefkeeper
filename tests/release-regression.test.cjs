@@ -11,14 +11,14 @@ const rootCss = fs.readFileSync('app.css', 'utf8');
 const rootChat = fs.readFileSync('chat.js', 'utf8');
 const apiChat = fs.readFileSync('api/chat.js', 'utf8');
 
-assert(html.includes('css/app.css?v=20260722-maintenance-8b-observer-monitoring'));
+assert(html.includes('css/app.css?v=20260723-maintenance-8c-local-monitoring'));
 assert(html.includes('ai/evidence-engine.js?v=20260717-build-1b'));
 assert(html.includes('ai/decision-engine.js?v=20260718-build-1c'));
 assert(html.includes('ai/explainability.js?v=20260718-build-2c'));
 assert(html.includes('ai/trend-engine.js?v=20260718-build-2a'));
 assert(html.includes('ai/trend-chart.js?v=20260718-build-2b'));
-assert(html.includes('app.js?v=20260722-maintenance-8b-observer-monitoring'));
-assert(html.includes('observer.js?v=20260722-maintenance-8b-observer-monitoring'));
+assert(html.includes('app.js?v=20260723-maintenance-8c-local-monitoring'));
+assert(html.includes('observer.js?v=20260723-maintenance-8c-local-monitoring'));
 assert(app.includes('window.ReefKeeperDecisionEngine.evaluate(evidenceContext)'));
 assert(app.includes('window.ReefKeeperExplainability.build'));
 assert(app.includes('Evidence review'));
@@ -47,7 +47,7 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.44');
+assert.equal(pkg.version, '4.3.45');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
 assert(fs.existsSync('tests/index-js-cleanup.test.mjs'));
@@ -59,13 +59,13 @@ assert(fs.existsSync('tests/global-function-integrity.test.mjs'));
 assert(fs.existsSync('tests/dom-reference-integrity.test.mjs'));
 assert(fs.existsSync('tests/stable-baseline.test.mjs'));
 assert(fs.existsSync('tests/mobile-ui-positioning.test.mjs'));
-for (const file of ['MAINTENANCE_8B_RELEASE_MANIFEST.md', 'MAINTENANCE_8B_TEST_REPORT.md', 'checksums/maintenance-8B.sha256']) {
-  assert(fs.existsSync(file), `Maintenance 8B release file is missing: ${file}`);
+for (const file of ['MAINTENANCE_8C_RELEASE_MANIFEST.md', 'MAINTENANCE_8C_TEST_REPORT.md', 'checksums/maintenance-8C.sha256']) {
+  assert(fs.existsSync(file), `Maintenance 8C release file is missing: ${file}`);
 }
 assert(fs.existsSync('tests/ai-abuse-guard.test.mjs'));
 assert(fs.existsSync('tests/ai-access-control.test.mjs'));
 assert(html.includes('id="reef-ai-access-key"'));
-assert(html.includes('Reef Keeper v4.3.44 Maintenance 8B'));
+assert(html.includes('Reef Keeper v4.3.45 Maintenance 8C'));
 assert(app.includes("const REEF_AI_ACCESS_STORAGE_KEY = 'reef_ai_access_key_v1'"));
 assert(app.includes("headers['X-Reef-AI-Access-Key'] = key"));
 assert(app.includes('function testReefAiAccessKey()'));

@@ -1,12 +1,12 @@
 # Reef Keeper
 
-**Current application version:** `4.3.44`  
-**Current release family:** Maintenance 8B — R2-backed Aquarium Observer monitoring safeguards  
-**Maintenance state:** Maintenance 8B adds bounded daily-summary retries and deterministic operational alerts on the private Cloudflare R2 Observer foundation while preserving the verified v4.3.43 R2 production baseline and all Maintenance 6F through 5A safeguards.
+**Current application version:** `4.3.45`  
+**Current release family:** Maintenance 8C — local-first sump visual monitoring  
+**Maintenance state:** Maintenance 8C adds Raspberry Pi image-quality, stable-scene, camera-movement, and calibration-ready water-level screening without per-frame AI, while preserving the verified v4.3.44 R2 Observer baseline.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 8B is documented in `MAINTENANCE_8B_RELEASE_MANIFEST.md` and `MAINTENANCE_8B_TEST_REPORT.md`. The web update is backward-compatible with publisher 2.2; publisher 2.3 is activated separately with a backup and one controlled service run.
+Maintenance 8C is documented in `MAINTENANCE_8C_RELEASE_MANIFEST.md` and `MAINTENANCE_8C_TEST_REPORT.md`. The web update remains compatible with Publisher 2.3 until Publisher 2.4 is installed with a backup and controlled service run. The packaged `connector/install-observer-publisher-2.4.sh` updater discovers the active systemd script path and performs that guarded installation.
 
 ## Current major capabilities
 
@@ -106,3 +106,8 @@ The R2 credentials belong only in Vercel. The Raspberry Pi continues using its e
 ## Maintenance 8B daily monitoring
 
 Publisher 2.3 reports a Daily monitoring health component and limits failed daily-summary retries to three attempts per representative frame, spaced three hours apart by default. Camera, publisher, SSD, Pi power, archive, and daily-summary health issues can appear as operational alerts without sending camera frames to OpenAI.
+
+
+## Maintenance 8C local sump monitoring
+
+Publisher 2.4 evaluates a reduced grayscale copy of the latest frame on the Raspberry Pi. It learns lighting-specific stable-view baselines, confirms obstruction or framing changes across repeated captures, and can track a visible sump water line after explicit calibration. Compact metrics and issue codes are published with Observer health; the full local frame archive remains on the SSD and no per-frame OpenAI call is made. Water-level monitoring uses the separate non-secret `/etc/reefkeeper-observer/monitoring.json` file and starts disabled.

@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
-**Last updated:** July 22, 2026  
-**Current runtime family:** v4.3.44 / Observer publisher 2.3  
-**Maintenance state:** Maintenance 8B bounded daily-summary retries and deterministic operational alerts on the verified R2 baseline  
+**Last updated:** July 23, 2026  
+**Current runtime family:** v4.3.45 / Observer publisher 2.4  
+**Maintenance state:** Maintenance 8C local-first sump visual monitoring on the verified R2 baseline  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -269,3 +269,14 @@ Sensors and records
 ## Maintenance 8B monitoring boundary
 
 The Pi publishes health metadata on its normal schedule. Operational alerts are derived deterministically from that metadata and publisher timestamps; they do not invoke OpenAI. Only the two representative daily frames are eligible for the once-daily visual comparison, with a maximum of three spaced attempts for a given daily frame.
+
+
+## Maintenance 8C local-monitor boundary
+
+- One 128×72 grayscale frame is decoded locally from `latest.jpg` during each publisher cycle.
+- Separate dark, normal, and bright baselines prevent ordinary lighting-mode changes from immediately becoming scene alerts.
+- Baseline comparison compensates for small image shifts and requires repeated captures before reporting obstruction, camera movement, or a persistent scene change.
+- Baseline signatures and streak counters remain on the SSD in `monitor-status.json`; they are not uploaded.
+- Only compact health metrics and issue codes are included in the existing Observer status payload.
+- Water-level tracking requires an explicit normalized ROI and baseline in the separate non-secret monitoring configuration.
+- No new Vercel function, database, camera credential, or per-frame AI request is introduced.

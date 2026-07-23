@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish Observer captures, history, health, and one automatic daily visual summary."""
+"""Publish Observer captures, local visual monitoring, health, history, and one daily summary."""
 from __future__ import annotations
 
 import base64
@@ -17,14 +17,18 @@ from pathlib import Path
 from typing import Any
 
 CONFIG_PATH = Path('/etc/reefkeeper-observer/publisher.json')
+MONITOR_CONFIG_PATH = Path('/etc/reefkeeper-observer/monitoring.json')
 MOUNT_DIR = Path('/mnt/reef-ssd')
 BASE_DIR = MOUNT_DIR / 'aquarium-observer'
 IMAGE_PATH = BASE_DIR / 'latest.jpg'
 CAPTURES_DIR = BASE_DIR / 'captures'
 CAPTURE_STATUS_PATH = BASE_DIR / 'status.json'
 PUBLISH_STATUS_PATH = BASE_DIR / 'publish-status.json'
+MONITOR_STATUS_PATH = BASE_DIR / 'monitor-status.json'
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.3'
+PUBLISHER_VERSION = '2.4'
+MONITOR_WIDTH = 128
+MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
 PUBLISH_TIMER = 'reefkeeper-observer-publish.timer'
 CAPTURE_NAME_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.jpg$', re.I)
@@ -333,14 +337,432 @@ def power_probe() -> dict[str, Any]:
     }
 
 
+def monitor_config(primary: dict[str, Any]) -> dict[str, Any]:
+    defaults: dict[str, Any] = {
+        'enabled': True,
+        'scene_change_threshold': 0.18,
+        'scene_alert_streak': 3,
+        'obstruction_alert_streak': 2,
+        'baseline_learning_rate': 0.025,
+        'water_level': {
+            'enabled': False,
+            'roi': None,
+            'baseline_y_percent': None,
+            'warning_delta_percent': 5.0,
+            'urgent_delta_percent': 10.0,
+            'alert_streak': 2,
+            'minimum_confidence': 0.45,
+        },
+    }
+    source = primary.get('local_monitoring') if isinstance(primary.get('local_monitoring'), dict) else {}
+    override: dict[str, Any] = {}
+    try:
+        override = read_json(MONITOR_CONFIG_PATH)
+    except Exception:
+        override = {}
+
+    merged = {**defaults, **source, **override}
+    water_source = source.get('water_level') if isinstance(source.get('water_level'), dict) else {}
+    water_override = override.get('water_level') if isinstance(override.get('water_level'), dict) else {}
+    merged['water_level'] = {**defaults['water_level'], **water_source, **water_override}
+    return merged
+
+
+def clamp_number(value: Any, minimum: float, maximum: float, fallback: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return fallback
+    return max(minimum, min(maximum, number))
+
+
+def decode_monitor_frame(path: Path, width: int = MONITOR_WIDTH, height: int = MONITOR_HEIGHT) -> list[int]:
+    ffmpeg = shutil.which('ffmpeg') or '/usr/bin/ffmpeg'
+    command = [
+        ffmpeg,
+        '-v', 'error',
+        '-i', str(path),
+        '-vf', f'scale={width}:{height}:flags=area,format=gray',
+        '-frames:v', '1',
+        '-f', 'rawvideo',
+        '-pix_fmt', 'gray',
+        'pipe:1',
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, timeout=15, check=False)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RuntimeError(f'Local image decoder failed: {safe_text(error, 180)}') from error
+    expected = width * height
+    if result.returncode != 0 or len(result.stdout) != expected:
+        detail = result.stderr.decode('utf-8', errors='replace') if isinstance(result.stderr, bytes) else str(result.stderr or '')
+        raise RuntimeError(f'Local image decoder returned no usable frame: {safe_text(detail, 180)}')
+    return list(result.stdout)
+
+
+def frame_metrics(pixels: list[int], width: int = MONITOR_WIDTH, height: int = MONITOR_HEIGHT) -> dict[str, float]:
+    expected = width * height
+    if len(pixels) != expected or expected <= 0:
+        raise ValueError('Monitor frame dimensions do not match the pixel buffer')
+    mean = sum(pixels) / expected
+    variance = sum((value - mean) ** 2 for value in pixels) / expected
+    horizontal = sum(abs(pixels[row * width + column] - pixels[row * width + column - 1]) for row in range(height) for column in range(1, width))
+    vertical = sum(abs(pixels[row * width + column] - pixels[(row - 1) * width + column]) for row in range(1, height) for column in range(width))
+    edge_count = height * (width - 1) + (height - 1) * width
+    return {
+        'meanBrightness': round(mean, 3),
+        'contrast': round(variance ** 0.5, 3),
+        'edgeEnergy': round((horizontal + vertical) / max(1, edge_count), 3),
+        'darkFraction': round(sum(1 for value in pixels if value <= 15) / expected, 4),
+        'brightFraction': round(sum(1 for value in pixels if value >= 240) / expected, 4),
+    }
+
+
+def visual_mode(metrics: dict[str, float]) -> str:
+    mean = float(metrics.get('meanBrightness') or 0)
+    if mean < 58:
+        return 'dark'
+    if mean > 188:
+        return 'bright'
+    return 'normal'
+
+
+def normalized_signature(pixels: list[int], mean: float) -> list[int]:
+    offset = 128.0 - mean
+    return [max(0, min(255, int(round(value + offset)))) for value in pixels]
+
+
+def shifted_difference(current: list[int], reference: list[int], width: int, height: int, dx: int = 0, dy: int = 0) -> float:
+    x_start = max(0, dx)
+    x_end = min(width, width + dx)
+    y_start = max(0, dy)
+    y_end = min(height, height + dy)
+    if x_start >= x_end or y_start >= y_end:
+        return 1.0
+    total = 0
+    count = 0
+    for y in range(y_start, y_end):
+        reference_y = y - dy
+        current_row = y * width
+        reference_row = reference_y * width
+        for x in range(x_start, x_end):
+            total += abs(current[current_row + x] - reference[reference_row + x - dx])
+            count += 1
+    return (total / max(1, count)) / 255.0
+
+
+def compare_to_baseline(current: list[int], reference: list[int], width: int = MONITOR_WIDTH, height: int = MONITOR_HEIGHT) -> dict[str, Any]:
+    if len(current) != width * height or len(reference) != width * height:
+        return {'available': False, 'changeScore': 0.0, 'unshiftedScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'movementLikely': False}
+    unshifted = shifted_difference(current, reference, width, height)
+    best_score = unshifted
+    best_dx = best_dy = 0
+    for dy in range(-2, 3):
+        for dx in range(-3, 4):
+            if dx == 0 and dy == 0:
+                continue
+            score = shifted_difference(current, reference, width, height, dx, dy)
+            if score < best_score:
+                best_score = score
+                best_dx, best_dy = dx, dy
+    improvement = unshifted - best_score
+    movement = (abs(best_dx) >= 2 or abs(best_dy) >= 2) and improvement >= 0.025 and best_score <= unshifted * 0.82
+    return {
+        'available': True,
+        'changeScore': round(best_score, 4),
+        'unshiftedScore': round(unshifted, 4),
+        'shiftX': best_dx,
+        'shiftY': best_dy,
+        'movementLikely': movement,
+    }
+
+
+def blend_signature(reference: list[int], current: list[int], rate: float) -> list[int]:
+    if len(reference) != len(current):
+        return current[:]
+    alpha = max(0.001, min(0.2, rate))
+    return [int(round(old * (1.0 - alpha) + new * alpha)) for old, new in zip(reference, current)]
+
+
+def parse_roi(value: Any) -> tuple[float, float, float, float] | None:
+    if not isinstance(value, (list, tuple)) or len(value) != 4:
+        return None
+    try:
+        x, y, width, height = (float(item) for item in value)
+    except (TypeError, ValueError):
+        return None
+    if width <= 0 or height <= 0:
+        return None
+    x = max(0.0, min(0.99, x))
+    y = max(0.0, min(0.99, y))
+    width = min(width, 1.0 - x)
+    height = min(height, 1.0 - y)
+    if width < 0.08 or height < 0.08:
+        return None
+    return x, y, width, height
+
+
+def detect_water_line(pixels: list[int], roi: tuple[float, float, float, float], width: int = MONITOR_WIDTH, height: int = MONITOR_HEIGHT) -> dict[str, Any]:
+    x, y, roi_width, roi_height = roi
+    left = max(1, int(round(x * width)))
+    right = min(width - 1, int(round((x + roi_width) * width)))
+    top = max(1, int(round(y * height)))
+    bottom = min(height - 2, int(round((y + roi_height) * height)))
+    if right - left < 8 or bottom - top < 5:
+        return {'available': False, 'confidence': 0.0, 'message': 'Water-level region is too small.'}
+
+    scores: list[tuple[int, float, float]] = []
+    for row in range(top + 1, bottom):
+        gradients = [abs(pixels[(row + 1) * width + column] - pixels[(row - 1) * width + column]) for column in range(left, right)]
+        gradients.sort(reverse=True)
+        keep = max(4, int(len(gradients) * 0.65))
+        selected = gradients[:keep]
+        mean_gradient = sum(selected) / max(1, len(selected))
+        coverage = sum(1 for value in gradients if value >= 10) / max(1, len(gradients))
+        scores.append((row, mean_gradient * (0.35 + 0.65 * coverage), coverage))
+    if not scores:
+        return {'available': False, 'confidence': 0.0, 'message': 'No water-level edge could be evaluated.'}
+    scores.sort(key=lambda item: item[1], reverse=True)
+    best_row, best_score, coverage = scores[0]
+    median_score = sorted(item[1] for item in scores)[len(scores) // 2]
+    prominence = best_score / max(1.0, median_score)
+    absolute_strength = min(1.0, best_score / 35.0)
+    confidence = max(0.0, min(1.0, (prominence - 1.0) / 2.5 * 0.55 + absolute_strength * 0.45))
+    y_percent = ((best_row - top) / max(1, bottom - top)) * 100.0
+    return {
+        'available': True,
+        'confidence': round(confidence, 3),
+        'yPercent': round(y_percent, 2),
+        'edgeScore': round(best_score, 3),
+        'coverage': round(coverage, 3),
+        'message': 'Water-surface edge detected.' if confidence >= 0.45 else 'Possible water-surface edge detected with low confidence.',
+    }
+
+
+def local_monitor_default() -> dict[str, Any]:
+    return {
+        'status': 'pending',
+        'message': 'Local visual monitoring has not evaluated a frame yet.',
+        'enabled': True,
+        'evaluatedAt': None,
+        'mode': 'unknown',
+        'imageQuality': {'status': 'pending', 'message': 'Waiting for image-quality analysis.'},
+        'scene': {'status': 'pending', 'message': 'Learning the stable sump view.', 'baselineReady': False, 'changeScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'streak': 0},
+        'waterLevel': {'status': 'pending', 'message': 'Water-level monitoring is not calibrated.', 'configured': False, 'confidence': 0.0, 'streak': 0},
+    }
+
+
+def evaluate_local_monitor(config: dict[str, Any], image_path: Path = IMAGE_PATH, now: datetime | None = None) -> dict[str, Any]:
+    settings = monitor_config(config)
+    if settings.get('enabled') is False:
+        disabled = local_monitor_default()
+        disabled.update({'status': 'healthy', 'enabled': False, 'message': 'Local visual monitoring is disabled in the private Pi configuration.'})
+        return disabled
+    now = now or utc_now_dt()
+    state: dict[str, Any] = {}
+    try:
+        state = read_json(MONITOR_STATUS_PATH)
+    except Exception:
+        state = {}
+    result = local_monitor_default()
+    result['evaluatedAt'] = now.isoformat()
+    try:
+        pixels = decode_monitor_frame(image_path)
+        metrics = frame_metrics(pixels)
+    except Exception as error:
+        message = safe_text(error, 240)
+        result.update({'status': 'attention', 'message': message, 'issues': [health_issue('local_monitor_unavailable', 'warning', message)]})
+        result['imageQuality'] = {'status': 'attention', 'message': message}
+        return result
+
+    mode = visual_mode(metrics)
+    signature = normalized_signature(pixels, metrics['meanBrightness'])
+    baselines = state.get('baselines') if isinstance(state.get('baselines'), dict) else {}
+    baseline = baselines.get(mode) if isinstance(baselines.get(mode), dict) else None
+    reference = baseline.get('signature') if baseline and isinstance(baseline.get('signature'), list) else None
+    comparison = compare_to_baseline(signature, reference) if reference else {'available': False, 'changeScore': 0.0, 'unshiftedScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'movementLikely': False}
+    baseline_metrics = baseline.get('metrics') if baseline and isinstance(baseline.get('metrics'), dict) else {}
+
+    absolute_blank = (metrics['contrast'] < 4.0 and metrics['edgeEnergy'] < 2.0) or metrics['darkFraction'] > 0.985 or metrics['brightFraction'] > 0.985
+    relative_flat = bool(baseline_metrics) and metrics['contrast'] < max(4.0, float(baseline_metrics.get('contrast') or 0) * 0.34) and metrics['edgeEnergy'] < max(2.0, float(baseline_metrics.get('edgeEnergy') or 0) * 0.34)
+    obstruction_candidate = absolute_blank or relative_flat
+    obstruction_streak = (int(state.get('obstructionStreak') or 0) + 1) if obstruction_candidate else 0
+    obstruction_limit = int(clamp_number(settings.get('obstruction_alert_streak'), 1, 6, 2))
+    quality_status = 'attention' if obstruction_streak >= obstruction_limit else ('pending' if obstruction_candidate else 'healthy')
+    if quality_status == 'attention':
+        quality_message = 'The camera view appears blocked, blank, or severely degraded across repeated captures.'
+    elif obstruction_candidate:
+        quality_message = 'The latest frame may be blocked or degraded; waiting for confirmation from the next capture.'
+    else:
+        quality_message = f"Image texture and exposure are usable in {mode} mode."
+
+    threshold = clamp_number(settings.get('scene_change_threshold'), 0.08, 0.5, 0.18)
+    scene_candidate = comparison.get('available') and comparison['changeScore'] >= threshold
+    scene_streak = (int(state.get('sceneStreak') or 0) + 1) if scene_candidate else 0
+    movement_streak = (int(state.get('movementStreak') or 0) + 1) if comparison.get('movementLikely') else 0
+    scene_limit = int(clamp_number(settings.get('scene_alert_streak'), 2, 8, 3))
+    movement_limit = 2
+    if not comparison.get('available'):
+        scene_status = 'pending'
+        scene_message = f'Learning a stable {mode}-lighting baseline.'
+    elif movement_streak >= movement_limit:
+        scene_status = 'attention'
+        scene_message = f"Camera framing appears shifted ({comparison['shiftX']}, {comparison['shiftY']} low-resolution pixels)."
+    elif scene_streak >= scene_limit:
+        scene_status = 'attention'
+        scene_message = f"A persistent sump-view change is present (score {comparison['changeScore']:.2f})."
+    elif scene_candidate:
+        scene_status = 'pending'
+        scene_message = f"A possible scene change is being confirmed (score {comparison['changeScore']:.2f})."
+    else:
+        scene_status = 'healthy'
+        scene_message = f"Sump framing matches the learned {mode}-lighting baseline."
+
+    water_settings = settings.get('water_level') if isinstance(settings.get('water_level'), dict) else {}
+    water_enabled = water_settings.get('enabled') is True
+    roi = parse_roi(water_settings.get('roi')) if water_enabled else None
+    baseline_y = water_settings.get('baseline_y_percent')
+    try:
+        baseline_y_value = float(baseline_y) if baseline_y is not None else None
+    except (TypeError, ValueError):
+        baseline_y_value = None
+    water_streak = 0
+    water_result: dict[str, Any] = {
+        'status': 'pending',
+        'message': 'Water-level monitoring is not calibrated.',
+        'configured': bool(water_enabled and roi and baseline_y_value is not None),
+        'confidence': 0.0,
+        'streak': 0,
+    }
+    if water_enabled and roi:
+        detected = detect_water_line(pixels, roi)
+        minimum_confidence = clamp_number(water_settings.get('minimum_confidence'), 0.2, 0.9, 0.45)
+        water_result.update({
+            'confidence': detected.get('confidence', 0.0),
+            'currentYPercent': detected.get('yPercent'),
+            'edgeScore': detected.get('edgeScore'),
+            'roi': [round(value, 4) for value in roi],
+        })
+        if baseline_y_value is None:
+            water_result['message'] = 'Water-level region is configured but needs a baseline calibration.'
+        elif not detected.get('available') or float(detected.get('confidence') or 0) < minimum_confidence:
+            water_result['message'] = 'The configured water line is not clear enough in this frame; no level alert was generated.'
+            water_result['baselineYPercent'] = round(baseline_y_value, 2)
+        else:
+            delta = baseline_y_value - float(detected['yPercent'])
+            warning_delta = clamp_number(water_settings.get('warning_delta_percent'), 1.0, 30.0, 5.0)
+            urgent_delta = max(warning_delta + 1.0, clamp_number(water_settings.get('urgent_delta_percent'), 2.0, 45.0, 10.0))
+            candidate = abs(delta) >= warning_delta
+            water_streak = (int(state.get('waterLevelStreak') or 0) + 1) if candidate else 0
+            water_limit = int(clamp_number(water_settings.get('alert_streak'), 1, 6, 2))
+            water_result.update({
+                'configured': True,
+                'baselineYPercent': round(baseline_y_value, 2),
+                'currentYPercent': round(float(detected['yPercent']), 2),
+                'deltaPercent': round(delta, 2),
+                'direction': 'higher' if delta > 0 else ('lower' if delta < 0 else 'stable'),
+                'streak': water_streak,
+            })
+            if water_streak >= water_limit and abs(delta) >= urgent_delta:
+                water_result['status'] = 'offline'
+                water_result['message'] = f"Water level appears {abs(delta):.1f}% of the monitored region {'higher' if delta > 0 else 'lower'} than baseline."
+            elif water_streak >= water_limit:
+                water_result['status'] = 'attention'
+                water_result['message'] = f"Water level appears {abs(delta):.1f}% of the monitored region {'higher' if delta > 0 else 'lower'} than baseline."
+            elif candidate:
+                water_result['status'] = 'pending'
+                water_result['message'] = 'A possible water-level shift is being confirmed with the next capture.'
+            else:
+                water_result['status'] = 'healthy'
+                water_result['message'] = f"Water level is within {warning_delta:.1f}% of its calibrated baseline."
+
+    issues: list[dict[str, str]] = []
+    if quality_status == 'attention':
+        issues.append(health_issue('camera_view_obstructed', 'warning', quality_message))
+    if movement_streak >= movement_limit:
+        issues.append(health_issue('camera_view_shifted', 'warning', scene_message))
+    elif scene_streak >= scene_limit:
+        issues.append(health_issue('sump_scene_changed', 'warning', scene_message))
+    if water_result['status'] == 'offline':
+        issues.append(health_issue('water_level_urgent', 'critical', water_result['message']))
+    elif water_result['status'] == 'attention':
+        issues.append(health_issue('water_level_watch', 'warning', water_result['message']))
+
+    baseline_can_learn = not obstruction_candidate and (not comparison.get('available') or comparison['changeScore'] < min(threshold * 0.55, 0.09))
+    if baseline is None:
+        baselines[mode] = {'signature': signature, 'metrics': metrics, 'learnedAt': now.isoformat(), 'samples': 1}
+    elif baseline_can_learn:
+        learning_rate = clamp_number(settings.get('baseline_learning_rate'), 0.002, 0.1, 0.025)
+        baselines[mode] = {
+            **baseline,
+            'signature': blend_signature(reference, signature, learning_rate),
+            'metrics': {key: round(float(baseline_metrics.get(key, value)) * (1.0 - learning_rate) + float(value) * learning_rate, 4) for key, value in metrics.items()},
+            'updatedAt': now.isoformat(),
+            'samples': int(baseline.get('samples') or 1) + 1,
+        }
+
+    new_state = {
+        'schemaVersion': 1,
+        'updatedAt': now.isoformat(),
+        'baselines': baselines,
+        'obstructionStreak': obstruction_streak,
+        'sceneStreak': scene_streak,
+        'movementStreak': movement_streak,
+        'waterLevelStreak': water_streak,
+        'lastMode': mode,
+        'lastMetrics': metrics,
+        'lastComparison': comparison,
+        'lastWaterLevel': water_result,
+    }
+    try:
+        write_json_atomic(MONITOR_STATUS_PATH, new_state)
+    except Exception as error:
+        issues.append(health_issue('local_monitor_state_error', 'warning', f'Local monitoring state could not be saved: {safe_text(error, 160)}'))
+
+    component_statuses = [quality_status, scene_status, water_result['status'] if water_result.get('configured') else 'healthy']
+    overall = 'offline' if 'offline' in component_statuses else ('attention' if 'attention' in component_statuses else ('pending' if 'pending' in component_statuses else 'healthy'))
+    message = {
+        'healthy': 'Local image quality, sump framing, and configured water-level checks are stable.',
+        'attention': 'Local monitoring found a repeated visual condition that should be checked.',
+        'offline': 'Local monitoring found a possible urgent water-level condition.',
+        'pending': 'Local monitoring is learning or confirming the sump view.',
+    }[overall]
+    result.update({
+        'status': overall,
+        'message': message,
+        'enabled': True,
+        'evaluatedAt': now.isoformat(),
+        'mode': mode,
+        'issues': issues,
+        'imageQuality': {
+            'status': quality_status,
+            'message': quality_message,
+            **metrics,
+            'obstructionStreak': obstruction_streak,
+        },
+        'scene': {
+            'status': scene_status,
+            'message': scene_message,
+            'baselineReady': comparison.get('available') is True,
+            'changeScore': comparison.get('changeScore', 0.0),
+            'unshiftedScore': comparison.get('unshiftedScore', 0.0),
+            'shiftX': comparison.get('shiftX', 0),
+            'shiftY': comparison.get('shiftY', 0),
+            'movementLikely': comparison.get('movementLikely') is True,
+            'streak': max(scene_streak, movement_streak),
+        },
+        'waterLevel': water_result,
+    })
+    return result
+
 def health_issue(code: str, severity: str, message: str) -> dict[str, str]:
     return {'code': code, 'severity': severity, 'message': safe_text(message, 240)}
 
 
-def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: list[tuple[datetime, Path]], previous_status: dict[str, Any] | None = None, daily_images: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: list[tuple[datetime, Path]], previous_status: dict[str, Any] | None = None, daily_images: list[dict[str, Any]] | None = None, local_monitor: dict[str, Any] | None = None) -> dict[str, Any]:
     now = utc_now_dt()
     previous_status = previous_status or {}
     daily_images = daily_images if daily_images is not None else select_daily_images(config, catalog, now)
+    local_monitor = local_monitor if local_monitor is not None else local_monitor_default()
     interval = max(1, int(config.get('capture_interval_minutes') or 5))
     capture_timer_active, capture_timer_state = unit_state(CAPTURE_TIMER)
     publish_timer_active, publish_timer_state = unit_state(PUBLISH_TIMER)
@@ -432,11 +854,16 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
         issue_code = 'daily_summary_paused' if daily_summary['state'] == 'paused_after_retries' else 'daily_summary_retry'
         issues.append(health_issue(issue_code, 'warning', daily_summary['message']))
 
+    monitor_issues = local_monitor.get('issues') if isinstance(local_monitor.get('issues'), list) else []
+    for item in monitor_issues:
+        if isinstance(item, dict):
+            issues.append(health_issue(str(item.get('code') or 'local_monitor_issue'), str(item.get('severity') or 'info'), str(item.get('message') or 'Local monitoring reported an issue.')))
+
     critical = any(item['severity'] == 'critical' for item in issues)
     warning = any(item['severity'] == 'warning' for item in issues)
     overall = 'offline' if critical else ('attention' if warning else 'healthy')
     summary = {
-        'healthy': 'Observer capture, publishing, storage, and power checks are healthy.',
+        'healthy': 'Observer capture, publishing, storage, power, and local visual checks are healthy.',
         'attention': 'Observer is running, but one or more checks need attention.',
         'offline': 'A critical Observer component is unavailable.',
     }[overall]
@@ -473,6 +900,7 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
             **power,
         },
         'dailySummary': daily_summary,
+        'localMonitoring': local_monitor,
         'archive': {
             'status': archive_status,
             'message': archive_message,
@@ -569,7 +997,8 @@ def main() -> int:
             previous_publish_status = {}
         now = utc_now_dt()
         daily_images = select_daily_images(config, catalog, now)
-        health = collect_health(config, capture, catalog, previous_publish_status, daily_images)
+        local_monitor = evaluate_local_monitor(config)
+        health = collect_health(config, capture, catalog, previous_publish_status, daily_images, local_monitor)
 
         try:
             if not captured_at:
@@ -628,6 +1057,7 @@ def main() -> int:
                 'sizeBytes': len(image),
                 'historySlots': slots,
                 'healthStatus': health.get('status'),
+                'localMonitorStatus': local_monitor.get('status'),
                 'dailySummaryStatus': daily_status,
                 'dailySummaryCurrentCapturedAt': daily_current or None,
                 'dailySummaryGeneratedAt': daily_generated or None,
@@ -638,10 +1068,10 @@ def main() -> int:
                 'dailySummaryNextAttemptAt': daily_next_attempt or None,
                 'publisherVersion': PUBLISHER_VERSION,
             })
-            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} daily={daily_status}")
+            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} monitor={local_monitor.get('status')} daily={daily_status}")
             return 0
         except (OSError, ValueError) as local_error:
-            health = collect_health(config, capture, catalog, previous_publish_status, daily_images)
+            health = collect_health(config, capture, catalog, previous_publish_status, daily_images, local_monitor)
             health['status'] = 'offline'
             health['summary'] = 'The publisher is reachable, but a local capture or storage problem prevents image upload.'
             health.setdefault('issues', []).append(health_issue('image_publish_unavailable', 'critical', str(local_error)))
