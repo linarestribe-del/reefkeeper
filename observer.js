@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 8C — Aquarium Observer local visual monitoring, operational alerts, summaries, and timelapses
+// Reef Keeper Maintenance 8D — dual-camera Aquarium Observer monitoring, alerts, summaries, and timelapses
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -36,6 +36,8 @@
   ].join('\n');
 
   let snapshot = null;
+  let observerFeed = null;
+  let selectedCameraId = 'overview';
   let refreshTimer = null;
   let refreshInFlight = null;
   let dailySummary = null;
@@ -592,13 +594,13 @@
     return health;
   }
 
-  function normalizeRecord(payload) {
-    const record = payload && typeof payload === 'object' ? payload : {};
-    const captured = captureDate(record);
-    const publishedAt = parseDate(record.publishedAt || record.receivedAt);
-    const imageUrl = String(record.thumbnailUrl || record.imageUrl || record.latestImageUrl || '').trim();
-    const configured = record.configured === true || Boolean(record.receivedAt || publishedAt || captured || imageUrl);
-    const health = effectiveHealth(record, captured, publishedAt);
+  function normalizeCameraRecord(record, cameraId, rootRecord = {}) {
+    const source = record && typeof record === 'object' ? record : {};
+    const captured = captureDate(source);
+    const publishedAt = parseDate(source.publishedAt || source.receivedAt || (cameraId === 'overview' ? (rootRecord.publishedAt || rootRecord.receivedAt) : null));
+    const imageUrl = String(source.thumbnailUrl || source.imageUrl || source.latestImageUrl || '').trim();
+    const configured = source.configured === true || Boolean(source.receivedAt || publishedAt || captured || imageUrl);
+    const health = effectiveHealth(source, captured, publishedAt);
 
     let state = 'pending';
     let label = 'Checking';
@@ -607,8 +609,10 @@
     else if (health.status === 'attention') { state = 'stale'; label = 'Attention'; }
     else { state = 'offline'; label = 'Offline'; }
 
+    const defaultLabel = cameraId === 'return' ? 'Return chamber' : 'Sump overview';
     return {
-      raw: record,
+      raw: source,
+      cameraId,
       configured,
       ok: state === 'online',
       stale: state === 'stale',
@@ -618,24 +622,70 @@
       publishedAt,
       imageUrl,
       health,
-      comparisons: {
-        previous: normalizeComparison('previous', record.comparisons?.previous),
-        dayAgo: normalizeComparison('dayAgo', record.comparisons?.dayAgo),
-        weekAgo: normalizeComparison('weekAgo', record.comparisons?.weekAgo)
+      comparisons: cameraId === 'overview' ? {
+        previous: normalizeComparison('previous', source.comparisons?.previous),
+        dayAgo: normalizeComparison('dayAgo', source.comparisons?.dayAgo),
+        weekAgo: normalizeComparison('weekAgo', source.comparisons?.weekAgo)
+      } : {
+        previous: normalizeComparison('previous', null),
+        dayAgo: normalizeComparison('dayAgo', null),
+        weekAgo: normalizeComparison('weekAgo', null)
       },
-      receivedAt: parseDate(record.receivedAt),
-      cameraLabel: String(record.cameraLabel || record.camera?.label || 'Sump camera'),
-      stream: String(record.stream || record.camera?.stream || 'stream2'),
-      resolution: String(record.resolution || record.camera?.resolution || '1280×720'),
-      intervalMinutes: Number(record.captureIntervalMinutes || record.intervalMinutes || 5) || 5,
-      publisherVersion: String(record.publisherVersion || health.publisher?.version || '—'),
-      sizeBytes: Number(record.sizeBytes ?? record.size_bytes),
-      storageLabel: String(record.storage?.label || record.storageLabel || 'Local Pi drive'),
-      storageTotalBytes: Number(record.storage?.totalBytes || health.storage?.totalBytes || 0),
-      storageAvailableBytes: Number(record.storage?.availableBytes || health.storage?.availableBytes || 0),
-      storageUsedPercent: Number(record.storage?.usedPercent ?? health.storage?.usedPercent),
-      message: String(record.message || record.error || '')
+      receivedAt: parseDate(source.receivedAt || rootRecord.receivedAt),
+      cameraLabel: String(source.cameraLabel || source.camera?.label || defaultLabel),
+      stream: String(source.stream || source.camera?.stream || 'stream1'),
+      resolution: String(source.resolution || source.camera?.resolution || '2560×1440'),
+      intervalMinutes: Number(source.captureIntervalMinutes || source.intervalMinutes || 5) || 5,
+      publisherVersion: String(source.publisherVersion || rootRecord.publisherVersion || health.publisher?.version || '—'),
+      sizeBytes: Number(source.sizeBytes ?? source.size_bytes),
+      storageLabel: String(source.storage?.label || rootRecord.storage?.label || source.storageLabel || 'Local Pi drive'),
+      storageTotalBytes: Number(source.storage?.totalBytes || rootRecord.storage?.totalBytes || health.storage?.totalBytes || 0),
+      storageAvailableBytes: Number(source.storage?.availableBytes || rootRecord.storage?.availableBytes || health.storage?.availableBytes || 0),
+      storageUsedPercent: Number(source.storage?.usedPercent ?? rootRecord.storage?.usedPercent ?? health.storage?.usedPercent),
+      message: String(source.message || source.error || '')
     };
+  }
+
+  function normalizeRecord(payload) {
+    const root = payload && typeof payload === 'object' ? payload : {};
+    const cameras = root.cameras && typeof root.cameras === 'object' ? root.cameras : {};
+    const overviewSource = cameras.overview && typeof cameras.overview === 'object' ? cameras.overview : root;
+    const returnSource = cameras.return && typeof cameras.return === 'object'
+      ? cameras.return
+      : { configured: false, ok: false, cameraLabel: 'Return chamber', stream: 'stream1', resolution: '2560×1440' };
+    return {
+      raw: root,
+      overview: normalizeCameraRecord(overviewSource, 'overview', root),
+      return: normalizeCameraRecord(returnSource, 'return', root)
+    };
+  }
+
+  function activeObserverRecord() {
+    return observerFeed?.[selectedCameraId] || observerFeed?.overview || snapshot;
+  }
+
+  function renderCameraSelector() {
+    for (const cameraId of ['overview', 'return']) {
+      const button = byId(`observer-camera-${cameraId}`);
+      const record = observerFeed?.[cameraId];
+      if (!button) continue;
+      button.classList.toggle('active', selectedCameraId === cameraId);
+      button.setAttribute('aria-pressed', selectedCameraId === cameraId ? 'true' : 'false');
+      button.classList.toggle('unavailable', !record?.configured);
+      const state = button.querySelector('small');
+      if (state) state.textContent = record?.configured ? record.label : 'Waiting';
+    }
+    document.querySelectorAll('[data-observer-overview-only]').forEach(element => {
+      element.hidden = selectedCameraId !== 'overview';
+    });
+  }
+
+  function selectObserverCamera(cameraId) {
+    if (!['overview', 'return'].includes(cameraId)) return;
+    selectedCameraId = cameraId;
+    renderCameraSelector();
+    const record = activeObserverRecord();
+    if (record) renderObserver(record);
   }
 
   function setBadge(id, record) {
@@ -843,19 +893,23 @@
 
   function renderObserver(record) {
     snapshot = record;
+    const overview = observerFeed?.overview || record;
+    renderCameraSelector();
     const captureIso = record.captured?.toISOString() || '';
     const capturedLabel = formatCaptureTime(captureIso);
     const ageLabel = formatAge(record.captured);
     const intervalLabel = `Every ${record.intervalMinutes} min`;
 
-    setBadge('observer-preview-badge', record);
+    setBadge('observer-preview-badge', overview);
     setBadge('observer-detail-badge', record);
-    updateImage('observer-preview-image', 'observer-preview-placeholder', 'observer-preview-image-time', record);
+    updateImage('observer-preview-image', 'observer-preview-placeholder', 'observer-preview-image-time', overview);
     updateImage('observer-detail-image', 'observer-detail-placeholder', 'observer-detail-image-time', record);
 
-    setText('observer-preview-captured', capturedLabel);
-    setText('observer-preview-age', ageLabel);
-    setText('observer-preview-interval', intervalLabel);
+    setText('observer-preview-captured', formatCaptureTime(overview.captured?.toISOString()));
+    setText('observer-preview-age', formatAge(overview.captured));
+    setText('observer-preview-interval', `Every ${overview.intervalMinutes} min`);
+    setText('observer-detail-eyebrow', record.cameraId === 'return' ? 'Dedicated water-level camera' : 'Sump overview camera');
+    setText('observer-detail-title', `${record.cameraLabel} · ${record.stream}`);
     setText('observer-detail-status', record.label);
     setText('observer-detail-captured', capturedLabel);
     setText('observer-detail-age', ageLabel);
@@ -868,13 +922,13 @@
     setText('observer-detail-storage', record.storageLabel);
     setText('observer-detail-drive-space', record.storageAvailableBytes ? `${formatBytes(record.storageAvailableBytes)} free · ${Number(record.storageUsedPercent || 0).toFixed(1)}% used` : '—');
     renderObserverHealth(record);
-    renderHistoryOptions(record);
-    if (observerTimelapses) renderObserverTimelapses(observerTimelapses, record);
+    if (record.cameraId === 'overview') renderHistoryOptions(record);
+    if (observerTimelapses && record.cameraId === 'overview') renderObserverTimelapses(observerTimelapses, record);
 
     const note = byId('observer-connection-note');
     if (note) {
       if (record.health.status === 'healthy') {
-        note.innerHTML = '<strong>Observer system is healthy.</strong><span>The camera, Pi timers, storage drive, and remote publisher are reporting normally. The full archive remains on the Raspberry Pi drive.</span>';
+        note.innerHTML = `<strong>${cleanText(record.cameraLabel)} is healthy.</strong><span>This camera, its capture timer, the storage drive, and remote publisher are reporting normally. The full archive remains on the Raspberry Pi drive.</span>`;
       } else if (record.health.publisher.status === 'offline') {
         note.innerHTML = '<strong>The remote publisher stopped reporting.</strong><span>The app cannot confirm what is happening on the Pi until a new health report arrives. Local captures may still be running.</span>';
       } else if (record.health.capture.status !== 'healthy' && record.health.publisher.status === 'healthy') {
@@ -890,7 +944,10 @@
     }
 
     const analyze = byId('observer-analyze-btn');
-    if (analyze) analyze.disabled = !record.imageUrl;
+    if (analyze) {
+      analyze.disabled = !record.imageUrl;
+      analyze.textContent = record.cameraId === 'return' ? 'Analyze return chamber' : 'Analyze latest capture';
+    }
   }
 
   async function fetchObserverStatus() {
@@ -908,16 +965,18 @@
     buttons.forEach(button => { button.disabled = true; });
     refreshInFlight = (async () => {
       try {
-        const [record, report, alerts, timelapses] = await Promise.all([
+        const [feed, report, alerts, timelapses] = await Promise.all([
           fetchObserverStatus(),
           fetchObserverDailySummary().catch(error => normalizeDailySummary({ ok: false, state: 'temporarily_unavailable', message: error.message || String(error) })),
           fetchObserverAlerts().catch(() => normalizeObserverAlertFeed({ ok: false, alerts: [] })),
           fetchObserverTimelapses().catch(() => normalizeTimelapseFeed({ ok: false, timelapses: {} }))
         ]);
+        observerFeed = feed;
+        const record = activeObserverRecord() || feed.overview;
         renderObserver(record);
         renderDailySummary(report);
         renderObserverAlerts(alerts);
-        renderObserverTimelapses(timelapses, record);
+        if (selectedCameraId === 'overview') renderObserverTimelapses(timelapses, observerFeed?.overview || record);
         announceNewObserverAlerts(alerts);
         if (event && typeof showToast === 'function') {
           const message = record.health.status === 'healthy' ? '✅ Observer health refreshed' : '⚠️ Observer health needs attention';
@@ -925,7 +984,8 @@
         }
         return record;
       } catch (error) {
-        const record = normalizeRecord({ configured: true, ok: false, error: error.message || String(error) });
+        observerFeed = normalizeRecord({ configured: true, ok: false, error: error.message || String(error) });
+        const record = activeObserverRecord() || observerFeed.overview;
         renderObserver(record);
         if (event && typeof showToast === 'function') showToast('⚠️ Could not refresh Observer status');
         return record;
@@ -980,17 +1040,20 @@
     const button = byId('observer-analyze-btn');
     if (button) { button.disabled = true; button.textContent = 'Preparing image…'; }
     try {
-      const image = await imageAttachmentFromUrl(snapshot.imageUrl, 'aquarium-observer-latest.jpg');
-      openImagesInChat([image], OBSERVER_ANALYSIS_PROMPT, '📹 Latest Observer capture ready for AI');
+      const cameraName = snapshot.cameraId === 'return' ? 'return chamber' : 'sump overview';
+      const image = await imageAttachmentFromUrl(snapshot.imageUrl, `aquarium-observer-${snapshot.cameraId}-latest.jpg`);
+      const prompt = [`This image is from the dedicated ${cameraName} camera.`, OBSERVER_ANALYSIS_PROMPT].join('\n\n');
+      openImagesInChat([image], prompt, `📹 ${snapshot.cameraLabel} capture ready for AI`);
     } catch (error) {
       console.warn('Could not prepare Observer image', error);
       if (typeof showToast === 'function') showToast(`⚠️ ${error.message || 'Could not load Observer image'}`);
     } finally {
-      if (button) { button.textContent = 'Analyze latest capture'; button.disabled = !snapshot?.imageUrl; }
+      if (button) { button.textContent = snapshot?.cameraId === 'return' ? 'Analyze return chamber' : 'Analyze latest capture'; button.disabled = !snapshot?.imageUrl; }
     }
   }
 
   async function compareObserverHistory(slot) {
+    if (snapshot?.cameraId !== 'overview') return;
     const comparison = snapshot?.comparisons?.[slot];
     if (!snapshot?.imageUrl || !comparison?.available) {
       if (typeof showToast === 'function') showToast('That historical comparison is not available yet');
@@ -1078,6 +1141,7 @@
 
   window.openAquariumObserver = openAquariumObserver;
   window.refreshAquariumObserver = refreshAquariumObserver;
+  window.selectObserverCamera = selectObserverCamera;
   window.analyzeLatestObserverCapture = analyzeLatestObserverCapture;
   window.compareObserverHistory = compareObserverHistory;
   window.copyObserverDiagnosticReport = copyObserverDiagnosticReport;
@@ -1089,12 +1153,15 @@
   window.ReefKeeperObserver = {
     refresh: refreshAquariumObserver,
     getSnapshot: () => snapshot,
+    getFeed: () => observerFeed,
+    selectCamera: selectObserverCamera,
     diagnostic: () => buildObserverDiagnosticReport(snapshot),
     endpoint: STATUS_ENDPOINT
   };
 
   const initialize = () => {
-    renderObserver(normalizeRecord({ configured: false, ok: false }));
+    observerFeed = normalizeRecord({ configured: false, ok: false });
+    renderObserver(observerFeed.overview);
     renderDailySummary(normalizeDailySummary({ ok: false }));
     renderObserverAlerts(normalizeObserverAlertFeed({ ok: true, alerts: [] }));
     refreshAquariumObserver();

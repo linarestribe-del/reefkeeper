@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {
   readObserverImage,
+  readObserverCameraImage,
   readObserverStatus,
   writeObserverImage,
+  writeObserverCameraImage,
   writeObserverStatus
 } from '../lib/observer-r2.js';
 
@@ -29,7 +31,7 @@ globalThis.fetch = async (url, options = {}) => {
         headers: { 'Content-Type': 'application/json', ETag: '"status-etag"' }
       });
     }
-    if (String(url).endsWith('/reefkeeper-observer/aquarium-observer/latest.jpg')) {
+    if (String(url).endsWith('/reefkeeper-observer/aquarium-observer/latest.jpg') || String(url).endsWith('/reefkeeper-observer/aquarium-observer/return-chamber/latest.jpg')) {
       return new Response(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), {
         status: 200,
         headers: { 'Content-Type': 'image/jpeg', 'Content-Length': '4', ETag: '"image-etag"' }
@@ -45,9 +47,11 @@ try {
   assert.equal(statusWrite.etag, 'put-etag');
   const imageWrite = await writeObserverImage(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), 'latest');
   assert.equal(imageWrite.etag, 'put-etag');
+  const returnWrite = await writeObserverCameraImage(Buffer.from([0xff, 0xd8, 0xff, 0xd9]), 'return', 'latest');
+  assert.equal(returnWrite.etag, 'put-etag');
 
   const putRequests = requests.filter(item => item.options.method === 'PUT');
-  assert.equal(putRequests.length, 2);
+  assert.equal(putRequests.length, 3);
   for (const request of putRequests) {
     assert.match(request.url, /^https:\/\/example-account\.r2\.cloudflarestorage\.com\/reefkeeper-observer\/aquarium-observer\//);
     assert.match(String(request.options.headers.Authorization || ''), /^AWS4-HMAC-SHA256 Credential=test-access-key\//);
@@ -63,9 +67,12 @@ try {
   assert.equal(image.blob.size, 4);
   assert.equal(image.blob.etag, 'image-etag');
   assert.ok(image.stream && typeof image.stream.getReader === 'function');
+  const returnImage = await readObserverCameraImage('return', 'latest');
+  assert.equal(returnImage.statusCode, 200);
+  assert.equal(returnImage.blob.contentType, 'image/jpeg');
 
   const getRequests = requests.filter(item => item.options.method === 'GET');
-  assert.equal(getRequests.length, 2);
+  assert.equal(getRequests.length, 3);
   for (const request of getRequests) {
     assert.match(String(request.options.headers.Authorization || ''), /^AWS4-HMAC-SHA256 Credential=test-access-key\//);
     assert.equal(request.options.redirect, 'error');

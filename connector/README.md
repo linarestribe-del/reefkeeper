@@ -98,3 +98,10 @@ The defaults require no configuration edit. The publisher also includes daily-mo
 Publisher 2.4 decodes one 128×72 grayscale working frame per publish cycle and performs image-quality, stable-scene, and optional calibrated water-level screening locally. It does not send each frame to OpenAI. Lighting-specific baseline signatures stay in `/mnt/reef-ssd/aquarium-observer/monitor-status.json`. Optional non-secret settings live in `/etc/reefkeeper-observer/monitoring.json`.
 
 Water-level tracking starts disabled. Use `observer-water-level-calibrate.py` only after selecting a visible region around the sump water line. The tool updates the monitoring file without reading or editing the publisher endpoint or token. Install Publisher 2.4 with `install-observer-publisher-2.4.sh`; the updater discovers the active systemd path, verifies both downloaded files, creates a backup, and rolls back automatically if the controlled publish fails.
+
+
+## Maintenance 8D Observer publisher 2.5
+
+Publisher 2.5 preserves the existing overview workflow and additionally reads `/mnt/reef-ssd/aquarium-observer/return-chamber/`. It publishes the return camera to the same authenticated Observer endpoint using the `camera=return` selector. Return capture health and local-monitor state are independent, and a return-camera outage does not prevent a valid overview publish.
+
+Use `install-observer-publisher-2.5.sh` after the v4.3.46 web deployment is Ready. The installer discovers the actual systemd publisher path, verifies pinned checksums, creates validated Publisher 2.4 backups, requires successful overview and return publishes, and rolls back automatically on failure. The calibration helper now supports `--camera return|overview` and defaults to Return Chamber.

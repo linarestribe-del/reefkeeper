@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260723-maintenance-8c-local-monitoring">
+<link rel="stylesheet" href="css/app.css?v=20260724-maintenance-8d-dual-camera">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1085,9 +1085,14 @@
       <div class="compact-page-bar">
         <div>
           <div class="compact-page-title">Aquarium Observer</div>
-          <div class="compact-page-subtitle">Latest capture, Pi health, history comparisons, and the automatic daily visual report.</div>
+          <div class="compact-page-subtitle">Two-camera sump monitoring, Pi health, return-chamber tracking, history comparisons, and daily visual reports.</div>
         </div>
         <button class="compact-page-action" type="button" onclick="rkDirectGo('vision')">Back</button>
+      </div>
+
+      <div class="observer-camera-selector" role="group" aria-label="Observer camera">
+        <button id="observer-camera-overview" class="observer-camera-choice active" type="button" aria-pressed="true" onclick="selectObserverCamera('overview')"><span>📹</span><strong>Sump overview</strong><small>Checking</small></button>
+        <button id="observer-camera-return" class="observer-camera-choice" type="button" aria-pressed="false" onclick="selectObserverCamera('return')"><span>🌊</span><strong>Return chamber</strong><small>Waiting</small></button>
       </div>
 
       <section class="observer-detail-card">
@@ -1095,15 +1100,15 @@
           <div class="observer-title-wrap">
             <span class="observer-camera-icon" aria-hidden="true">📹</span>
             <div>
-              <div class="observer-eyebrow">Sump camera</div>
-              <div class="observer-card-title">Tapo C500 · stream2</div>
+              <div class="observer-eyebrow" id="observer-detail-eyebrow">Sump overview camera</div>
+              <div class="observer-card-title" id="observer-detail-title">Sump Overview · stream1</div>
             </div>
           </div>
           <span class="observer-state-badge pending" id="observer-detail-badge">Checking</span>
         </div>
 
         <div class="observer-detail-frame">
-          <img id="observer-detail-image" alt="Latest Aquarium Observer sump capture" hidden>
+          <img id="observer-detail-image" alt="Latest Aquarium Observer camera capture" hidden>
           <div class="observer-image-placeholder observer-detail-placeholder is-visible" id="observer-detail-placeholder">
             <b>🌊</b>
             <strong>Remote image not connected yet</strong>
@@ -1200,7 +1205,7 @@
             <span>🌊</span><div><strong>Sump water level</strong><small id="observer-local-water-detail">Calibration has not been completed.</small></div><b id="observer-local-water-state">Not set</b>
           </div>
         </div>
-        <div class="observer-local-monitor-note">These checks run on the Raspberry Pi from reduced grayscale frames. They do not send every capture to AI. Water-level alerts remain disabled until a visible sump region is calibrated.</div>
+        <div class="observer-local-monitor-note">These checks run separately for the selected camera on the Raspberry Pi from reduced grayscale frames. They do not send every capture to AI. Water-level calibration is intended for the Return Chamber camera.</div>
       </section>
 
       <section class="observer-alert-card" id="observer-alert-card" aria-labelledby="observer-alert-title">
@@ -1219,7 +1224,7 @@
         <div class="observer-alert-note">System alerts come from deterministic Pi health checks without AI. Visual alerts come only from the once-daily comparison and remain evidence-limited screening prompts. Verify the camera view and inspect the sump directly before acting.</div>
       </section>
 
-      <section class="observer-daily-card" id="observer-daily-card" aria-labelledby="observer-daily-title">
+      <section class="observer-daily-card" id="observer-daily-card" data-observer-overview-only aria-labelledby="observer-daily-title">
         <div class="observer-daily-head">
           <div>
             <div class="observer-safety-title" id="observer-daily-title">Daily visual summary</div>
@@ -1241,7 +1246,7 @@
       </section>
 
 
-      <section class="observer-timelapse-card" id="observer-timelapse-card" aria-labelledby="observer-timelapse-title">
+      <section class="observer-timelapse-card" id="observer-timelapse-card" data-observer-overview-only aria-labelledby="observer-timelapse-title">
         <div class="observer-timelapse-head">
           <div>
             <div class="observer-safety-title" id="observer-timelapse-title">Weekly and monthly time-lapses</div>
@@ -1270,7 +1275,7 @@
         <p class="observer-history-note">The Raspberry Pi creates small H.264 videos from selected archive frames once per day. Only the finished videos are uploaded; the complete five-minute image archive remains on the local drive.</p>
       </section>
 
-      <section class="observer-history-card">
+      <section class="observer-history-card" data-observer-overview-only>
         <div class="observer-history-head">
           <div>
             <div class="observer-safety-title">Compare with history</div>
@@ -1669,7 +1674,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.45 Maintenance 8C</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.46 Maintenance 8D</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3335,8 +3340,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260723-maintenance-8c-local-monitoring"></script>
-<script src="observer.js?v=20260723-maintenance-8c-local-monitoring"></script>
+<script src="app.js?v=20260724-maintenance-8d-dual-camera"></script>
+<script src="observer.js?v=20260724-maintenance-8d-dual-camera"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

@@ -324,3 +324,18 @@ For each fixture, store expected observations, prohibited claims, maximum confid
 - Confirm only compact metrics enter the Observer status payload; baseline signatures stay in local `monitor-status.json`.
 - Confirm Local visual monitor health, Local sump monitoring details, diagnostics, and system alerts render in the app.
 - Confirm existing R2 image publishing, daily summary, comparisons, timelapses, and 12-function limit remain intact.
+
+
+## Maintenance 8D dual-camera Observer checks
+
+- Confirm schema 9 preserves top-level overview compatibility and exposes normalized `overview` and `return` camera records.
+- Confirm return images use a fixed private R2 path and the image API accepts only the return `latest` slot.
+- Confirm an overview publish preserves the most recent return record and a return publish does not overwrite overview history metadata.
+- Confirm Publisher 2.5 reads the separate return capture/status/archive paths and publishes both cameras without camera credentials or local paths in payloads.
+- Confirm a return-camera failure is reported independently and does not block an otherwise successful overview publish.
+- Confirm return operational alerts use distinct identifiers and camera labels.
+- Confirm the camera selector updates detail image, timestamps, health, and local-monitor fields.
+- Confirm overview history, daily-summary, and timelapse sections are hidden for Return Chamber and unchanged for Sump Overview.
+- Confirm water-level calibration defaults to the return camera and keeps overview/return configuration files separate.
+- Confirm the Publisher 2.5 installer discovers systemd `ExecStart`, verifies pinned file checksums, backs up Publisher 2.4, requires both camera results, and rolls back automatically on failure.
+- Confirm Vercel remains at 12/12 functions and no per-frame AI call is introduced.

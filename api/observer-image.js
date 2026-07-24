@@ -1,8 +1,8 @@
-// Reef Keeper Build 2J — same-origin delivery for current and selected historical images
+// Reef Keeper Maintenance 8D — same-origin delivery for dual-camera current and historical images
 
 import { Readable } from 'node:stream';
-import { normalizeObserverSlot, normalizeObserverTimelapseSlot } from '../lib/observer-common.js';
-import { readObserverImage, readObserverTimelapse } from '../lib/observer-r2.js';
+import { normalizeObserverSlot, normalizeObserverCameraId, normalizeObserverTimelapseSlot } from '../lib/observer-common.js';
+import { readObserverCameraImage, readObserverTimelapse } from '../lib/observer-r2.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -62,15 +62,17 @@ export default async function handler(req, res) {
     }
   }
 
+  const cameraId = normalizeObserverCameraId(req.query?.camera || 'overview');
   const slot = normalizeObserverSlot(req.query?.slot || 'latest');
-  if (!slot) return res.status(400).send('Unknown Observer image slot');
+  if (!cameraId) return res.status(400).send('Unknown Observer camera');
+  if (!slot || (cameraId === 'return' && slot !== 'latest')) return res.status(400).send('Unknown Observer image slot');
 
   try {
-    const result = await readObserverImage(slot);
+    const result = await readObserverCameraImage(cameraId, slot);
     if (!result || result.statusCode !== 200 || !result.stream) return res.status(404).send('Observer image not found');
 
     res.setHeader('Content-Type', result.blob.contentType || 'image/jpeg');
-    res.setHeader('Content-Disposition', `inline; filename="aquarium-observer-${slot}.jpg"`);
+    res.setHeader('Content-Disposition', `inline; filename="aquarium-observer-${cameraId}-${slot}.jpg"`);
     res.setHeader('Cache-Control', 'private, no-store, max-age=0');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');

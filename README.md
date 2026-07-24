@@ -1,12 +1,12 @@
 # Reef Keeper
 
-**Current application version:** `4.3.45`  
-**Current release family:** Maintenance 8C — local-first sump visual monitoring  
-**Maintenance state:** Maintenance 8C adds Raspberry Pi image-quality, stable-scene, camera-movement, and calibration-ready water-level screening without per-frame AI, while preserving the verified v4.3.44 R2 Observer baseline.
+**Current application version:** `4.3.46`  
+**Current release family:** Maintenance 8D — dual-camera Aquarium Observer  
+**Maintenance state:** Maintenance 8D adds independent sump-overview and return-chamber feeds, health records, and local monitoring while preserving the verified v4.3.45 overview archive and R2 pipeline.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 8C is documented in `MAINTENANCE_8C_RELEASE_MANIFEST.md` and `MAINTENANCE_8C_TEST_REPORT.md`. The web update remains compatible with Publisher 2.3 until Publisher 2.4 is installed with a backup and controlled service run. The packaged `connector/install-observer-publisher-2.4.sh` updater discovers the active systemd script path and performs that guarded installation.
+Maintenance 8D is documented in `MAINTENANCE_8D_RELEASE_MANIFEST.md` and `MAINTENANCE_8D_TEST_REPORT.md`. The web update remains compatible with Publisher 2.4 until Publisher 2.5 is installed with a backup and controlled dual-camera publish. The packaged `connector/install-observer-publisher-2.5.sh` updater discovers the active systemd script path and performs that guarded installation.
 
 ## Current major capabilities
 
@@ -14,7 +14,7 @@ Maintenance 8C is documented in `MAINTENANCE_8C_RELEASE_MANIFEST.md` and `MAINTE
 - Evidence, decision, explainability, trend, and chart modules
 - Ask AI with tank context, document input, single-photo analysis, and 2–4 photo comparison
 - Apex telemetry display
-- Aquarium Observer latest image, historical comparisons, health checks, daily summaries, change alerts, and rolling time-lapses
+- Aquarium Observer dual-camera current views, independent health checks, overview history, daily summaries, change alerts, and rolling time-lapses
 - Private Observer uploads from the Raspberry Pi through Vercel APIs to Cloudflare R2
 
 ## Repository layout
@@ -111,3 +111,7 @@ Publisher 2.3 reports a Daily monitoring health component and limits failed dail
 ## Maintenance 8C local sump monitoring
 
 Publisher 2.4 evaluates a reduced grayscale copy of the latest frame on the Raspberry Pi. It learns lighting-specific stable-view baselines, confirms obstruction or framing changes across repeated captures, and can track a visible sump water line after explicit calibration. Compact metrics and issue codes are published with Observer health; the full local frame archive remains on the SSD and no per-frame OpenAI call is made. Water-level monitoring uses the separate non-secret `/etc/reefkeeper-observer/monitoring.json` file and starts disabled.
+
+## Maintenance 8D dual-camera Observer
+
+Publisher 2.5 keeps the existing sump-overview pipeline and adds a separate return-chamber current image, health record, local monitor, and calibration target. The web app uses the existing Observer APIs with a validated camera selector, so Vercel remains at 12 functions. Overview history, daily summaries, and timelapses remain overview-only. The return camera is the default target for `observer-water-level-calibrate.py --camera return`.

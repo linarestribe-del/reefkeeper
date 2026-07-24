@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 8C — visual, local-monitor, and deterministic operational Observer alerts
+// Reef Keeper Maintenance 8D — dual-camera visual, local-monitor, and deterministic operational alerts
 
 import {
   cleanObserverString,
@@ -75,23 +75,24 @@ function dateKey(value) {
   return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, 10) : date.toISOString().slice(0, 10);
 }
 
-function operationalAlert(issue, status, checkedAt) {
+function operationalAlert(issue, status, checkedAt, cameraId = 'overview') {
   const details = SYSTEM_ALERT_DETAILS[issue.code];
   if (!details || issue.severity === 'info') return null;
   const [category, title, recommendedCheck] = details;
   return normalizeObserverChangeAlert({
-    id: `system:${dateKey(checkedAt)}:${issue.code}`,
+    id: `system:${dateKey(checkedAt)}:${cameraId}:${issue.code}`,
     kind: 'system',
     issueCode: issue.code,
     severity: issue.severity === 'critical' ? 'urgent' : 'watch',
     category,
-    title,
+    title: cameraId === 'return' ? `Return chamber: ${title}` : title,
     evidence: issue.message,
     recommendedCheck,
     confidence: 'Deterministic Raspberry Pi health check; no image analysis or OpenAI call.',
     createdAt: checkedAt,
     source: {
       kind: 'system',
+      cameraId,
       issueCode: issue.code,
       currentCapturedAt: status.capturedAt,
       previousCapturedAt: null
@@ -103,9 +104,13 @@ export function buildObserverOperationalAlerts(value, now = new Date()) {
   const status = normalizeObserverStatus(value || {});
   if (!value || value.configured === false) return [];
   const checkedAt = status.health.checkedAt || status.publishedAt || now.toISOString();
-  const alerts = status.health.issues
-    .map(issue => operationalAlert(issue, status, checkedAt))
-    .filter(Boolean);
+  const sources = [
+    { cameraId: 'overview', record: status, health: status.health },
+    { cameraId: 'return', record: status.cameras?.return, health: status.cameras?.return?.health }
+  ].filter(source => source.record?.configured !== false && source.health && Array.isArray(source.health.issues));
+  const alerts = sources.flatMap(source => source.health.issues
+    .map(issue => operationalAlert(issue, source.record, source.health.checkedAt || checkedAt, source.cameraId))
+    .filter(Boolean));
 
   const publishedAt = status.publishedAt ? new Date(status.publishedAt) : null;
   const publishAge = publishedAt && !Number.isNaN(publishedAt.getTime()) ? now.getTime() - publishedAt.getTime() : 0;

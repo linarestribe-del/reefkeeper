@@ -38,5 +38,5 @@ assert.match(observer, /Equipment observations/, 'Sump analysis must inspect onl
 assert.match(observer, /What cannot be determined/, 'Sump analysis must state single-image and visibility limitations');
 assert.match(observer, /do not infer pump operation, actual flow rate, water chemistry, hidden leaks, or change over time from a single still/i, 'Sump analysis must reject unsupported operational and trend claims');
 assert.match(observer, /Recommended next check/, 'Sump analysis must end with limited practical follow-up checks');
-assert.match(observer, /openImagesInChat\(\[image\], OBSERVER_ANALYSIS_PROMPT/, 'Analyze latest capture must load the sump-specific prompt');
-assert.match(html, /observer\.js\?v=20260723-maintenance-8c-local-monitoring/, 'Observer script cache key must be bumped for the new prompt');
+assert.match(observer, /openImagesInChat\(\[image\], prompt/, 'Analyze selected camera must load the camera-aware sump prompt');
+assert.match(html, /observer\.js\?v=20260724-maintenance-8d-dual-camera/, 'Observer script cache key must be bumped for the new prompt');

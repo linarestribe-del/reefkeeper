@@ -1,3 +1,13 @@
+## 4.3.46 — Maintenance 8D Dual-Camera Observer
+
+- Added separate sump-overview and return-chamber Observer camera records and current images.
+- Added an Overview / Return Chamber selector with camera-specific health and local-monitor details.
+- Preserved overview-only history, daily summaries, alerts, and timelapses.
+- Updated private R2 and existing Observer APIs for a validated return-camera object without adding a Vercel function.
+- Updated Publisher to 2.5 with independent return capture/monitor health and non-blocking return failure handling.
+- Updated the calibration helper to target either camera, defaulting to Return Chamber.
+- Advanced Observer schema to 9 while retaining backward-compatible top-level overview fields.
+
 ## 4.3.45 — Maintenance 8C Local Sump Monitoring
 
 - Added Raspberry Pi image-quality and repeated obstruction screening without per-frame AI.

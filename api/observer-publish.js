@@ -1,4 +1,4 @@
-// Reef Keeper Build 2J — authenticated Observer image, history, and health publisher
+// Reef Keeper Maintenance 8D — authenticated dual-camera Observer publisher
 
 import {
   decodeObserverHistoryImages,
@@ -6,6 +6,8 @@ import {
   decodeObserverMp4,
   expectedObserverWriteToken,
   normalizeObserverStatus,
+  normalizeObserverCameraStatus,
+  normalizeObserverCameraId,
   normalizeObserverTimelapseFeed,
   normalizeObserverTimelapseSlot,
   observerIso,
@@ -18,7 +20,9 @@ import {
 } from '../lib/observer-common.js';
 import {
   writeObserverImage,
+  writeObserverCameraImage,
   writeObserverStatus,
+  readObserverStatus,
   readObserverTimelapseFeed,
   writeObserverTimelapse,
   writeObserverTimelapseFeed
@@ -35,6 +39,8 @@ export default async function handler(req, res) {
 
   try {
     const body = parseObserverBody(req);
+    const cameraId = normalizeObserverCameraId(req.query?.camera || body.cameraId || 'overview');
+    if (!cameraId) return res.status(400).json({ ok: false, error: 'Unknown Observer camera.' });
 
     if (String(req.query?.resource || '') === 'timelapse') {
       const slot = normalizeObserverTimelapseSlot(body.slot);
@@ -78,6 +84,44 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true, durable: true, slot, generatedAt, sizeBytes: video.length, updatedAt });
     }
 
+    if (cameraId === 'return') {
+      const latestImage = decodeObserverJpeg(body.imageBase64);
+      const publishedAt = new Date().toISOString();
+      const latestObject = await writeObserverCameraImage(latestImage, 'return', 'latest');
+      const cameraRecord = normalizeObserverCameraStatus('return', body, {
+        ok: body.ok !== false,
+        capturedAt: body.capturedAt || body.captured_at,
+        imageAvailable: true,
+        imageVersion: body.capturedAt || body.captured_at || latestObject.etag || publishedAt,
+        publishedAt,
+        sizeBytes: latestImage.length,
+        health: body.health
+      });
+      const existing = await readObserverStatus().catch(() => null);
+      const record = existing ? normalizeObserverStatus(existing, {
+        ok: existing.ok,
+        capturedAt: existing.capturedAt,
+        imageAvailable: existing.imageAvailable === true,
+        imageVersion: existing.imageVersion,
+        publishedAt: existing.publishedAt,
+        sizeBytes: existing.sizeBytes,
+        comparisons: existing.comparisons,
+        health: existing.health
+      }) : normalizeObserverStatus({ configured: false, ok: false });
+      record.cameras = { ...(record.cameras || {}), return: cameraRecord };
+      record.receivedAt = publishedAt;
+      await writeObserverStatus(record);
+      return res.status(200).json({
+        ok: true,
+        durable: true,
+        cameraId: 'return',
+        publishedAt: cameraRecord.publishedAt,
+        capturedAt: cameraRecord.capturedAt,
+        sizeBytes: cameraRecord.sizeBytes,
+        healthStatus: cameraRecord.health?.status || 'pending'
+      });
+    }
+
     const latestImage = decodeObserverJpeg(body.imageBase64);
     const historyImages = decodeObserverHistoryImages(body.historyImages);
     const publishedAt = new Date().toISOString();
@@ -94,7 +138,21 @@ export default async function handler(req, res) {
       };
     }
 
-    const record = normalizeObserverStatus(body, {
+    const existing = await readObserverStatus().catch(() => null);
+    const record = normalizeObserverStatus({
+      ...body,
+      cameras: {
+        ...(existing?.cameras || {}),
+        overview: {
+          ...body,
+          imageAvailable: true,
+          imageVersion: body.capturedAt || body.captured_at || latestObject.etag || publishedAt,
+          publishedAt,
+          sizeBytes: latestImage.length,
+          comparisons
+        }
+      }
+    }, {
       ok: body.ok !== false,
       imageAvailable: true,
       imageVersion: body.capturedAt || body.captured_at || latestObject.etag || publishedAt,

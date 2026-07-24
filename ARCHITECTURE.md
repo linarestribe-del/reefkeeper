@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
-**Last updated:** July 23, 2026  
-**Current runtime family:** v4.3.45 / Observer publisher 2.4  
-**Maintenance state:** Maintenance 8C local-first sump visual monitoring on the verified R2 baseline  
+**Last updated:** July 24, 2026  
+**Current runtime family:** v4.3.46 / Observer publisher 2.5  
+**Maintenance state:** Maintenance 8D dual-camera Observer on the verified R2 and local-monitor baseline  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -15,9 +15,9 @@ Browser / iPhone app
   -> OpenAI APIs, private Cloudflare R2 through signed S3 requests, and Apex/telemetry storage
 
 Raspberry Pi
-  -> Tapo camera capture every five minutes
-  -> local SSD archive
-  -> authenticated Observer publishing
+  -> two staggered Tapo C120 capture timers
+  -> overview and return-chamber SSD paths
+  -> one authenticated dual-camera Observer publisher
   -> daily comparison selection
   -> weekly/monthly time-lapse generation
 ```
@@ -280,3 +280,7 @@ The Pi publishes health metadata on its normal schedule. Operational alerts are 
 - Only compact health metrics and issue codes are included in the existing Observer status payload.
 - Water-level tracking requires an explicit normalized ROI and baseline in the separate non-secret monitoring configuration.
 - No new Vercel function, database, camera credential, or per-frame AI request is introduced.
+
+## Maintenance 8D dual-camera boundary
+
+The overview camera remains the canonical source for historical comparisons, daily AI summaries, and timelapses. The return camera has a separate local capture directory, monitor state, current R2 object, and status record. Publisher 2.5 uploads both cameras in one scheduled service run. A return-camera failure is represented in its camera record and does not suppress an otherwise valid overview publish. The browser receives only fixed same-origin media URLs and compact health metadata; camera credentials and local addresses remain on the Pi.

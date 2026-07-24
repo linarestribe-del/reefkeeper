@@ -1,3 +1,15 @@
+## Maintenance 8D — Dual-Camera Observer — Candidate v4.3.46
+
+- [x] Preserve the verified C120 overview capture and existing archive.
+- [x] Add a separate local return-chamber capture path and staggered timer.
+- [x] Add Publisher 2.5 dual-camera R2 publishing and independent health.
+- [x] Add an Overview / Return Chamber selector and camera-specific diagnostics.
+- [x] Preserve overview history, daily summaries, alerts, and timelapses.
+- [x] Keep Vercel at 12/12 functions and avoid per-frame AI.
+- [ ] Complete the guarded Publisher 2.5 installation on the Pi.
+- [ ] Confirm both current images and health records on iPhone.
+- [ ] Calibrate the return-chamber water-level region.
+
 ## Maintenance 8C — Local Sump Monitoring — Candidate v4.3.45
 
 - [x] Add local image-quality and obstruction screening without OpenAI.
@@ -18,7 +30,7 @@
 
 # Reef Keeper Roadmap
 
-**Last updated:** July 22, 2026
+**Last updated:** July 24, 2026
 
 ## Current Stable Line — v4.3.x
 

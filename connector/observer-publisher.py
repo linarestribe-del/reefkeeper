@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish Observer captures, local visual monitoring, health, history, and one daily summary."""
+"""Publish dual-camera Observer captures, local monitoring, health, history, and one daily summary."""
 from __future__ import annotations
 
 import base64
@@ -18,6 +18,7 @@ from typing import Any
 
 CONFIG_PATH = Path('/etc/reefkeeper-observer/publisher.json')
 MONITOR_CONFIG_PATH = Path('/etc/reefkeeper-observer/monitoring.json')
+RETURN_MONITOR_CONFIG_PATH = Path('/etc/reefkeeper-observer/return-monitoring.json')
 MOUNT_DIR = Path('/mnt/reef-ssd')
 BASE_DIR = MOUNT_DIR / 'aquarium-observer'
 IMAGE_PATH = BASE_DIR / 'latest.jpg'
@@ -25,11 +26,17 @@ CAPTURES_DIR = BASE_DIR / 'captures'
 CAPTURE_STATUS_PATH = BASE_DIR / 'status.json'
 PUBLISH_STATUS_PATH = BASE_DIR / 'publish-status.json'
 MONITOR_STATUS_PATH = BASE_DIR / 'monitor-status.json'
+RETURN_BASE_DIR = BASE_DIR / 'return-chamber'
+RETURN_IMAGE_PATH = RETURN_BASE_DIR / 'latest.jpg'
+RETURN_CAPTURES_DIR = RETURN_BASE_DIR / 'captures'
+RETURN_CAPTURE_STATUS_PATH = RETURN_BASE_DIR / 'status.json'
+RETURN_MONITOR_STATUS_PATH = RETURN_BASE_DIR / 'monitor-status.json'
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.4'
+PUBLISHER_VERSION = '2.5'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
+RETURN_CAPTURE_TIMER = 'reefkeeper-return-capture.timer'
 PUBLISH_TIMER = 'reefkeeper-observer-publish.timer'
 CAPTURE_NAME_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.jpg$', re.I)
 
@@ -109,12 +116,12 @@ def parse_capture_datetime(path: Path) -> datetime | None:
         return None
 
 
-def capture_catalog() -> list[tuple[datetime, Path]]:
+def capture_catalog(captures_dir: Path = CAPTURES_DIR) -> list[tuple[datetime, Path]]:
     catalog: list[tuple[datetime, Path]] = []
-    if not CAPTURES_DIR.exists():
+    if not captures_dir.exists():
         return catalog
     try:
-        paths = CAPTURES_DIR.rglob('*.jpg')
+        paths = captures_dir.rglob('*.jpg')
         for path in paths:
             captured = parse_capture_datetime(path)
             if captured:
@@ -337,7 +344,8 @@ def power_probe() -> dict[str, Any]:
     }
 
 
-def monitor_config(primary: dict[str, Any]) -> dict[str, Any]:
+def monitor_config(primary: dict[str, Any], config_path: Path | None = None, source_key: str = 'local_monitoring') -> dict[str, Any]:
+    config_path = config_path or MONITOR_CONFIG_PATH
     defaults: dict[str, Any] = {
         'enabled': True,
         'scene_change_threshold': 0.18,
@@ -354,10 +362,10 @@ def monitor_config(primary: dict[str, Any]) -> dict[str, Any]:
             'minimum_confidence': 0.45,
         },
     }
-    source = primary.get('local_monitoring') if isinstance(primary.get('local_monitoring'), dict) else {}
+    source = primary.get(source_key) if isinstance(primary.get(source_key), dict) else {}
     override: dict[str, Any] = {}
     try:
-        override = read_json(MONITOR_CONFIG_PATH)
+        override = read_json(config_path)
     except Exception:
         override = {}
 
@@ -551,8 +559,18 @@ def local_monitor_default() -> dict[str, Any]:
     }
 
 
-def evaluate_local_monitor(config: dict[str, Any], image_path: Path = IMAGE_PATH, now: datetime | None = None) -> dict[str, Any]:
-    settings = monitor_config(config)
+def evaluate_local_monitor(
+    config: dict[str, Any],
+    image_path: Path | None = None,
+    now: datetime | None = None,
+    config_path: Path | None = None,
+    state_path: Path | None = None,
+    source_key: str = 'local_monitoring',
+) -> dict[str, Any]:
+    image_path = image_path or IMAGE_PATH
+    config_path = config_path or MONITOR_CONFIG_PATH
+    state_path = state_path or MONITOR_STATUS_PATH
+    settings = monitor_config(config, config_path, source_key)
     if settings.get('enabled') is False:
         disabled = local_monitor_default()
         disabled.update({'status': 'healthy', 'enabled': False, 'message': 'Local visual monitoring is disabled in the private Pi configuration.'})
@@ -560,7 +578,7 @@ def evaluate_local_monitor(config: dict[str, Any], image_path: Path = IMAGE_PATH
     now = now or utc_now_dt()
     state: dict[str, Any] = {}
     try:
-        state = read_json(MONITOR_STATUS_PATH)
+        state = read_json(state_path)
     except Exception:
         state = {}
     result = local_monitor_default()
@@ -758,20 +776,31 @@ def health_issue(code: str, severity: str, message: str) -> dict[str, str]:
     return {'code': code, 'severity': severity, 'message': safe_text(message, 240)}
 
 
-def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: list[tuple[datetime, Path]], previous_status: dict[str, Any] | None = None, daily_images: list[dict[str, Any]] | None = None, local_monitor: dict[str, Any] | None = None) -> dict[str, Any]:
+def collect_health(
+    config: dict[str, Any],
+    capture: dict[str, Any],
+    catalog: list[tuple[datetime, Path]],
+    previous_status: dict[str, Any] | None = None,
+    daily_images: list[dict[str, Any]] | None = None,
+    local_monitor: dict[str, Any] | None = None,
+    image_path: Path = IMAGE_PATH,
+    capture_timer: str = CAPTURE_TIMER,
+    include_daily: bool = True,
+    camera_name: str = 'Observer',
+) -> dict[str, Any]:
     now = utc_now_dt()
     previous_status = previous_status or {}
-    daily_images = daily_images if daily_images is not None else select_daily_images(config, catalog, now)
+    daily_images = daily_images if daily_images is not None else (select_daily_images(config, catalog, now) if include_daily else [])
     local_monitor = local_monitor if local_monitor is not None else local_monitor_default()
     interval = max(1, int(config.get('capture_interval_minutes') or 5))
-    capture_timer_active, capture_timer_state = unit_state(CAPTURE_TIMER)
+    capture_timer_active, capture_timer_state = unit_state(capture_timer)
     publish_timer_active, publish_timer_state = unit_state(PUBLISH_TIMER)
     storage = storage_probe()
     power = power_probe()
     captured_at = parse_iso(capture.get('captured_at') or capture.get('capturedAt'))
     capture_age = max(0, int((now - captured_at).total_seconds())) if captured_at else None
     capture_ok = capture.get('ok') is True
-    latest_exists = IMAGE_PATH.is_file()
+    latest_exists = image_path.is_file()
     warning_age = max(15 * 60, interval * 3 * 60)
     offline_age = max(60 * 60, interval * 12 * 60)
     issues: list[dict[str, str]] = []
@@ -849,7 +878,17 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
     if not catalog:
         issues.append(health_issue('archive_empty', 'warning', archive_message))
 
-    daily_summary = daily_summary_health(config, previous_status, daily_images)
+    daily_summary = daily_summary_health(config, previous_status, daily_images) if include_daily else {
+        'status': 'healthy',
+        'message': 'Daily visual summaries use the overview camera.',
+        'framesReady': False,
+        'state': 'not_applicable',
+        'generatedAt': None,
+        'nextAttemptAt': None,
+        'attemptCount': 0,
+        'maxAttempts': 3,
+        'retryMinutes': 180,
+    }
     if daily_summary['status'] == 'attention':
         issue_code = 'daily_summary_paused' if daily_summary['state'] == 'paused_after_retries' else 'daily_summary_retry'
         issues.append(health_issue(issue_code, 'warning', daily_summary['message']))
@@ -863,9 +902,9 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
     warning = any(item['severity'] == 'warning' for item in issues)
     overall = 'offline' if critical else ('attention' if warning else 'healthy')
     summary = {
-        'healthy': 'Observer capture, publishing, storage, power, and local visual checks are healthy.',
-        'attention': 'Observer is running, but one or more checks need attention.',
-        'offline': 'A critical Observer component is unavailable.',
+        'healthy': f'{camera_name} capture, publishing, storage, power, and local visual checks are healthy.',
+        'attention': f'{camera_name} is running, but one or more checks need attention.',
+        'offline': f'A critical {camera_name.lower()} component is unavailable.',
     }[overall]
 
     return {
@@ -922,6 +961,7 @@ def collect_health(config: dict[str, Any], capture: dict[str, Any], catalog: lis
 def build_payload(config: dict[str, Any], capture: dict[str, Any], image: bytes, history: list[dict[str, Any]], health: dict[str, Any]) -> dict[str, Any]:
     storage = health.get('storage') or {}
     return {
+        'cameraId': 'overview',
         'publisherVersion': PUBLISHER_VERSION,
         'ok': health.get('status') != 'offline',
         'capturedAt': capture.get('captured_at') or capture.get('capturedAt'),
@@ -943,6 +983,44 @@ def build_payload(config: dict[str, Any], capture: dict[str, Any], image: bytes,
         'imageBase64': base64.b64encode(image).decode('ascii'),
         'historyImages': history,
     }
+
+
+def build_camera_payload(
+    camera_id: str,
+    config: dict[str, Any],
+    capture: dict[str, Any],
+    image: bytes,
+    health: dict[str, Any],
+    label: str,
+) -> dict[str, Any]:
+    storage = health.get('storage') or {}
+    return {
+        'cameraId': camera_id,
+        'publisherVersion': PUBLISHER_VERSION,
+        'ok': health.get('status') != 'offline',
+        'capturedAt': capture.get('captured_at') or capture.get('capturedAt'),
+        'cameraLabel': label,
+        'stream': safe_text(capture.get('stream') or 'stream1', 30),
+        'resolution': safe_text(config.get('return_resolution') or '2560×1440', 40),
+        'captureIntervalMinutes': int(config.get('return_capture_interval_minutes') or 5),
+        'sizeBytes': len(image),
+        'durationSeconds': capture.get('duration_seconds') or capture.get('durationSeconds') or 0,
+        'storage': {
+            'label': safe_text(config.get('storage_label') or 'Local Pi drive', 80),
+            'totalBytes': storage.get('totalBytes') or 0,
+            'availableBytes': storage.get('availableBytes') or 0,
+            'usedPercent': storage.get('usedPercent') or 0,
+        },
+        'message': safe_text(capture.get('error') or '', 240),
+        'health': health,
+        'imageContentType': 'image/jpeg',
+        'imageBase64': base64.b64encode(image).decode('ascii'),
+    }
+
+
+def endpoint_with_camera(endpoint: str, camera_id: str) -> str:
+    separator = '&' if '?' in endpoint else '?'
+    return f'{endpoint}{separator}camera={camera_id}'
 
 
 def derive_status_endpoint(publish_endpoint: str) -> str:
@@ -968,6 +1046,94 @@ def post_json(endpoint: str, token: str, payload: dict[str, Any], timeout: int =
         if response.status != 200 or result.get('ok') is not True:
             raise RuntimeError(f'Publish returned HTTP {response.status}')
         return result
+
+
+def publish_return_camera(
+    config: dict[str, Any],
+    endpoint: str,
+    token: str,
+    previous_publish_status: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        capture = read_json(RETURN_CAPTURE_STATUS_PATH)
+    except Exception as error:
+        capture = {'ok': False, 'error': f'Return camera status unavailable: {error}'}
+    catalog = capture_catalog(RETURN_CAPTURES_DIR)
+    captured_raw = str(capture.get('captured_at') or capture.get('capturedAt') or '')
+    captured_at = parse_iso(captured_raw)
+    local_monitor = evaluate_local_monitor(
+        config,
+        image_path=RETURN_IMAGE_PATH,
+        config_path=RETURN_MONITOR_CONFIG_PATH,
+        state_path=RETURN_MONITOR_STATUS_PATH,
+        source_key='return_local_monitoring',
+    )
+    health = collect_health(
+        config,
+        capture,
+        catalog,
+        previous_publish_status,
+        [],
+        local_monitor,
+        image_path=RETURN_IMAGE_PATH,
+        capture_timer=RETURN_CAPTURE_TIMER,
+        include_daily=False,
+        camera_name='Return chamber',
+    )
+    try:
+        if not captured_at:
+            raise ValueError('Return camera status is missing a valid captured_at')
+        image = read_jpeg(RETURN_IMAGE_PATH)
+        payload = build_camera_payload('return', config, capture, image, health, 'Return chamber')
+        result = post_json(endpoint_with_camera(endpoint, 'return'), token, payload, timeout=55)
+        return {
+            'ok': True,
+            'capturedAt': captured_raw,
+            'publishedAt': result.get('publishedAt') or utc_now(),
+            'sizeBytes': len(image),
+            'healthStatus': health.get('status'),
+            'localMonitorStatus': local_monitor.get('status'),
+            'error': '',
+        }
+    except (OSError, ValueError) as local_error:
+        health['status'] = 'offline'
+        health['summary'] = 'The return-camera publisher is reachable, but its local capture is unavailable.'
+        health.setdefault('issues', []).append(health_issue('return_image_publish_unavailable', 'critical', str(local_error)))
+        payload = {
+            'cameraId': 'return',
+            'publisherVersion': PUBLISHER_VERSION,
+            'ok': False,
+            'capturedAt': captured_raw or None,
+            'cameraLabel': 'Return chamber',
+            'stream': safe_text(capture.get('stream') or 'stream1', 30),
+            'resolution': safe_text(config.get('return_resolution') or '2560×1440', 40),
+            'captureIntervalMinutes': int(config.get('return_capture_interval_minutes') or 5),
+            'health': health,
+            'message': safe_text(local_error, 240),
+        }
+        try:
+            result = post_json(endpoint_with_camera(derive_status_endpoint(endpoint), 'return'), token, payload, timeout=30)
+            published_at = result.get('receivedAt') or utc_now()
+        except Exception as report_error:
+            published_at = utc_now()
+            return {
+                'ok': False,
+                'capturedAt': captured_raw or None,
+                'publishedAt': published_at,
+                'sizeBytes': 0,
+                'healthStatus': 'offline',
+                'localMonitorStatus': local_monitor.get('status'),
+                'error': safe_text(f'{local_error}; status report failed: {report_error}', 400),
+            }
+        return {
+            'ok': False,
+            'capturedAt': captured_raw or None,
+            'publishedAt': published_at,
+            'sizeBytes': 0,
+            'healthStatus': 'offline',
+            'localMonitorStatus': local_monitor.get('status'),
+            'error': safe_text(local_error, 400),
+        }
 
 
 def main() -> int:
@@ -1007,6 +1173,7 @@ def main() -> int:
             history = select_history(catalog, captured_at)
             payload = build_payload(config, capture, image, history, health)
             result = post_json(endpoint, token, payload)
+            return_camera = publish_return_camera(config, endpoint, token, previous_publish_status)
             slots = result.get('historySlots') or []
             published_at = result.get('publishedAt') or utc_now()
             daily_status = safe_text(previous_publish_status.get('dailySummaryStatus') or 'waiting', 40)
@@ -1066,9 +1233,16 @@ def main() -> int:
                 'dailySummaryAttemptCurrentCapturedAt': daily_attempt_current or None,
                 'dailySummaryAttemptCount': daily_attempt_count,
                 'dailySummaryNextAttemptAt': daily_next_attempt or None,
+                'returnCameraOk': return_camera.get('ok'),
+                'returnCameraCapturedAt': return_camera.get('capturedAt'),
+                'returnCameraPublishedAt': return_camera.get('publishedAt'),
+                'returnCameraSizeBytes': return_camera.get('sizeBytes'),
+                'returnCameraHealthStatus': return_camera.get('healthStatus'),
+                'returnCameraLocalMonitorStatus': return_camera.get('localMonitorStatus'),
+                'returnCameraError': return_camera.get('error') or '',
                 'publisherVersion': PUBLISHER_VERSION,
             })
-            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} monitor={local_monitor.get('status')} daily={daily_status}")
+            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} monitor={local_monitor.get('status')} return={return_camera.get('healthStatus')} return_monitor={return_camera.get('localMonitorStatus')} daily={daily_status}")
             return 0
         except (OSError, ValueError) as local_error:
             health = collect_health(config, capture, catalog, previous_publish_status, daily_images, local_monitor)

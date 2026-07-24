@@ -1,3 +1,17 @@
+# Current release — Maintenance 8D
+
+- Application: `4.3.46`
+- Observer publisher: `2.5`
+- Observer schema: `9`
+- Baseline: verified `4.3.45 / Maintenance 8C`
+- Detailed manifest: `MAINTENANCE_8D_RELEASE_MANIFEST.md`
+- Test report: `MAINTENANCE_8D_TEST_REPORT.md`
+- Recovery package: `Reef_Keeper_Maintenance_8D_v4.3.46_DUAL_CAMERA_OBSERVER.zip`
+
+Maintenance 8D adds dual-camera Observer publishing and UI while preserving the existing overview archive and the 12-function Vercel boundary.
+
+---
+
 # Maintenance 1 release manifest
 
 ## Purpose

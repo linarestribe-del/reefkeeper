@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Calibrate Reef Keeper Observer water-level monitoring without reading publisher credentials."""
+"""Calibrate Reef Keeper Observer water-level monitoring for either local camera."""
 from __future__ import annotations
 
 import argparse
@@ -11,8 +11,10 @@ import tempfile
 from pathlib import Path
 
 PUBLISHER_PATH = Path('/opt/reefkeeper-observer/observer-publisher.py')
-CONFIG_PATH = Path('/etc/reefkeeper-observer/monitoring.json')
-IMAGE_PATH = Path('/mnt/reef-ssd/aquarium-observer/latest.jpg')
+OVERVIEW_CONFIG_PATH = Path('/etc/reefkeeper-observer/monitoring.json')
+RETURN_CONFIG_PATH = Path('/etc/reefkeeper-observer/return-monitoring.json')
+OVERVIEW_IMAGE_PATH = Path('/mnt/reef-ssd/aquarium-observer/latest.jpg')
+RETURN_IMAGE_PATH = Path('/mnt/reef-ssd/aquarium-observer/return-chamber/latest.jpg')
 
 
 def load_publisher():
@@ -26,25 +28,25 @@ def load_publisher():
     return module
 
 
-def read_config() -> dict:
-    if not CONFIG_PATH.exists():
+def read_config(config_path: Path) -> dict:
+    if not config_path.exists():
         return {}
     try:
-        value = json.loads(CONFIG_PATH.read_text(encoding='utf-8'))
+        value = json.loads(config_path.read_text(encoding='utf-8'))
     except Exception as error:
-        raise SystemExit(f'Could not read {CONFIG_PATH}: {error}')
+        raise SystemExit(f'Could not read {config_path}: {error}')
     return value if isinstance(value, dict) else {}
 
 
-def write_config(value: dict) -> None:
-    CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    descriptor, temporary = tempfile.mkstemp(prefix='.monitoring.', suffix='.json', dir=CONFIG_PATH.parent)
+def write_config(config_path: Path, value: dict) -> None:
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f'.{config_path.stem}.', suffix='.json', dir=config_path.parent)
     try:
         with os.fdopen(descriptor, 'w', encoding='utf-8') as handle:
             json.dump(value, handle, indent=2)
             handle.write('\n')
         os.chmod(temporary, 0o644)
-        os.replace(temporary, CONFIG_PATH)
+        os.replace(temporary, config_path)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
@@ -64,7 +66,8 @@ def parse_roi(text: str) -> list[float]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description='Calibrate local water-level monitoring from the latest sump capture.')
+    parser = argparse.ArgumentParser(description='Calibrate local water-level monitoring from the latest Observer camera capture.')
+    parser.add_argument('--camera', choices=['return', 'overview'], default='return', help='Camera to calibrate (default: return).')
     parser.add_argument('--roi', type=parse_roi, help='Normalized region x,y,width,height, for example 0.15,0.35,0.70,0.30')
     parser.add_argument('--warning', type=float, default=5.0, help='Warning change as percent of ROI height (default 5).')
     parser.add_argument('--urgent', type=float, default=10.0, help='Urgent change as percent of ROI height (default 10).')
@@ -74,7 +77,9 @@ def main() -> int:
     parser.add_argument('--status', action='store_true', help='Print the non-secret monitoring configuration.')
     args = parser.parse_args()
 
-    config = read_config()
+    config_path = RETURN_CONFIG_PATH if args.camera == 'return' else OVERVIEW_CONFIG_PATH
+    image_path = RETURN_IMAGE_PATH if args.camera == 'return' else OVERVIEW_IMAGE_PATH
+    config = read_config(config_path)
     water = config.get('water_level') if isinstance(config.get('water_level'), dict) else {}
 
     if args.status:
@@ -83,7 +88,7 @@ def main() -> int:
 
     if args.disable:
         config['water_level'] = {**water, 'enabled': False}
-        write_config(config)
+        write_config(config_path, config)
         print('Water-level monitoring disabled. Other Observer monitoring remains unchanged.')
         return 0
 
@@ -91,7 +96,7 @@ def main() -> int:
         parser.error('--roi is required unless --disable or --status is used')
 
     publisher = load_publisher()
-    pixels = publisher.decode_monitor_frame(IMAGE_PATH)
+    pixels = publisher.decode_monitor_frame(image_path)
     roi = publisher.parse_roi(args.roi)
     if not roi:
         raise SystemExit('The ROI is too small or invalid after normalization.')
@@ -115,13 +120,15 @@ def main() -> int:
         'alert_streak': int(water.get('alert_streak') or 2),
         'minimum_confidence': max(0.2, min(0.9, args.minimum_confidence)),
     }
-    write_config(config)
+    write_config(config_path, config)
     print('Water-level calibration saved.')
     print(f"Detected baseline: {float(detected['yPercent']):.2f}% down the selected region")
     print(f'Confidence: {confidence:.2f}')
     print(f'Warning threshold: {warning:.1f}% of region height')
     print(f'Urgent threshold: {urgent:.1f}% of region height')
-    print(f'Configuration: {CONFIG_PATH}')
+    print(f'Camera: {args.camera}')
+    print(f'Image: {image_path}')
+    print(f'Configuration: {config_path}')
     return 0
 
 
