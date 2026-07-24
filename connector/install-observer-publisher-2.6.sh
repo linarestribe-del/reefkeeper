@@ -4,7 +4,7 @@ set -u
 SERVICE="reefkeeper-observer-publish.service"
 TIMER="reefkeeper-observer-publish.timer"
 STATUS="/mnt/reef-ssd/aquarium-observer/publish-status.json"
-EXPECTED_PUBLISHER_SHA256="5cfdb10b19fa7a8fdec25f8aa3b7b19e364b9794e95f2c1100130370d7d40948"
+EXPECTED_PUBLISHER_SHA256="06897db6f2b057f33f59582850fe4bff7c5ae54d0c5e091523fac179145ff067"
 EXPECTED_CALIBRATOR_SHA256="b8e5f3b0723aa70018aff95c69db07688f118eb7f7c193d0c605d539f8377fbd"
 TMP_DIR="$(mktemp -d /tmp/reefkeeper-observer-2.6.XXXXXX)"
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -49,7 +49,7 @@ fi
 TARGET_DIR="$(dirname "$TARGET")"
 CALIBRATOR_TARGET="$TARGET_DIR/observer-water-level-calibrate.py"
 STAMP="$(date +%Y%m%d-%H%M%S)"
-BACKUP="${TARGET}.publisher-2.4-${STAMP}.bak"
+BACKUP="${TARGET}.publisher-2.5-${STAMP}.bak"
 CALIBRATOR_BACKUP=""
 
 if [ -f "$CALIBRATOR_TARGET" ]; then
@@ -82,7 +82,7 @@ base = values.get('REEF_KEEPER_URL', '').rstrip('/')
 if not base:
     raise SystemExit('REEF_KEEPER_URL was not found.')
 for filename, digest_expected in expected.items():
-    url = f'{base}/connector/{filename}?v=4.3.46'
+    url = f'{base}/connector/{filename}?v=4.3.48'
     request = urllib.request.Request(url, headers={
         'User-Agent': 'ReefKeeper-Observer-Updater/2.6',
         'Cache-Control': 'no-cache',
@@ -113,7 +113,7 @@ echo "Stopping automatic publishing..."
 sudo systemctl stop "$TIMER"
 sudo systemctl stop "$SERVICE" 2>/dev/null || true
 
-echo "Creating verified Publisher 2.4 backup..."
+echo "Creating verified Publisher 2.5 backup..."
 if ! sudo cp -a "$TARGET" "$BACKUP" || ! sudo test -s "$BACKUP"; then
   echo "ERROR: Publisher backup could not be created."
   sudo systemctl enable --now "$TIMER"
@@ -130,7 +130,7 @@ fi
 echo "Installing Publisher 2.6..."
 if ! sudo install -o root -g root -m 0755 "$TMP_DIR/observer-publisher.py" "$TARGET" || \
    ! sudo install -o root -g root -m 0755 "$TMP_DIR/observer-water-level-calibrate.py" "$CALIBRATOR_TARGET"; then
-  echo "Installation failed. Restoring Publisher 2.4..."
+  echo "Installation failed. Restoring Publisher 2.5..."
   sudo cp -a "$BACKUP" "$TARGET"
   if [ -n "$CALIBRATOR_BACKUP" ] && sudo test -f "$CALIBRATOR_BACKUP"; then
     sudo cp -a "$CALIBRATOR_BACKUP" "$CALIBRATOR_TARGET"
@@ -140,7 +140,7 @@ if ! sudo install -o root -g root -m 0755 "$TMP_DIR/observer-publisher.py" "$TAR
 fi
 
 rollback() {
-  echo "Restoring Publisher 2.4 backup..."
+  echo "Restoring Publisher 2.5 backup..."
   sudo systemctl stop "$TIMER" 2>/dev/null || true
   sudo systemctl stop "$SERVICE" 2>/dev/null || true
   sudo cp -a "$BACKUP" "$TARGET"
@@ -148,7 +148,7 @@ rollback() {
     sudo cp -a "$CALIBRATOR_BACKUP" "$CALIBRATOR_TARGET"
   fi
   sudo systemctl enable --now "$TIMER"
-  echo "UPDATE RESULT: ROLLED BACK TO PUBLISHER 2.4"
+  echo "UPDATE RESULT: ROLLED BACK TO PUBLISHER 2.5"
   exit 1
 }
 
