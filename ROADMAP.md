@@ -1,3 +1,15 @@
+## Maintenance 9A — Integration Core — Candidate v4.3.47
+
+- [x] Add a shared structured tank-event stream with stable IDs and duplicate protection.
+- [x] Mirror parameter logs, maintenance actions, and completed tasks without replacing legacy storage.
+- [x] Feed Home recent changes, Reef Timeline, reports, backups, and Ask AI from the shared stream.
+- [x] Add structured Connected equipment and Connected action fields to Maintenance.
+- [x] Start and close Observer filter-roll cycles from logged fleece replacements.
+- [x] Add an Observer filter-roll learning status card and a low-frequency measurement/forecast API.
+- [x] Keep Vercel at 12/12 functions and make no Pi-side changes.
+- [ ] Deploy and verify the connected maintenance workflow on the primary iPhone app.
+- [ ] Add the overview-camera roll detector in a later isolated Observer build.
+
 ## Maintenance 8D — Dual-Camera Observer — Candidate v4.3.46
 
 - [x] Preserve the verified C120 overview capture and existing archive.

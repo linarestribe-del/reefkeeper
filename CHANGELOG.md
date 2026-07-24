@@ -1,3 +1,13 @@
+## 4.3.47 — Maintenance 9A Integration Core
+
+- Added a shared structured tank-event stream with stable IDs and duplicate protection.
+- Mirrored parameter logs, maintenance actions, and completed tasks without altering legacy records.
+- Connected the shared stream to Home recent changes, Reef Timeline, reports, backups, and Ask AI.
+- Added structured Connected equipment and Connected action fields to Maintenance.
+- Connected filter-fleece replacement entries to Observer roll-cycle state.
+- Added low-frequency filter-roll measurement storage and multi-roll learning/forecast APIs for the future visual detector.
+- Preserved the 12-function Vercel boundary and made no Raspberry Pi, Apex, R2, or camera-credential changes.
+
 ## 4.3.46 — Maintenance 8D Dual-Camera Observer
 
 - Added separate sump-overview and return-chamber Observer camera records and current images.

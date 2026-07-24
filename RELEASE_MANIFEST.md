@@ -1,16 +1,19 @@
-# Current release — Maintenance 8D
+# Current release — Maintenance 9A
 
-- Application: `4.3.46`
-- Observer publisher: `2.5`
+- Application: `4.3.47`
+- Integration Core: `9A.1`
+- Shared tank-event schema: `1`
+- Observer publisher: `2.5` repository source; compatible with the live `2.5.1` hotfix
 - Observer schema: `9`
-- Baseline: verified `4.3.45 / Maintenance 8C`
-- Detailed manifest: `MAINTENANCE_8D_RELEASE_MANIFEST.md`
-- Test report: `MAINTENANCE_8D_TEST_REPORT.md`
-- Recovery package: `Reef_Keeper_Maintenance_8D_v4.3.46_DUAL_CAMERA_OBSERVER.zip`
+- Baseline: verified `4.3.46 / Maintenance 8D`
+- Detailed manifest: `MAINTENANCE_9A_RELEASE_MANIFEST.md`
+- Test report: `MAINTENANCE_9A_TEST_REPORT.md`
+- Recovery package: `Reef_Keeper_Maintenance_9A_v4.3.47_INTEGRATION_CORE.zip`
 
-Maintenance 8D adds dual-camera Observer publishing and UI while preserving the existing overview archive and the 12-function Vercel boundary.
+Maintenance 9A adds the shared browser event layer and connected filter-roll maintenance workflow without changing the Raspberry Pi publisher or adding a Vercel function.
 
 ---
+
 
 # Maintenance 1 release manifest
 

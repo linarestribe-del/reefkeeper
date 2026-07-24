@@ -249,8 +249,10 @@ function getLocalTankMemorySummary(userMsg = '') {
   const activeTaskLines = getActiveTaskMemoryLines();
   const relevantLines = getRelevantOlderHistory(userMsg, actions, completedHistory, reminders, logs);
   const knowledgeLines = getTankKnowledgeMemoryLines();
+  let sharedEventContext = 'No shared tank events recorded yet.';
+  try { sharedEventContext = window.ReefKeeperIntegration?.buildAiContext?.(userMsg, 24) || sharedEventContext; } catch(e) {}
 
-  return `\n\nEXPANDED LOCAL TANK MEMORY FROM THIS DEVICE:\nUse this memory when the tank-context toggle is on. Prioritize the user's newest message, then current/latest logs, then trends and relevant history. Do not overreact to one data point if the longer trend suggests stability or gradual recovery.\n\nTANK KNOWLEDGE BASE (persistent decisions and rules):\n${knowledgeLines.length ? knowledgeLines.join('\\n') : 'No tank knowledge base notes yet.'}\n\nCURRENT PARAMETER TREND SUMMARY:\n${buildParameterTrendSummary(logs)}\n\nROLLING LONG-TERM TANK SUMMARY:\n${buildLongTermTankSummary(logs, actions, completedHistory)}\n\nRECENT DETAILED PARAMETER LOGS (newest first, up to 20):\n${recentLogLines.length ? recentLogLines.join('\n') : 'No user-entered parameter logs yet.'}\n\nRECENT MAINTENANCE/ACTION HISTORY (newest first, up to 30):\n${actionLines.length ? actionLines.join('\n') : 'No actions logged yet.'}\n\nRECENT COMPLETED REMINDERS/TASKS (newest first, up to 30):\n${completedLines.length ? completedLines.join('\n') : 'No completed reminder/task history yet.'}\n\nACTIVE REEF TASKS AND SCHEDULED PLAN ITEMS:\n${activeTaskLines.length ? activeTaskLines.join('\n') : (reminderLines.length ? reminderLines.join('\n') : 'No active saved reminders/tasks.')}\n\nQUESTION-RELEVANT OLDER HISTORY RETRIEVED FROM LOCAL DATA:\n${relevantLines.length ? relevantLines.join('\n') : 'No specific older local-history matches found for this question.'}`;
+  return `\n\nEXPANDED LOCAL TANK MEMORY FROM THIS DEVICE:\nUse this memory when the tank-context toggle is on. Prioritize the user's newest message, then current/latest logs, then trends and relevant history. Do not overreact to one data point if the longer trend suggests stability or gradual recovery.\n\nSHARED CROSS-FEATURE TANK EVENTS:\n${sharedEventContext}\n\nTANK KNOWLEDGE BASE (persistent decisions and rules):\n${knowledgeLines.length ? knowledgeLines.join('\\n') : 'No tank knowledge base notes yet.'}\n\nCURRENT PARAMETER TREND SUMMARY:\n${buildParameterTrendSummary(logs)}\n\nROLLING LONG-TERM TANK SUMMARY:\n${buildLongTermTankSummary(logs, actions, completedHistory)}\n\nRECENT DETAILED PARAMETER LOGS (newest first, up to 20):\n${recentLogLines.length ? recentLogLines.join('\n') : 'No user-entered parameter logs yet.'}\n\nRECENT MAINTENANCE/ACTION HISTORY (newest first, up to 30):\n${actionLines.length ? actionLines.join('\n') : 'No actions logged yet.'}\n\nRECENT COMPLETED REMINDERS/TASKS (newest first, up to 30):\n${completedLines.length ? completedLines.join('\n') : 'No completed reminder/task history yet.'}\n\nACTIVE REEF TASKS AND SCHEDULED PLAN ITEMS:\n${activeTaskLines.length ? activeTaskLines.join('\n') : (reminderLines.length ? reminderLines.join('\n') : 'No active saved reminders/tasks.')}\n\nQUESTION-RELEVANT OLDER HISTORY RETRIEVED FROM LOCAL DATA:\n${relevantLines.length ? relevantLines.join('\n') : 'No specific older local-history matches found for this question.'}`;
 }
 
 
@@ -1500,12 +1502,18 @@ function saveLog() {
     return;
   }
 
-  const entry = { date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}), isoDate: new Date().toISOString(), po4, alk, ca, no3, ph, sal, mg };
+  const entry = {
+    id: `param-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`,
+    date: new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}),
+    isoDate: new Date().toISOString(),
+    po4, alk, ca, no3, ph, sal, mg
+  };
   let logs = [];
   try { logs = JSON.parse(localStorage.getItem('reef_logs') || '[]'); } catch(e) {}
   logs.unshift(entry);
   if (logs.length > 30) logs = logs.slice(0, 30);
   try { localStorage.setItem('reef_logs', JSON.stringify(logs)); } catch(e) {}
+  try { window.ReefKeeperIntegration?.recordParameterLog?.(entry); } catch(e) { console.warn('Integration Core could not record the parameter event.', e); }
 
   renderLogHistory();
   renderTrendControls();
@@ -2007,6 +2015,7 @@ function getActionEntries() {
 
 function setActionEntries(entries) {
   try { localStorage.setItem('reef_actions', JSON.stringify(entries)); } catch(e) {}
+  try { window.ReefKeeperIntegration?.syncLegacySources?.(); } catch(e) {}
 }
 
 function actionIcon(category) {
@@ -2017,6 +2026,8 @@ function saveActionEntry() {
   const titleEl = document.getElementById('action-title');
   const categoryEl = document.getElementById('action-category');
   const notesEl = document.getElementById('action-notes');
+  const equipmentEl = document.getElementById('action-equipment');
+  const actionCodeEl = document.getElementById('action-code');
   const title = titleEl.value.trim();
   if (!title) { showToast('⚠️ Enter an action first'); return; }
 
@@ -2025,14 +2036,20 @@ function saveActionEntry() {
     title,
     category: categoryEl.value || 'other',
     notes: notesEl.value.trim(),
+    equipmentId: equipmentEl?.value || '',
+    equipmentName: equipmentEl?.selectedOptions?.[0]?.dataset?.equipmentName || '',
+    actionCode: actionCodeEl?.value || '',
     date: new Date().toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
     isoDate: new Date().toISOString()
   };
   const entries = getActionEntries();
   entries.unshift(entry);
   setActionEntries(entries.slice(0, 80));
+  try { window.ReefKeeperIntegration?.recordAction?.(entry); } catch(e) { console.warn('Integration Core could not record the maintenance event.', e); }
   titleEl.value = '';
   notesEl.value = '';
+  if (equipmentEl) equipmentEl.value = '';
+  if (actionCodeEl) actionCodeEl.value = '';
   renderActionHistory();
   renderRecentChangesHome();
   renderLongTermSummary();
@@ -2041,6 +2058,7 @@ function saveActionEntry() {
 
 function deleteActionEntry(id) {
   setActionEntries(getActionEntries().filter(e => e.id !== id));
+  try { window.ReefKeeperIntegration?.removeEventsBySource?.('reef_actions', id); } catch(e) {}
   renderActionHistory();
   renderRecentChangesHome();
   renderLongTermSummary();
@@ -2060,7 +2078,7 @@ function renderActionHistory() {
       <div class="action-history-icon">${actionIcon(e.category)}</div>
       <div class="action-history-main">
         <div class="action-history-title">${escapeHtml(e.title)}</div>
-        <div class="action-history-meta">${escapeHtml(e.date)} · ${escapeHtml(e.category || 'other')}</div>
+        <div class="action-history-meta">${escapeHtml(e.date)} · ${escapeHtml(e.category || 'other')}${e.equipmentName ? ` · ${escapeHtml(e.equipmentName)}` : ''}${e.actionCode ? ` · connected` : ''}</div>
         ${e.notes ? `<div class="action-history-notes">${escapeHtml(e.notes)}</div>` : ''}
       </div>
       <button class="reminder-delete-small" onclick="deleteActionEntry('${escapeHtml(e.id)}')" aria-label="Delete action">×</button>
@@ -2076,6 +2094,7 @@ function getCompletedHistoryEntries() {
 
 function setCompletedHistoryEntries(entries) {
   try { localStorage.setItem('reef_completed_history', JSON.stringify(entries)); } catch(e) {}
+  try { window.ReefKeeperIntegration?.syncLegacySources?.(); } catch(e) {}
 }
 
 function completedHistoryIcon(type) {
@@ -2108,6 +2127,7 @@ function recordCompletedHistory(entry) {
   };
   entries.unshift(historyEntry);
   setCompletedHistoryEntries(entries.slice(0, 200));
+  try { window.ReefKeeperIntegration?.recordCompletedTask?.(historyEntry); } catch(e) { console.warn('Integration Core could not record the completed-task event.', e); }
   renderCompletedHistory();
 }
 
@@ -2120,13 +2140,18 @@ function removeCompletedHistoryFor(sourceId, source = null) {
     return !(sameSourceId && sameSource);
   });
   if (filtered.length !== entries.length) {
+    const removed = entries.filter(entry => !filtered.includes(entry));
     setCompletedHistoryEntries(filtered);
+    removed.forEach(entry => {
+      try { window.ReefKeeperIntegration?.removeEventsBySource?.('reef_completed_history', entry.id); } catch(e) {}
+    });
     renderCompletedHistory();
   }
 }
 
 function deleteCompletedHistoryEntry(id) {
   setCompletedHistoryEntries(getCompletedHistoryEntries().filter(e => e.id !== id));
+  try { window.ReefKeeperIntegration?.removeEventsBySource?.('reef_completed_history', id); } catch(e) {}
   renderCompletedHistory();
   showToast('🗑️ History item deleted');
 }
@@ -2134,6 +2159,7 @@ function deleteCompletedHistoryEntry(id) {
 function clearCompletedHistory() {
   if (!confirm('Clear completed reminder/task history? This will not delete active reminders or parameter logs.')) return;
   setCompletedHistoryEntries([]);
+  try { window.ReefKeeperIntegration?.removeEventsBySource?.('reef_completed_history'); } catch(e) {}
   renderCompletedHistory();
   showToast('🧹 Completed history cleared');
 }
@@ -3153,6 +3179,10 @@ function renderMaintenanceIntervals() {
 }
 
 function getRecentChanges(limit = 6) {
+  try {
+    const integrated = window.ReefKeeperIntegration?.getRecentChanges?.(limit) || [];
+    if (integrated.length) return integrated;
+  } catch(e) {}
   const changes = [];
   getActionEntries().forEach(a => changes.push({ icon: actionIcon(a.category), title: a.title || 'Action', meta: `${memoryLineDate(a)} · ${a.category || 'other'}`, date: memoryDateValue(a) }));
   getCompletedHistoryEntries().forEach(h => changes.push({ icon:'✅', title:`Completed: ${h.title || 'Task'}`, meta: `${memoryLineDate(h)} · ${h.type || 'history'}`, date: memoryDateValue(h) }));
@@ -3262,6 +3292,9 @@ const REEF_BACKUP_KEYS = [
   'reef_logs',
   'reef_actions',
   'reef_completed_history',
+  'reef_tank_events_v1',
+  'reef_tank_events_meta_v1',
+  'reef_observer_filter_roll_state_v1',
   'reef_ai_reminders',
   'reef_static_reminder_states',
   'reef_days_off_plan_states',
@@ -3320,6 +3353,9 @@ function reefBackupFriendlyName(key) {
     reef_logs: 'Parameter logs',
     reef_actions: 'Action history',
     reef_completed_history: 'Completed history',
+    reef_tank_events_v1: 'Shared tank event stream',
+    reef_tank_events_meta_v1: 'Tank event stream metadata',
+    reef_observer_filter_roll_state_v1: 'Observer filter-roll learning',
     reef_ai_reminders: 'AI reminders',
     reef_static_reminder_states: 'Static reminder states',
     reef_days_off_plan_states: 'Days-Off checked states',
@@ -3545,6 +3581,7 @@ function importReefBackup(event) {
       });
 
       showImportedBackupSummary(payload);
+      try { window.ReefKeeperIntegration?.syncLegacySources?.(); } catch(e) { console.warn('Integration Core resync after import failed.', e); }
 
       renderLogHistory();
       renderTrendControls();
@@ -4352,7 +4389,7 @@ function applyAustralianStripyResolvedSideEffects() {
       title: 'Australian Stripy fish rehomed',
       notes: 'Recorded from Ask AI conversation: user found a new home, so rehoming/feeding coverage tasks should be removed from future plans.'
     });
-    try { localStorage.setItem('reef_actions', JSON.stringify(actions.slice(0, 80))); } catch(e) {}
+    try { setActionEntries(actions.slice(0, 80)); } catch(e) {}
   }
 
   renderActionHistory();
@@ -4400,7 +4437,7 @@ function applyChaetoReactorCancelledSideEffects() {
       title: 'Chaeto reactor plan cancelled',
       notes: 'Recorded from user direction: no chaeto reactor setup, harvest, refugium, or macroalgae planning unless the user reverses this later.'
     });
-    try { localStorage.setItem('reef_actions', JSON.stringify(actions.slice(0, 80))); } catch(e) {}
+    try { setActionEntries(actions.slice(0, 80)); } catch(e) {}
   }
 
   renderActionHistory();

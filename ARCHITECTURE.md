@@ -1,8 +1,8 @@
 # Reef Keeper Architecture
 
 **Last updated:** July 24, 2026  
-**Current runtime family:** v4.3.46 / Observer publisher 2.5  
-**Maintenance state:** Maintenance 8D dual-camera Observer on the verified R2 and local-monitor baseline  
+**Current runtime family:** v4.3.47 / Integration Core 9A.1 / Observer publisher 2.5  
+**Maintenance state:** Maintenance 9A shared tank-event layer on the verified Maintenance 8D dual-camera baseline  
 **Target architecture:** v5.x evidence-based AI engine
 
 
@@ -25,6 +25,24 @@ Raspberry Pi
 The Vercel Hobby deployment is currently at the 12-function limit. New backend behavior must extend an existing function or be preceded by a separately tested consolidation.
 
 The repository contains two Apex endpoint families: `/api/apex-sync` + `/api/apex-status`, and `/api/telemetry`. The live installation is working, but consolidation is intentionally deferred until the installed Pi connector is captured and compared against repository source.
+
+
+## Maintenance 9A shared event boundary
+
+The browser now has a canonical integration layer above the existing feature-specific local-storage records:
+
+```text
+Parameter Log ─┐
+Maintenance ───┼─> Integration Core ─> shared tank events
+Completed Tasks┘                         ├─> Home recent changes
+                                        ├─> Reef Timeline and reports
+                                        ├─> Ask AI context
+                                        └─> Observer filter-roll cycles
+```
+
+The first schema stores immutable-style structured events under `reef_tank_events_v1`. Source records remain in `reef_logs`, `reef_actions`, and `reef_completed_history` for backward compatibility. Migration is deterministic and idempotent.
+
+Filter-roll replacement events also update `reef_observer_filter_roll_state_v1`. This state separates maintenance ground truth from future visual measurements, preserves completed roll cycles, and exposes a stable API for low-frequency Observer sampling and usage forecasting. No Pi-side visual detector is included in Maintenance 9A.
 
 ## Maintenance 1 safeguards
 

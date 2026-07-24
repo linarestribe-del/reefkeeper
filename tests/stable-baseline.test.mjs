@@ -5,8 +5,8 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const html = fs.readFileSync('index.html', 'utf8');
 const testCommand = pkg.scripts?.test || '';
 
-assert.equal(pkg.version, '4.3.46');
-assert.ok(html.includes('Reef Keeper v4.3.46 Maintenance 8D'));
+assert.equal(pkg.version, '4.3.47');
+assert.ok(html.includes('Reef Keeper v4.3.47 Maintenance 9A'));
 
 for (const requiredTest of [
   'javascript-syntax.test.mjs',
@@ -18,6 +18,7 @@ for (const requiredTest of [
   'index-handler-render-cleanup.test.mjs',
   'index-data-snapshot-cleanup.test.mjs',
   'index-storage-helper-cleanup.test.mjs',
+  'integration-core.test.mjs',
   'repository-integrity.test.mjs',
   'vercel-function-count.test.mjs',
 ]) {
@@ -43,4 +44,4 @@ for (const requiredFile of [
   assert.ok(fs.existsSync(requiredFile), `Stable checkpoint file is missing: ${requiredFile}`);
 }
 
-console.log('Stable v4.3.40 baseline safeguards remain active in v4.3.46.');
+console.log('Stable v4.3.40 baseline safeguards remain active in v4.3.47.');

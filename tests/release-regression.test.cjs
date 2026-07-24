@@ -11,13 +11,13 @@ const rootCss = fs.readFileSync('app.css', 'utf8');
 const rootChat = fs.readFileSync('chat.js', 'utf8');
 const apiChat = fs.readFileSync('api/chat.js', 'utf8');
 
-assert(html.includes('css/app.css?v=20260724-maintenance-8d-dual-camera'));
+assert(html.includes('css/app.css?v=20260724-maintenance-9a-integration-core'));
 assert(html.includes('ai/evidence-engine.js?v=20260717-build-1b'));
 assert(html.includes('ai/decision-engine.js?v=20260718-build-1c'));
 assert(html.includes('ai/explainability.js?v=20260718-build-2c'));
 assert(html.includes('ai/trend-engine.js?v=20260718-build-2a'));
 assert(html.includes('ai/trend-chart.js?v=20260718-build-2b'));
-assert(html.includes('app.js?v=20260724-maintenance-8d-dual-camera'));
+assert(html.includes('app.js?v=20260724-maintenance-9a-integration-core'));
 assert(html.includes('observer.js?v=20260724-maintenance-8d-dual-camera'));
 assert(app.includes('window.ReefKeeperDecisionEngine.evaluate(evidenceContext)'));
 assert(app.includes('window.ReefKeeperExplainability.build'));
@@ -47,7 +47,7 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.46');
+assert.equal(pkg.version, '4.3.47');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
 assert(fs.existsSync('tests/index-js-cleanup.test.mjs'));
@@ -65,7 +65,7 @@ for (const file of ['MAINTENANCE_8D_RELEASE_MANIFEST.md', 'MAINTENANCE_8D_TEST_R
 assert(fs.existsSync('tests/ai-abuse-guard.test.mjs'));
 assert(fs.existsSync('tests/ai-access-control.test.mjs'));
 assert(html.includes('id="reef-ai-access-key"'));
-assert(html.includes('Reef Keeper v4.3.46 Maintenance 8D'));
+assert(html.includes('Reef Keeper v4.3.47 Maintenance 9A'));
 assert(app.includes("const REEF_AI_ACCESS_STORAGE_KEY = 'reef_ai_access_key_v1'"));
 assert(app.includes("headers['X-Reef-AI-Access-Key'] = key"));
 assert(app.includes('function testReefAiAccessKey()'));
@@ -123,6 +123,19 @@ assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBL
 assert(fs.readFileSync('lib/observer-common.js', 'utf8').includes('OBSERVER_SCHEMA_VERSION = 9'));
 assert(fs.readFileSync('api/observer-publish.js', 'utf8').includes("cameraId === 'return'"));
 assert(fs.readFileSync('api/observer-image.js', 'utf8').includes("cameraId === 'return'"));
+
+
+// Maintenance 9A Integration Core safeguards.
+assert(fs.existsSync('integration-core.js'));
+assert(fs.existsSync('tests/integration-core.test.mjs'));
+assert(html.includes('integration-core.js?v=20260724-maintenance-9a-integration-core'));
+assert(html.includes('id="action-equipment"'));
+assert(html.includes('id="action-code"'));
+assert(app.includes("'reef_tank_events_v1'"));
+assert(app.includes("'reef_observer_filter_roll_state_v1'"));
+for (const file of ['MAINTENANCE_9A_RELEASE_MANIFEST.md', 'MAINTENANCE_9A_TEST_REPORT.md', 'checksums/maintenance-9A.sha256']) {
+  assert(fs.existsSync(file), `Maintenance 9A release file is missing: ${file}`);
+}
 
 // Parameter Log recursion regression: direct routing must remain present and recursive body absent.
 assert(html.includes("rkDirectGo('log')") || html.includes('rkDirectGo("log")'));

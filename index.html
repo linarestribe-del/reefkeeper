@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260724-maintenance-8d-dual-camera">
+<link rel="stylesheet" href="css/app.css?v=20260724-maintenance-9a-integration-core">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1142,6 +1142,23 @@
         </div>
       </section>
 
+      <section class="observer-health-card observer-filter-roll-card" id="observer-filter-roll-card" aria-labelledby="observer-filter-roll-title">
+        <div class="observer-health-head">
+          <div>
+            <div class="observer-safety-title" id="observer-filter-roll-title">Filter Roller Learning</div>
+            <div class="observer-health-summary" id="observer-filter-roll-summary">Checking connected maintenance history…</div>
+          </div>
+          <span class="observer-health-badge pending" id="observer-filter-roll-badge">Checking</span>
+        </div>
+        <div class="observer-detail-grid" aria-label="Filter roller learning details">
+          <div><span>Current roll started</span><strong id="observer-filter-roll-started">—</strong></div>
+          <div><span>Measurements</span><strong id="observer-filter-roll-measurements">—</strong></div>
+          <div><span>Sampling plan</span><strong id="observer-filter-roll-sampling">1–3 per day</strong></div>
+          <div><span>Forecast</span><strong id="observer-filter-roll-forecast">Learning</strong></div>
+        </div>
+        <div class="observer-connection-note" id="observer-filter-roll-note">Log Filter Roller → Fleece roll replaced in Maintenance to start a connected roll cycle.</div>
+      </section>
+
       <section class="observer-health-card" aria-labelledby="observer-health-title">
         <div class="observer-health-head">
           <div>
@@ -1474,6 +1491,30 @@
             <option value="other">Other</option>
           </select>
         </div>
+        <div class="action-input-grid connected-action-grid">
+          <select class="action-select" id="action-equipment" onchange="applyConnectedMaintenancePreset()" aria-label="Connected equipment">
+            <option value="">Connected equipment (optional)</option>
+            <option value="filter-roller" data-equipment-name="Filter Roller">Filter Roller</option>
+            <option value="protein-skimmer" data-equipment-name="Protein Skimmer">Protein Skimmer</option>
+            <option value="uv-sterilizer" data-equipment-name="UV Sterilizer">UV Sterilizer</option>
+            <option value="gfo-reactor" data-equipment-name="GFO Reactor">GFO Reactor</option>
+            <option value="carbon-reactor" data-equipment-name="Carbon Reactor">Carbon Reactor</option>
+            <option value="return-pumps" data-equipment-name="Return Pumps">Return Pumps</option>
+            <option value="ato" data-equipment-name="ATO">ATO</option>
+            <option value="rodi" data-equipment-name="RODI System">RODI System</option>
+            <option value="apex" data-equipment-name="Neptune Apex">Neptune Apex</option>
+          </select>
+          <select class="action-select" id="action-code" onchange="applyConnectedMaintenancePreset()" aria-label="Connected action">
+            <option value="">Connected action (auto-detect)</option>
+            <option value="filter_roller.fleece_replaced">Fleece roll replaced</option>
+            <option value="water_change.completed">Water change completed</option>
+            <option value="equipment.cleaned">Equipment cleaned</option>
+            <option value="equipment.media_replaced">Media replaced</option>
+            <option value="equipment.serviced">Equipment serviced</option>
+            <option value="equipment.inspected">Equipment inspected</option>
+          </select>
+        </div>
+        <div class="connected-action-note">Connected actions are entered once and shared with Observer, Reef Timeline, reports, recent changes, and Ask AI.</div>
         <textarea class="action-input action-notes" id="action-notes" placeholder="Optional notes: amount changed, media added, coral response, etc."></textarea>
         <button class="log-btn" onclick="saveActionEntry()">➕ Save Action</button>
         <div class="history-collapse-shell">
@@ -1674,7 +1715,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.46 Maintenance 8D</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.47 Maintenance 9A</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -1814,6 +1855,7 @@
             <option value="photo">Photos / AI Vision</option>
             <option value="params">Parameters</option>
             <option value="maintenance">Maintenance</option>
+            <option value="observer">Observer</option>
             <option value="equipment">Equipment</option>
             <option value="livestock">Livestock</option>
             <option value="fish">Fish</option>
@@ -2415,6 +2457,18 @@ function copySystemCheckResults() {
 
   function buildEvents(source = {}) {
     const events = [];
+    let integratedEvents = [];
+    try { integratedEvents = window.ReefKeeperIntegration?.getTimelineEvents?.({ limit:1500 }) || []; } catch (error) {}
+    const integratedSourceRefs = new Set(integratedEvents
+      .filter(event => event.sourceKey && event.sourceRecordId)
+      .map(event => `${event.sourceKey}|${event.sourceRecordId}`));
+    const hasIntegratedRecord = (storageKey, record, index) => {
+      try {
+        const recordId = window.ReefKeeperIntegration?.getLegacyRecordId?.(storageKey, record, index);
+        return recordId ? integratedSourceRefs.has(`${storageKey}|${recordId}`) : false;
+      } catch (error) { return false; }
+    };
+    events.push(...integratedEvents);
 
     const photos = readTankPhotos();
     photos.forEach(photo => {
@@ -2432,7 +2486,8 @@ function copySystemCheckResults() {
 
     const logs = Array.isArray(source.logs) ? source.logs : rkReadStoredJson('reef_logs', []);
     if (Array.isArray(logs)) {
-      logs.forEach(log => {
+      logs.forEach((log, index) => {
+        if (hasIntegratedRecord('reef_logs', log, index)) return;
         const parts = [];
         if (log.po4) parts.push(`PO₄ ${log.po4}`);
         if (log.alk) parts.push(`Alk ${log.alk}`);
@@ -2456,7 +2511,8 @@ function copySystemCheckResults() {
 
     const actions = Array.isArray(source.actions) ? source.actions : rkReadStoredJson('reef_actions', []);
     if (Array.isArray(actions)) {
-      actions.forEach(action => {
+      actions.forEach((action, index) => {
+        if (hasIntegratedRecord('reef_actions', action, index)) return;
         events.push({
           type:'maintenance',
           filter:'maintenance',
@@ -2471,7 +2527,8 @@ function copySystemCheckResults() {
 
     const completed = Array.isArray(source.completed) ? source.completed : rkReadStoredJson('reef_completed_history', []);
     if (Array.isArray(completed)) {
-      completed.forEach(item => {
+      completed.forEach((item, index) => {
+        if (hasIntegratedRecord('reef_completed_history', item, index)) return;
         events.push({
           type:'completed',
           filter:'completed',
@@ -2535,6 +2592,7 @@ function copySystemCheckResults() {
     const logs = allEvents.filter(e => e.type === 'params').length;
     const maintenance = allEvents.filter(e => e.type === 'maintenance').length;
     const completed = allEvents.filter(e => e.type === 'completed').length;
+    const observer = allEvents.filter(e => e.type === 'observer').length;
     const livestock = allEvents.filter(e => e.type === 'livestock').length;
     const photos = allEvents.filter(e => e.type === 'photo').length;
 
@@ -2552,6 +2610,7 @@ function copySystemCheckResults() {
         <span>${rkEscapeHtml(logs)} tests</span>
         <span>${rkEscapeHtml(maintenance)} actions</span>
         <span>${rkEscapeHtml(completed)} completed</span>
+        <span>${rkEscapeHtml(observer)} Observer</span>
         <span>${rkEscapeHtml(livestock)} livestock</span>
         <span>${rkEscapeHtml(photos)} photos</span>
       </div>
@@ -3340,7 +3399,8 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260724-maintenance-8d-dual-camera"></script>
+<script src="app.js?v=20260724-maintenance-9a-integration-core"></script>
+<script src="integration-core.js?v=20260724-maintenance-9a-integration-core"></script>
 <script src="observer.js?v=20260724-maintenance-8d-dual-camera"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>

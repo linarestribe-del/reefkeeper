@@ -1,16 +1,16 @@
 # Reef Keeper
 
-**Current application version:** `4.3.46`  
-**Current release family:** Maintenance 8D — dual-camera Aquarium Observer  
-**Maintenance state:** Maintenance 8D adds independent sump-overview and return-chamber feeds, health records, and local monitoring while preserving the verified v4.3.45 overview archive and R2 pipeline.
+**Current application version:** `4.3.47`  
+**Current release family:** Maintenance 9A — Integration Core  
+**Maintenance state:** Maintenance 9A adds a shared structured tank-event stream that connects Maintenance, Parameters, Observer, Timeline, reports, recent changes, backups, and Ask AI while preserving the verified Maintenance 8D dual-camera pipeline.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 8D is documented in `MAINTENANCE_8D_RELEASE_MANIFEST.md` and `MAINTENANCE_8D_TEST_REPORT.md`. The web update remains compatible with Publisher 2.4 until Publisher 2.5 is installed with a backup and controlled dual-camera publish. The packaged `connector/install-observer-publisher-2.5.sh` updater discovers the active systemd script path and performs that guarded installation.
+Maintenance 9A is documented in `MAINTENANCE_9A_RELEASE_MANIFEST.md` and `MAINTENANCE_9A_TEST_REPORT.md`. It is a browser-side integration release and does not require a Raspberry Pi publisher update.
 
 ## Current major capabilities
 
-- Tank profile, parameter logging, maintenance records, reminders, and timeline
+- Tank profile, parameter logging, maintenance records, reminders, and a shared cross-feature tank-event stream
 - Evidence, decision, explainability, trend, and chart modules
 - Ask AI with tank context, document input, single-photo analysis, and 2–4 photo comparison
 - Apex telemetry display
@@ -115,3 +115,10 @@ Publisher 2.4 evaluates a reduced grayscale copy of the latest frame on the Rasp
 ## Maintenance 8D dual-camera Observer
 
 Publisher 2.5 keeps the existing sump-overview pipeline and adds a separate return-chamber current image, health record, local monitor, and calibration target. The web app uses the existing Observer APIs with a validated camera selector, so Vercel remains at 12 functions. Overview history, daily summaries, and timelapses remain overview-only. The return camera is the default target for `observer-water-level-calibrate.py --camera return`.
+
+
+## Maintenance 9A Integration Core
+
+`integration-core.js` mirrors existing parameter logs, maintenance actions, and completed tasks into a device-local structured event stream without changing the original records. Stable event IDs make repeated synchronization safe. Timeline, reports, Home recent changes, backups, and Ask AI can consume the same events.
+
+A connected filter-roller replacement entry starts a new Observer roll cycle. The cycle store is ready for one to three overview-camera measurements per day and future multi-roll usage learning, but this release does not yet include the image-segmentation detector.
