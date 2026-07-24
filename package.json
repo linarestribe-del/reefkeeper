@@ -1,8 +1,8 @@
 {
   "name": "reefkeeper-vercel-app",
-  "version": "4.3.47",
+  "version": "4.3.48",
   "private": true,
-  "description": "Reef Keeper Vercel app with OpenAI, Apex, telemetry, and private Cloudflare R2-backed dual-camera Aquarium Observer monitoring",
+  "description": "Reef Keeper Vercel app with OpenAI, Apex, telemetry, and private Cloudflare R2-backed dual-camera Aquarium Observer monitoring with filter-roller measurement",
   "type": "module",
   "scripts": {
     "start": "vercel dev",

@@ -648,6 +648,27 @@
     };
   }
 
+  function computeFilterRollRemainingPct(list, measurement) {
+    if (Number.isFinite(measurement.remainingPct)) {
+      return clamp(measurement.remainingPct, 0, 100);
+    }
+
+    const currentThickness = Number.isFinite(measurement.apparentOuterRadius) && Number.isFinite(measurement.apparentCoreRadius)
+      ? measurement.apparentOuterRadius - measurement.apparentCoreRadius
+      : null;
+    if (!Number.isFinite(currentThickness) || currentThickness <= 0) return null;
+
+    const ordered = (Array.isArray(list) ? list : [])
+      .filter(item => Number.isFinite(item.apparentOuterRadius) && Number.isFinite(item.apparentCoreRadius))
+      .sort((a, b) => new Date(a.captureAt).getTime() - new Date(b.captureAt).getTime());
+    const baseline = ordered[0] || null;
+    const baselineThickness = baseline
+      ? baseline.apparentOuterRadius - baseline.apparentCoreRadius
+      : currentThickness;
+    if (!Number.isFinite(baselineThickness) || baselineThickness <= 0) return null;
+    return clamp((currentThickness / baselineThickness) * 100, 0, 100);
+  }
+
   function recordFilterRollMeasurement(input) {
     const state = readFilterRollState();
     if (!state.currentCycle) {
@@ -658,12 +679,27 @@
       return { ok:false, error:'A remaining percentage or apparent outer/core radius measurement is required.' };
     }
 
-    const list = Array.isArray(state.currentCycle.measurements) ? state.currentCycle.measurements : [];
+    const list = Array.isArray(state.currentCycle.measurements) ? state.currentCycle.measurements.slice() : [];
+    if (!Number.isFinite(measurement.remainingPct)) {
+      measurement.remainingPct = computeFilterRollRemainingPct(list, measurement);
+    }
     const index = list.findIndex(item => item.id === measurement.id || item.captureAt === measurement.captureAt);
     if (index >= 0) list[index] = measurement;
     else list.push(measurement);
     list.sort((a, b) => new Date(a.captureAt).getTime() - new Date(b.captureAt).getTime());
-    state.currentCycle.measurements = list.slice(-MAX_MEASUREMENTS_PER_ROLL);
+
+    // If the baseline was revised in-place, recompute all derived remaining percentages.
+    const baselineMeasurements = list.slice();
+    for (const item of baselineMeasurements) {
+      if (!Number.isFinite(item.remainingPct) && Number.isFinite(item.apparentOuterRadius) && Number.isFinite(item.apparentCoreRadius)) {
+        item.remainingPct = computeFilterRollRemainingPct(baselineMeasurements, item);
+      }
+    }
+    if (baselineMeasurements.length && Number.isFinite(baselineMeasurements[0].apparentOuterRadius) && Number.isFinite(baselineMeasurements[0].apparentCoreRadius)) {
+      baselineMeasurements[0].remainingPct = 100;
+    }
+
+    state.currentCycle.measurements = baselineMeasurements.slice(-MAX_MEASUREMENTS_PER_ROLL);
     state.currentCycle.baselinePending = false;
     state.currentCycle.lastMeasurementAt = measurement.captureAt;
     writeFilterRollState(state);
@@ -790,7 +826,7 @@
   }
 
   const api = {
-    version:'9A.1',
+    version:'9B.1',
     schemaVersion:SCHEMA_VERSION,
     keys: {
       events:EVENT_STORE_KEY,

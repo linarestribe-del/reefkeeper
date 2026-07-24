@@ -201,6 +201,57 @@
     };
   }
 
+  function normalizeFilterRoll(value) {
+    const item = value && typeof value === 'object' ? value : {};
+    const schedule = item.schedule && typeof item.schedule === 'object' ? item.schedule : {};
+    const roi = Array.isArray(item.roi) && item.roi.length === 4
+      ? item.roi.map(number => Math.max(0, Math.min(1, Number(number) || 0)))
+      : null;
+    return {
+      enabled: item.enabled !== false,
+      configured: item.configured === true,
+      available: item.available === true,
+      cameraId: cleanText(item.cameraId || 'overview'),
+      state: cleanText(item.state || item.status, 'pending'),
+      status: cleanText(item.status || item.state, 'pending'),
+      message: cleanText(item.message),
+      note: cleanText(item.note),
+      measuredAt: parseDate(item.measuredAt || item.captureAt),
+      measurementId: cleanText(item.measurementId || item.measuredAt || ''),
+      sourceImageId: cleanText(item.sourceImageId || ''),
+      confidence: Math.max(0, Math.min(1, Number(item.confidence) || 0)),
+      remainingPct: Number.isFinite(Number(item.remainingPct)) ? Math.max(0, Math.min(100, Number(item.remainingPct))) : null,
+      apparentOuterRadius: Number.isFinite(Number(item.apparentOuterRadius)) ? Math.max(0, Number(item.apparentOuterRadius)) : null,
+      apparentCoreRadius: Number.isFinite(Number(item.apparentCoreRadius)) ? Math.max(0, Number(item.apparentCoreRadius)) : null,
+      apparentThicknessPct: Number.isFinite(Number(item.apparentThicknessPct)) ? Math.max(0, Math.min(100, Number(item.apparentThicknessPct))) : null,
+      roi,
+      schedule: {
+        hoursLocal: Array.isArray(schedule.hoursLocal) ? schedule.hoursLocal.map(value => Math.max(0, Math.min(23, Number(value) || 0))) : [],
+        measurementsPerDay: Math.max(1, Number(schedule.measurementsPerDay || item.measurementsPerDay) || 3),
+        minSpacingMinutes: Math.max(30, Number(schedule.minSpacingMinutes) || 240)
+      }
+    };
+  }
+
+  function syncFilterRollMeasurementFromObserver(record) {
+    const filterRoll = record?.filterRoll;
+    if (!filterRoll?.available || !filterRoll.measuredAt) return;
+    try {
+      window.ReefKeeperIntegration?.recordFilterRollMeasurement?.({
+        id: filterRoll.measurementId || `observer-filter-roll-${filterRoll.measuredAt.toISOString()}`,
+        captureAt: filterRoll.measuredAt.toISOString(),
+        remainingPct: filterRoll.remainingPct,
+        apparentOuterRadius: filterRoll.apparentOuterRadius,
+        apparentCoreRadius: filterRoll.apparentCoreRadius,
+        confidence: filterRoll.confidence,
+        cameraId: filterRoll.cameraId || 'overview',
+        sourceImageId: filterRoll.sourceImageId,
+        notes: filterRoll.note || filterRoll.message || 'Overview-camera filter roller measurement.'
+      });
+      window.ReefKeeperIntegration?.renderFilterRollIntegrationStatus?.();
+    } catch (_) {}
+  }
+
   function normalizeDailySummary(payload) {
     const item = payload && typeof payload === 'object' ? payload : {};
     const source = item.source && typeof item.source === 'object' ? item.source : {};
@@ -631,6 +682,7 @@
         dayAgo: normalizeComparison('dayAgo', null),
         weekAgo: normalizeComparison('weekAgo', null)
       },
+      filterRoll: cameraId === 'overview' ? normalizeFilterRoll(source.filterRoll) : normalizeFilterRoll({ enabled:false, configured:false, cameraId:'return' }),
       receivedAt: parseDate(source.receivedAt || rootRecord.receivedAt),
       cameraLabel: String(source.cameraLabel || source.camera?.label || defaultLabel),
       stream: String(source.stream || source.camera?.stream || 'stream1'),
@@ -972,6 +1024,7 @@
           fetchObserverTimelapses().catch(() => normalizeTimelapseFeed({ ok: false, timelapses: {} }))
         ]);
         observerFeed = feed;
+        syncFilterRollMeasurementFromObserver(feed.overview);
         const record = activeObserverRecord() || feed.overview;
         renderObserver(record);
         renderDailySummary(report);

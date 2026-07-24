@@ -9,12 +9,12 @@ assert.match(html, /onclick="showPage\('log'\)"[^>]*><span>📊<\/span><strong>P
 assert.match(app, /window\.showPage = function\(name, btn\)\s*\{\s*directGo\(name, btn\);\s*\}/, 'Final showPage override should call directGo once');
 assert.doesNotMatch(app, /window\.showPage = function\(name, btn\)\s*\{\s*showPage\(name, btn\)/, 'Final showPage override must not recurse');
 assert.match(html, /ai\/evidence-engine\.js\?v=20260717-build-1b/, 'Evidence engine must load before app.js');
-assert.ok(html.indexOf('ai/evidence-engine.js?v=20260717-build-1b') < html.indexOf('app.js?v=20260724-maintenance-9a-integration-core'), 'Evidence engine must load before app.js');
+assert.ok(html.indexOf('ai/evidence-engine.js?v=20260717-build-1b') < html.indexOf('app.js?v=20260724-maintenance-9b-filter-roll'), 'Evidence engine must load before app.js');
 assert.ok(html.indexOf('ai/trend-engine.js?v=20260718-build-2a') < html.indexOf('ai/trend-chart.js?v=20260718-build-2b'), 'Trend engine must load before the chart module');
-assert.ok(html.indexOf('ai/trend-chart.js?v=20260718-build-2b') < html.indexOf('app.js?v=20260724-maintenance-9a-integration-core'), 'Trend chart module must load before app.js');
-assert.ok(html.indexOf('observer.js?v=20260724-maintenance-8d-dual-camera') > html.indexOf('app.js?v=20260724-maintenance-9a-integration-core'), 'Observer controller must load after app.js');
-assert.ok(html.indexOf('integration-core.js?v=20260724-maintenance-9a-integration-core') > html.indexOf('app.js?v=20260724-maintenance-9a-integration-core'), 'Integration Core must load after app.js');
-assert.ok(html.indexOf('integration-core.js?v=20260724-maintenance-9a-integration-core') < html.indexOf('observer.js?v=20260724-maintenance-8d-dual-camera'), 'Integration Core must load before Observer controller');
+assert.ok(html.indexOf('ai/trend-chart.js?v=20260718-build-2b') < html.indexOf('app.js?v=20260724-maintenance-9b-filter-roll'), 'Trend chart module must load before app.js');
+assert.ok(html.indexOf('observer.js?v=20260724-maintenance-9b-filter-roll') > html.indexOf('app.js?v=20260724-maintenance-9b-filter-roll'), 'Observer controller must load after app.js');
+assert.ok(html.indexOf('integration-core.js?v=20260724-maintenance-9b-filter-roll') > html.indexOf('app.js?v=20260724-maintenance-9b-filter-roll'), 'Integration Core must load after app.js');
+assert.ok(html.indexOf('integration-core.js?v=20260724-maintenance-9b-filter-roll') < html.indexOf('observer.js?v=20260724-maintenance-9b-filter-roll'), 'Integration Core must load before Observer controller');
 const aiRouteIndex = vercel.routes.findIndex(route => route.src === '/ai/(.*)' && route.dest === '/ai/$1');
 const fallbackIndex = vercel.routes.findIndex(route => route.src === '/(.*)');
 assert.ok(aiRouteIndex >= 0 && aiRouteIndex < fallbackIndex, 'Vercel must serve /ai files before the SPA fallback');

@@ -102,6 +102,6 @@ Water-level tracking starts disabled. Use `observer-water-level-calibrate.py` on
 
 ## Maintenance 8D Observer publisher 2.5
 
-Publisher 2.5 preserves the existing overview workflow and additionally reads `/mnt/reef-ssd/aquarium-observer/return-chamber/`. It publishes the return camera to the same authenticated Observer endpoint using the `camera=return` selector. Return capture health and local-monitor state are independent, and a return-camera outage does not prevent a valid overview publish.
+Publisher 2.6 preserves the existing overview workflow and additionally reads `/mnt/reef-ssd/aquarium-observer/return-chamber/`. It publishes the return camera to the same authenticated Observer endpoint using the `camera=return` selector. Return capture health and local-monitor state are independent, and a return-camera outage does not prevent a valid overview publish.
 
-Use `install-observer-publisher-2.5.sh` after the v4.3.46 web deployment is Ready. The installer discovers the actual systemd publisher path, verifies pinned checksums, creates validated Publisher 2.4 backups, requires successful overview and return publishes, and rolls back automatically on failure. The calibration helper now supports `--camera return|overview` and defaults to Return Chamber.
+Use `install-observer-publisher-2.6.sh` after the v4.3.46 web deployment is Ready. The installer discovers the actual systemd publisher path, verifies pinned checksums, creates validated Publisher 2.4 backups, requires successful overview and return publishes, and rolls back automatically on failure. The calibration helper now supports `--camera return|overview` and defaults to Return Chamber.

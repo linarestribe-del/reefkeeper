@@ -53,7 +53,7 @@ try {
   await publishHandler({ method: 'POST', headers, query: {}, body: {
     cameraId: 'overview', ok: true, capturedAt: '2026-07-24T01:00:00Z', imageBase64: jpeg,
     cameraLabel: 'Sump overview', stream: 'stream1', resolution: '2560×1440',
-    health: { status: 'healthy', issues: [] }, historyImages: []
+    health: { status: 'healthy', issues: [] }, filterRoll: { enabled: true, configured: true, available: true, measuredAt: '2026-07-24T01:00:00Z', confidence: 0.81, apparentOuterRadius: 120, apparentCoreRadius: 36, schedule: { hoursLocal:[9,15,21], measurementsPerDay:3, minSpacingMinutes:240 } }, historyImages: []
   } }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.payload.ok, true);
@@ -77,6 +77,9 @@ try {
   assert.equal(res.payload.cameras.overview.thumbnailUrl, '/api/observer-image');
   assert.equal(res.payload.cameras.return.thumbnailUrl, '/api/observer-image?camera=return&slot=latest');
   assert.equal(res.payload.cameras.return.capturedAt, '2026-07-24T01:00:30.000Z');
+  assert.equal(res.payload.filterRoll.available, true);
+  assert.equal(res.payload.filterRoll.apparentOuterRadius, 120);
+  assert.equal(res.payload.cameras.overview.filterRoll.measurementId, '2026-07-24T01:00:00.000Z');
 } finally {
   globalThis.fetch = previous.fetch;
   for (const [name, value] of [

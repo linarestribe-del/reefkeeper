@@ -1,3 +1,10 @@
+## 4.3.48 — Maintenance 9B Filter Roller Measurement
+
+- Added low-frequency overview-camera filter-roller measurement plumbing to the Pi publisher with a private ROI configuration file, scheduled sampling windows, and safe status persistence.
+- Extended Observer status normalization so published overview captures can include filter-roller measurement metadata without exposing private Pi paths.
+- Updated the app-side Observer controller to mirror published filter-roller measurements into the Integration Core, which now derives remaining percent from the first measured baseline in the current fleece cycle.
+- Added a new Publisher 2.6 installer alongside the earlier installer so the Raspberry Pi can be updated after the web deployment is live.
+
 ## 4.3.47 — Maintenance 9A Integration Core
 
 - Added a shared structured tank-event stream with stable IDs and duplicate protection.

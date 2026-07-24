@@ -44,7 +44,7 @@ const status = normalizeObserverStatus({
   }
 }, { imageAvailable: true });
 
-assert.equal(status.schemaVersion, 9);
+assert.equal(status.schemaVersion, 10);
 assert.equal(status.cameras.overview.cameraId, 'overview');
 assert.equal(status.cameras.return.cameraId, 'return');
 assert.equal(status.cameras.return.cameraLabel, 'Return chamber');
@@ -73,7 +73,7 @@ assert.match(ui, /data-observer-overview-only/);
 assert.match(publishApi, /cameraId === 'return'/);
 assert.match(publishApi, /writeObserverCameraImage\(latestImage, 'return', 'latest'\)/);
 assert.match(imageApi, /readObserverCameraImage\(cameraId, slot\)/);
-assert.match(publisher, /PUBLISHER_VERSION = '2\.5'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.6'/);
 assert.match(publisher, /RETURN_CAPTURE_STATUS_PATH/);
 assert.match(publisher, /RETURN_CAPTURE_TIMER/);
 assert.match(publisher, /publish_return_camera\(/);

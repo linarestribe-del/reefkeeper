@@ -10,7 +10,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const observer = fs.readFileSync(path.join(root, 'observer.js'), 'utf8');
 const publisher = fs.readFileSync(path.join(root, 'connector', 'observer-publisher.py'), 'utf8');
 const calibrator = fs.readFileSync(path.join(root, 'connector', 'observer-water-level-calibrate.py'), 'utf8');
-const installer = fs.readFileSync(path.join(root, 'connector', 'install-observer-publisher-2.5.sh'), 'utf8');
+const installer = fs.readFileSync(path.join(root, 'connector', 'install-observer-publisher-2.6.sh'), 'utf8');
 
 const status = normalizeObserverStatus({
   ok: true,
@@ -66,14 +66,14 @@ for (const id of [
 assert.match(observer, /function renderLocalMonitoring\(/);
 assert.match(observer, /setHealthRow\('local'/);
 assert.match(observer, /Local visual monitoring/);
-assert.match(publisher, /PUBLISHER_VERSION = '2\.5'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.6'/);
 assert.match(publisher, /def evaluate_local_monitor\(/);
 assert.match(publisher, /def detect_water_line\(/);
 assert.doesNotMatch(publisher, /openai|chatgpt/i, 'Per-frame publisher must not call AI');
 assert.match(calibrator, /monitoring\.json/);
 assert.match(calibrator, /baseline_y_percent/);
 assert.match(installer, /systemctl.*ExecStart|--property=ExecStart/);
-assert.match(installer, /PUBLISHER 2\.5 ACTIVE/);
+assert.match(installer, /PUBLISHER 2\.6 ACTIVE/);
 assert.doesNotMatch(installer, /TARGET="\/usr\/local\/bin\/observer-publisher\.py"/);
 
 console.log('Observer local monitor UI and alert tests passed.');

@@ -5,8 +5,8 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const html = fs.readFileSync('index.html', 'utf8');
 const testCommand = pkg.scripts?.test || '';
 
-assert.equal(pkg.version, '4.3.47');
-assert.ok(html.includes('Reef Keeper v4.3.47 Maintenance 9A'));
+assert.equal(pkg.version, '4.3.48');
+assert.ok(html.includes('Reef Keeper v4.3.48 Maintenance 9B'));
 
 for (const requiredTest of [
   'javascript-syntax.test.mjs',

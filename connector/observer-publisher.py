@@ -31,8 +31,12 @@ RETURN_IMAGE_PATH = RETURN_BASE_DIR / 'latest.jpg'
 RETURN_CAPTURES_DIR = RETURN_BASE_DIR / 'captures'
 RETURN_CAPTURE_STATUS_PATH = RETURN_BASE_DIR / 'status.json'
 RETURN_MONITOR_STATUS_PATH = RETURN_BASE_DIR / 'monitor-status.json'
+FILTER_ROLL_CONFIG_PATH = Path('/etc/reefkeeper-observer/filter-roller-monitoring.json')
+FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
+FILTER_ROLL_ANALYSIS_WIDTH = 320
+FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.5'
+PUBLISHER_VERSION = '2.6'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -546,6 +550,243 @@ def detect_water_line(pixels: list[int], roi: tuple[float, float, float, float],
     }
 
 
+
+def filter_roll_default() -> dict[str, Any]:
+    return {
+        'enabled': True,
+        'configured': False,
+        'available': False,
+        'cameraId': 'overview',
+        'state': 'pending',
+        'status': 'pending',
+        'message': 'Filter-roller visual measurement is waiting for a configured region of interest.',
+        'note': 'Low-frequency overview-camera measurement.',
+        'measurementId': '',
+        'sourceImageId': '',
+        'measuredAt': None,
+        'confidence': 0.0,
+        'remainingPct': None,
+        'apparentOuterRadius': None,
+        'apparentCoreRadius': None,
+        'apparentThicknessPct': None,
+        'roi': None,
+        'schedule': {
+            'hoursLocal': [9, 15, 21],
+            'measurementsPerDay': 3,
+            'minSpacingMinutes': 240,
+        },
+    }
+
+
+def filter_roll_config(primary: dict[str, Any], config_path: Path | None = None, source_key: str = 'filter_roll_monitoring') -> dict[str, Any]:
+    config_path = config_path or FILTER_ROLL_CONFIG_PATH
+    defaults: dict[str, Any] = {
+        'enabled': True,
+        'roi': None,
+        'probe_y': 0.5,
+        'measurement_hours_local': [9, 15, 21],
+        'min_spacing_minutes': 240,
+        'minimum_confidence': 0.42,
+    }
+    source = primary.get(source_key) if isinstance(primary.get(source_key), dict) else {}
+    override: dict[str, Any] = {}
+    try:
+        override = read_json(config_path)
+    except Exception:
+        override = {}
+    merged = {**defaults, **source, **override}
+    hours_raw = merged.get('measurement_hours_local')
+    if not isinstance(hours_raw, list):
+        hours_raw = defaults['measurement_hours_local']
+    hours: list[int] = []
+    for value in hours_raw[:6]:
+        try:
+            hour = int(value)
+        except (TypeError, ValueError):
+            continue
+        hours.append(max(0, min(23, hour)))
+    merged['measurement_hours_local'] = sorted(set(hours or defaults['measurement_hours_local']))
+    merged['probe_y'] = clamp_number(merged.get('probe_y'), 0.1, 0.9, 0.5)
+    merged['min_spacing_minutes'] = int(clamp_number(merged.get('min_spacing_minutes'), 30, 1440, 240))
+    merged['minimum_confidence'] = clamp_number(merged.get('minimum_confidence'), 0.15, 0.95, 0.42)
+    return merged
+
+
+def decode_monitor_region(path: Path, roi: tuple[float, float, float, float], width: int = FILTER_ROLL_ANALYSIS_WIDTH, height: int = FILTER_ROLL_ANALYSIS_HEIGHT) -> list[int]:
+    x, y, roi_width, roi_height = roi
+    ffmpeg = shutil.which('ffmpeg') or '/usr/bin/ffmpeg'
+    crop = f"crop=iw*{roi_width:.6f}:ih*{roi_height:.6f}:iw*{x:.6f}:ih*{y:.6f},scale={width}:{height}:flags=lanczos,format=gray"
+    command = [
+        ffmpeg,
+        '-v', 'error',
+        '-i', str(path),
+        '-vf', crop,
+        '-frames:v', '1',
+        '-f', 'rawvideo',
+        '-pix_fmt', 'gray',
+        'pipe:1',
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, timeout=15, check=False)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise RuntimeError(f'Filter-roll decoder failed: {safe_text(error, 180)}') from error
+    expected = width * height
+    if result.returncode != 0 or len(result.stdout) != expected:
+        detail = result.stderr.decode('utf-8', errors='replace') if isinstance(result.stderr, bytes) else str(result.stderr or '')
+        raise RuntimeError(f'Filter-roll decoder returned no usable frame: {safe_text(detail, 180)}')
+    return list(result.stdout)
+
+
+def smooth_series(values: list[float], radius: int = 2) -> list[float]:
+    if radius <= 0 or len(values) < 3:
+        return values[:]
+    output: list[float] = []
+    for index in range(len(values)):
+        left = max(0, index - radius)
+        right = min(len(values), index + radius + 1)
+        output.append(sum(values[left:right]) / max(1, right - left))
+    return output
+
+
+def find_peak_index(values: list[float], start: int, end: int) -> int | None:
+    start = max(0, start)
+    end = min(len(values), end)
+    if end - start < 3:
+        return None
+    best_index = start
+    best_value = values[start]
+    for index in range(start + 1, end):
+        if values[index] > best_value:
+            best_index = index
+            best_value = values[index]
+    return best_index
+
+
+def analyze_filter_roll_frame(image_path: Path, roi: tuple[float, float, float, float], probe_y: float = 0.5) -> dict[str, Any]:
+    pixels = decode_monitor_region(image_path, roi)
+    width = FILTER_ROLL_ANALYSIS_WIDTH
+    height = FILTER_ROLL_ANALYSIS_HEIGHT
+    row_center = max(3, min(height - 4, int(round(probe_y * (height - 1)))))
+    scanline: list[float] = []
+    for column in range(width):
+        samples = [pixels[(row_center + offset) * width + column] for offset in (-2, -1, 0, 1, 2)]
+        scanline.append(sum(samples) / len(samples))
+    smoothed = smooth_series(scanline, 3)
+    gradients = [abs(smoothed[index + 1] - smoothed[index]) for index in range(width - 1)]
+    median_gradient = sorted(gradients)[len(gradients) // 2] if gradients else 0.0
+    left_outer = find_peak_index(gradients, int(width * 0.04), int(width * 0.35))
+    right_outer = find_peak_index(gradients, int(width * 0.65), int(width * 0.96))
+    if left_outer is None or right_outer is None or right_outer - left_outer < int(width * 0.2):
+        return {'available': False, 'confidence': 0.0, 'message': 'Roll silhouette could not be isolated.'}
+    span = right_outer - left_outer
+    midpoint = left_outer + span // 2
+    core_left = find_peak_index(gradients, left_outer + max(8, int(span * 0.14)), midpoint - max(6, int(span * 0.06)))
+    core_right = find_peak_index(gradients, midpoint + max(6, int(span * 0.06)), right_outer - max(8, int(span * 0.14)))
+    if core_left is None or core_right is None or core_right - core_left < max(8, int(span * 0.08)):
+        return {'available': False, 'confidence': 0.0, 'message': 'Roll core could not be separated from the outer edge.'}
+    outer_strength = (gradients[left_outer] + gradients[right_outer]) / 2.0
+    core_strength = (gradients[core_left] + gradients[core_right]) / 2.0
+    symmetry = 1.0 - min(1.0, abs((midpoint - core_left) - (core_right - midpoint)) / max(1.0, span * 0.24))
+    prominence = min(1.0, (outer_strength + core_strength) / max(12.0, median_gradient * 5.0))
+    confidence = max(0.0, min(1.0, 0.18 + prominence * 0.46 + symmetry * 0.24 + min(1.0, outer_strength / 18.0) * 0.12))
+    apparent_outer_radius = span / 2.0
+    apparent_core_radius = (core_right - core_left) / 2.0
+    apparent_thickness_pct = (apparent_core_radius / apparent_outer_radius) * 100.0 if apparent_outer_radius > 0 else 0.0
+    return {
+        'available': True,
+        'confidence': round(confidence, 3),
+        'rowCenterPx': row_center,
+        'outerLeftPx': left_outer,
+        'outerRightPx': right_outer,
+        'coreLeftPx': core_left,
+        'coreRightPx': core_right,
+        'apparentOuterRadius': round(apparent_outer_radius, 3),
+        'apparentCoreRadius': round(apparent_core_radius, 3),
+        'apparentThicknessPct': round(max(0.0, min(100.0, apparent_thickness_pct)), 3),
+        'message': 'Filter-roll edges detected from the configured scan line.',
+    }
+
+
+def evaluate_filter_roll(
+    config: dict[str, Any],
+    capture: dict[str, Any],
+    image_path: Path | None = None,
+    now: datetime | None = None,
+    config_path: Path | None = None,
+    state_path: Path | None = None,
+) -> dict[str, Any]:
+    image_path = image_path or IMAGE_PATH
+    now = now or utc_now_dt()
+    state_path = state_path or FILTER_ROLL_STATUS_PATH
+    settings = filter_roll_config(config, config_path)
+    result = filter_roll_default()
+    result['enabled'] = settings.get('enabled') is not False
+    result['schedule'] = {
+        'hoursLocal': settings.get('measurement_hours_local') or [9, 15, 21],
+        'measurementsPerDay': len(settings.get('measurement_hours_local') or [9, 15, 21]),
+        'minSpacingMinutes': int(settings.get('min_spacing_minutes') or 240),
+    }
+    roi = parse_roi(settings.get('roi'))
+    result['configured'] = bool(result['enabled'] and roi)
+    result['roi'] = [round(value, 4) for value in roi] if roi else None
+    if result['enabled'] is False:
+        result.update({'status': 'healthy', 'state': 'disabled', 'message': 'Filter-roll visual measurement is disabled in the private Pi configuration.'})
+        return result
+
+    state: dict[str, Any] = {}
+    try:
+        state = read_json(state_path)
+    except Exception:
+        state = {}
+    for key in ['measurementId', 'sourceImageId', 'message', 'note', 'measuredAt', 'confidence', 'remainingPct', 'apparentOuterRadius', 'apparentCoreRadius', 'apparentThicknessPct', 'state', 'status', 'available']:
+        if key in state:
+            result[key] = state.get(key)
+    if not result['configured']:
+        result['message'] = 'Filter-roller region of interest is not configured yet on the Pi.'
+        return result
+
+    captured_raw = str(capture.get('captured_at') or capture.get('capturedAt') or now.isoformat())
+    captured_at = parse_iso(captured_raw) or now
+    source_image_id = captured_at.isoformat()
+    last_measured_at = parse_iso(state.get('measuredAt'))
+    last_source = str(state.get('sourceImageId') or '')
+    local_now = now.astimezone()
+    allowed_hours = settings.get('measurement_hours_local') or [9, 15, 21]
+    in_window = local_now.hour in allowed_hours
+    spacing_ok = last_measured_at is None or (now - last_measured_at) >= timedelta(minutes=int(settings.get('min_spacing_minutes') or 240))
+    needs_measurement = in_window and spacing_ok and source_image_id != last_source
+    result['sourceImageId'] = last_source
+    if not needs_measurement:
+        if result.get('available') and result.get('measuredAt'):
+            result['state'] = 'idle'
+            result['status'] = 'healthy' if float(result.get('confidence') or 0) >= settings.get('minimum_confidence') else 'pending'
+            result['message'] = 'Waiting for the next scheduled filter-roll measurement window.'
+        else:
+            result['state'] = 'scheduled'
+            result['status'] = 'pending'
+            result['message'] = 'Waiting for the next scheduled filter-roll measurement window.'
+        return result
+
+    analysis = analyze_filter_roll_frame(image_path, roi, float(settings.get('probe_y') or 0.5))
+    result.update({
+        'measurementId': f'filter-roll-{captured_at.isoformat()}',
+        'sourceImageId': source_image_id,
+        'measuredAt': captured_at.isoformat(),
+        'state': 'measured' if analysis.get('available') else 'attention',
+        'status': 'healthy' if analysis.get('available') and float(analysis.get('confidence') or 0) >= settings.get('minimum_confidence') else ('pending' if analysis.get('available') else 'attention'),
+        'available': analysis.get('available') is True and float(analysis.get('confidence') or 0) >= settings.get('minimum_confidence'),
+        'message': safe_text(analysis.get('message') or '', 240),
+        'note': 'App derives remaining percent from the baseline after a fleece replacement.',
+        'confidence': round(float(analysis.get('confidence') or 0.0), 3),
+        'apparentOuterRadius': analysis.get('apparentOuterRadius'),
+        'apparentCoreRadius': analysis.get('apparentCoreRadius'),
+        'apparentThicknessPct': analysis.get('apparentThicknessPct'),
+        'remainingPct': None,
+    })
+    write_json_atomic(state_path, result)
+    return result
+
+
 def local_monitor_default() -> dict[str, Any]:
     return {
         'status': 'pending',
@@ -958,7 +1199,7 @@ def collect_health(
     }
 
 
-def build_payload(config: dict[str, Any], capture: dict[str, Any], image: bytes, history: list[dict[str, Any]], health: dict[str, Any]) -> dict[str, Any]:
+def build_payload(config: dict[str, Any], capture: dict[str, Any], image: bytes, history: list[dict[str, Any]], health: dict[str, Any], filter_roll: dict[str, Any] | None = None) -> dict[str, Any]:
     storage = health.get('storage') or {}
     return {
         'cameraId': 'overview',
@@ -979,6 +1220,7 @@ def build_payload(config: dict[str, Any], capture: dict[str, Any], image: bytes,
         },
         'message': safe_text(capture.get('error') or '', 240),
         'health': health,
+        'filterRoll': filter_roll or filter_roll_default(),
         'imageContentType': 'image/jpeg',
         'imageBase64': base64.b64encode(image).decode('ascii'),
         'historyImages': history,
@@ -1164,6 +1406,7 @@ def main() -> int:
         now = utc_now_dt()
         daily_images = select_daily_images(config, catalog, now)
         local_monitor = evaluate_local_monitor(config)
+        filter_roll = evaluate_filter_roll(config, capture, image_path=IMAGE_PATH, now=now)
         health = collect_health(config, capture, catalog, previous_publish_status, daily_images, local_monitor)
 
         try:
@@ -1171,7 +1414,7 @@ def main() -> int:
                 raise ValueError('Capture status is missing a valid captured_at')
             image = read_jpeg(IMAGE_PATH)
             history = select_history(catalog, captured_at)
-            payload = build_payload(config, capture, image, history, health)
+            payload = build_payload(config, capture, image, history, health, filter_roll)
             result = post_json(endpoint, token, payload)
             return_camera = publish_return_camera(config, endpoint, token, previous_publish_status)
             slots = result.get('historySlots') or []
@@ -1229,6 +1472,10 @@ def main() -> int:
                 'dailySummaryCurrentCapturedAt': daily_current or None,
                 'dailySummaryGeneratedAt': daily_generated or None,
                 'dailySummaryError': daily_error,
+                'filterRollStatus': filter_roll.get('status'),
+                'filterRollMeasuredAt': filter_roll.get('measuredAt'),
+                'filterRollConfidence': filter_roll.get('confidence'),
+                'filterRollAvailable': filter_roll.get('available'),
                 'dailySummaryAttemptedAt': daily_attempted_at or None,
                 'dailySummaryAttemptCurrentCapturedAt': daily_attempt_current or None,
                 'dailySummaryAttemptCount': daily_attempt_count,
@@ -1242,7 +1489,7 @@ def main() -> int:
                 'returnCameraError': return_camera.get('error') or '',
                 'publisherVersion': PUBLISHER_VERSION,
             })
-            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} monitor={local_monitor.get('status')} return={return_camera.get('healthStatus')} return_monitor={return_camera.get('localMonitorStatus')} daily={daily_status}")
+            print(f"PUBLISH_OK {captured_raw} {len(image)} bytes history={','.join(slots) or 'none'} health={health.get('status')} monitor={local_monitor.get('status')} filter_roll={filter_roll.get('status')} return={return_camera.get('healthStatus')} return_monitor={return_camera.get('localMonitorStatus')} daily={daily_status}")
             return 0
         except (OSError, ValueError) as local_error:
             health = collect_health(config, capture, catalog, previous_publish_status, daily_images, local_monitor)

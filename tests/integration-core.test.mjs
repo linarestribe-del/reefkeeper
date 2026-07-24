@@ -51,7 +51,7 @@ vm.runInContext(source, context, { filename:'integration-core.js' });
 
 const api = context.ReefKeeperIntegration;
 assert.ok(api, 'Integration Core must install a global API.');
-assert.equal(api.version, '9A.1');
+assert.equal(api.version, '9B.1');
 assert.equal(api.schemaVersion, 1);
 
 const events = api.listEvents();
@@ -69,12 +69,23 @@ assert.equal(initialRoll.sampling.measurementsPerDay, 3);
 
 const measurement = api.recordFilterRollMeasurement({
   captureAt:'2026-07-22T20:00:00.000Z',
-  remainingPct:98,
+  apparentOuterRadius:120,
+  apparentCoreRadius:36,
   confidence:0.86,
   cameraId:'overview'
 });
 assert.equal(measurement.ok, true);
-assert.equal(api.getFilterRollLearningSummary().currentMeasurementCount, 1);
+assert.equal(Math.round(measurement.measurement.remainingPct), 100);
+const followup = api.recordFilterRollMeasurement({
+  captureAt:'2026-07-23T20:00:00.000Z',
+  apparentOuterRadius:108,
+  apparentCoreRadius:36,
+  confidence:0.88,
+  cameraId:'overview'
+});
+assert.equal(followup.ok, true);
+assert.equal(Math.round(followup.measurement.remainingPct), 86);
+assert.equal(api.getFilterRollLearningSummary().currentMeasurementCount, 2);
 assert.equal(api.getFilterRollLearningSummary().stage, 'learning');
 
 api.syncLegacySources();
@@ -102,7 +113,7 @@ assert.ok(timeline.some(event => event.integrationKind === 'completed'));
 assert.match(api.buildAiContext('filter roller usage'), /SHARED REEF KEEPER EVENT STREAM/);
 assert.match(api.buildAiContext('filter roller usage'), /FILTER ROLLER LEARNING/);
 
-assert.ok(html.includes('integration-core.js?v=20260724-maintenance-9a-integration-core'));
+assert.ok(html.includes('integration-core.js?v=20260724-maintenance-9b-filter-roll'));
 assert.ok(html.includes('id="action-equipment"'));
 assert.ok(html.includes('id="action-code"'));
 assert.ok(html.includes('id="observer-filter-roll-card"'));
