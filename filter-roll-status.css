@@ -1,0 +1,306 @@
+/* Reef Keeper Maintenance 9D — Filter-Roll Status and History */
+.rk-filter-roll-card {
+  margin-top: 18px;
+  overflow: hidden;
+}
+.rk-fr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.rk-fr-head h3 {
+  margin: 2px 0 5px;
+  font-size: 1.12rem;
+}
+.rk-fr-head p {
+  margin: 0;
+  color: var(--muted, #667085);
+  font-size: .9rem;
+  line-height: 1.45;
+}
+.rk-fr-kicker {
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  color: var(--accent, #147d92);
+}
+.rk-fr-updated {
+  flex: 0 0 auto;
+  color: var(--muted, #667085);
+  font-size: .72rem;
+  white-space: nowrap;
+}
+.rk-fr-current-grid {
+  display: grid;
+  grid-template-columns: minmax(170px, .75fr) minmax(220px, 1.25fr);
+  gap: 18px;
+  padding: 17px;
+  border: 1px solid var(--border, rgba(120,130,140,.22));
+  background: var(--surface-soft, rgba(80,130,145,.07));
+  border-radius: 14px;
+}
+.rk-fr-current-main {
+  min-width: 0;
+}
+.rk-fr-percent {
+  font-size: 2.35rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.03em;
+}
+.rk-fr-percent-label {
+  margin-top: 5px;
+  color: var(--muted, #667085);
+  font-size: .82rem;
+}
+.rk-fr-progress {
+  position: relative;
+  height: 10px;
+  margin: 14px 0 10px;
+  overflow: hidden;
+  background: rgba(120,130,140,.18);
+  border-radius: 999px;
+}
+.rk-fr-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent, #147d92), var(--accent-2, #58aeb8));
+  border-radius: inherit;
+  transition: width .35s ease;
+}
+.rk-fr-cycle-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  color: #8a5a00;
+  background: rgba(245, 178, 46, .16);
+  border: 1px solid rgba(245, 178, 46, .32);
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 750;
+}
+.rk-fr-current-details {
+  display: grid;
+  gap: 8px;
+}
+.rk-fr-current-details > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(120px, 1.25fr);
+  gap: 12px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border, rgba(120,130,140,.18));
+}
+.rk-fr-current-details > div:last-child {
+  border-bottom: 0;
+}
+.rk-fr-current-details span {
+  color: var(--muted, #667085);
+  font-size: .78rem;
+}
+.rk-fr-current-details strong {
+  text-align: right;
+  font-size: .83rem;
+}
+.rk-fr-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.rk-fr-metric {
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid var(--border, rgba(120,130,140,.2));
+  border-radius: 12px;
+  background: var(--surface, rgba(255,255,255,.02));
+}
+.rk-fr-metric-label {
+  color: var(--muted, #667085);
+  font-size: .7rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.rk-fr-metric > strong {
+  display: block;
+  margin-top: 6px;
+  font-size: .94rem;
+}
+.rk-fr-metric > span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted, #667085);
+  font-size: .76rem;
+  line-height: 1.4;
+}
+.rk-fr-badge {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 800;
+}
+.rk-fr-badge.good {
+  color: #17633c;
+  background: rgba(47, 176, 110, .15);
+}
+.rk-fr-badge.watch {
+  color: #815400;
+  background: rgba(245, 178, 46, .18);
+}
+.rk-fr-badge.warn {
+  color: #8d2e2e;
+  background: rgba(215, 75, 75, .14);
+}
+.rk-fr-badge.learning {
+  color: var(--muted, #667085);
+  background: rgba(120,130,140,.14);
+}
+.rk-fr-section {
+  margin-top: 17px;
+}
+.rk-fr-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.rk-fr-section-title strong {
+  font-size: .9rem;
+}
+.rk-fr-section-title span {
+  color: var(--muted, #667085);
+  font-size: .7rem;
+  text-align: right;
+}
+.rk-fr-history-list {
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(120,130,140,.2));
+  border-radius: 12px;
+}
+.rk-fr-history-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.5fr) minmax(90px, .8fr) minmax(70px, .6fr);
+  gap: 12px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border, rgba(120,130,140,.16));
+}
+.rk-fr-history-row:last-child {
+  border-bottom: 0;
+}
+.rk-fr-history-row.rejected {
+  background: rgba(215, 75, 75, .05);
+}
+.rk-fr-history-main,
+.rk-fr-history-value,
+.rk-fr-history-confidence {
+  min-width: 0;
+}
+.rk-fr-history-value,
+.rk-fr-history-confidence {
+  text-align: right;
+}
+.rk-fr-history-row strong,
+.rk-fr-history-row span {
+  display: block;
+}
+.rk-fr-history-row strong {
+  font-size: .78rem;
+}
+.rk-fr-history-row span {
+  margin-top: 3px;
+  color: var(--muted, #667085);
+  font-size: .68rem;
+}
+.rk-fr-reject-reason {
+  grid-column: 1 / -1;
+  color: #8d2e2e;
+  font-size: .7rem;
+}
+.rk-fr-warning-list {
+  display: grid;
+  gap: 7px;
+}
+.rk-fr-warning {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px 10px;
+  border: 1px solid rgba(245, 178, 46, .28);
+  background: rgba(245, 178, 46, .09);
+  border-radius: 10px;
+  color: var(--text, #1d2939);
+  font-size: .76rem;
+  line-height: 1.4;
+}
+.rk-fr-warning > span {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  color: #815400;
+  background: rgba(245, 178, 46, .24);
+  font-weight: 900;
+}
+.rk-fr-ok-note,
+.rk-fr-empty,
+.rk-fr-loading,
+.rk-fr-error {
+  padding: 12px;
+  color: var(--muted, #667085);
+  border: 1px solid var(--border, rgba(120,130,140,.18));
+  border-radius: 10px;
+  font-size: .78rem;
+}
+.rk-fr-error strong,
+.rk-fr-error span {
+  display: block;
+}
+.rk-fr-error strong {
+  color: #8d2e2e;
+}
+.rk-fr-error span {
+  margin-top: 4px;
+}
+@media (max-width: 650px) {
+  .rk-fr-head,
+  .rk-fr-section-title {
+    display: block;
+  }
+  .rk-fr-updated,
+  .rk-fr-section-title span {
+    display: block;
+    margin-top: 5px;
+    text-align: left;
+  }
+  .rk-fr-current-grid,
+  .rk-fr-metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .rk-fr-current-details > div {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+  .rk-fr-current-details strong {
+    text-align: left;
+  }
+  .rk-fr-history-row {
+    grid-template-columns: minmax(0, 1.25fr) minmax(70px, .7fr);
+  }
+  .rk-fr-history-confidence {
+    grid-column: 2;
+  }
+}
+
+.rk-fr-archive-note {
+  margin-top: 8px;
+  color: var(--muted, #667085);
+  font-size: .7rem;
+}

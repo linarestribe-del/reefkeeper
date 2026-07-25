@@ -56,6 +56,18 @@
       "dest": "/reef-background.png"
     },
     {
+      "src": "/filter-roll-engine.js",
+      "dest": "/filter-roll-engine.js"
+    },
+    {
+      "src": "/filter-roll-status.js",
+      "dest": "/filter-roll-status.js"
+    },
+    {
+      "src": "/filter-roll-status.css",
+      "dest": "/filter-roll-status.css"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
