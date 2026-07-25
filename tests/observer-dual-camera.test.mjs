@@ -73,7 +73,7 @@ assert.match(ui, /data-observer-overview-only/);
 assert.match(publishApi, /cameraId === 'return'/);
 assert.match(publishApi, /writeObserverCameraImage\(latestImage, 'return', 'latest'\)/);
 assert.match(imageApi, /readObserverCameraImage\(cameraId, slot\)/);
-assert.match(publisher, /PUBLISHER_VERSION = '2\.7\.1'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.7\.2'/);
 assert.match(publisher, /RETURN_CAPTURE_STATUS_PATH/);
 assert.match(publisher, /RETURN_CAPTURE_TIMER/);
 assert.match(publisher, /publish_return_camera\(/);

@@ -1,3 +1,10 @@
+## 4.3.50 — Maintenance 9C.2 Return-Monitor State-Path Fix
+
+- Fixed Publisher 2.7.1 writing return-camera monitor results to the overview monitor status file.
+- Publisher 2.7.2 now honors the state path supplied for each camera.
+- Restores live return-chamber water-level calibration and status reporting.
+- Added a regression test that keeps overview and return monitor state files separate.
+
 ## 4.3.49 — Maintenance 9C.1 Publisher Capture-Race Patch
 
 - Publisher 2.7.1 now reads the immutable dated capture file recorded in camera status instead of relying only on the replaceable `latest.jpg`.

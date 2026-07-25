@@ -110,4 +110,39 @@ with tempfile.TemporaryDirectory() as temporary:
     assert second['waterLevel']['direction'] == 'higher'
     assert any(item['code'] == 'water_level_watch' for item in second['issues'])
 
+
+with tempfile.TemporaryDirectory() as temporary:
+    base = Path(temporary)
+    overview_state = base / 'overview-monitor-status.json'
+    return_state = base / 'return-monitor-status.json'
+    return_config = base / 'return-monitoring.json'
+    publisher.MONITOR_STATUS_PATH = overview_state
+    return_config.write_text(json.dumps({
+        'enabled': True,
+        'water_level': {
+            'enabled': True,
+            'roi': [0.1, 0.1, 0.8, 0.8],
+            'baseline_y_percent': 50,
+            'warning_delta_percent': 5,
+            'urgent_delta_percent': 10,
+            'alert_streak': 3,
+            'minimum_confidence': 0.45,
+        },
+    }))
+    publisher.decode_monitor_frame = lambda _path: water_frame(HEIGHT // 2)
+
+    result = publisher.evaluate_local_monitor(
+        {},
+        base / 'return-latest.jpg',
+        datetime(2026, 7, 24, 3, 0, tzinfo=timezone.utc),
+        config_path=return_config,
+        state_path=return_state,
+        source_key='return_local_monitoring',
+    )
+    assert result['waterLevel']['configured'] is True
+    assert return_state.exists(), 'Return monitor state must be written to the caller-provided state path.'
+    assert not overview_state.exists(), 'Return monitoring must not overwrite the overview monitor state.'
+    saved = json.loads(return_state.read_text())
+    assert saved['lastWaterLevel']['configured'] is True
+
 print('Observer local monitor tests passed.')

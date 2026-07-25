@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.7.1'
+PUBLISHER_VERSION = '2.7.2'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -1054,7 +1054,7 @@ def evaluate_local_monitor(
         'lastWaterLevel': water_result,
     }
     try:
-        write_json_atomic(MONITOR_STATUS_PATH, new_state)
+        write_json_atomic(state_path, new_state)
     except Exception as error:
         issues.append(health_issue('local_monitor_state_error', 'warning', f'Local monitoring state could not be saved: {safe_text(error, 160)}'))
 
