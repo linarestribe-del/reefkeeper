@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.7'
+PUBLISHER_VERSION = '2.7.1'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -106,6 +106,35 @@ def read_jpeg(path: Path) -> bytes:
     if not image.startswith(b'\xff\xd8\xff'):
         raise ValueError(f'{path.name} is not a JPEG image')
     return image
+
+
+def capture_image_path(capture: dict[str, Any], fallback: Path) -> Path:
+    """Prefer the immutable capture file recorded after a completed camera write.
+
+    The rolling latest.jpg can be replaced while the publisher reads it. The dated
+    capture path in status.json is stable and avoids transient partial-file reads.
+    """
+    for key in ('image', 'capture_image', 'captureImage'):
+        raw = str(capture.get(key) or '').strip()
+        if not raw:
+            continue
+        candidate = Path(raw)
+        try:
+            if candidate.is_file():
+                return candidate
+        except OSError:
+            continue
+    for key in ('latest_image', 'latestImage'):
+        raw = str(capture.get(key) or '').strip()
+        if not raw:
+            continue
+        candidate = Path(raw)
+        try:
+            if candidate.is_file():
+                return candidate
+        except OSError:
+            continue
+    return fallback
 
 
 def parse_capture_datetime(path: Path) -> datetime | None:
@@ -1355,6 +1384,7 @@ def publish_return_camera(
     catalog = capture_catalog(RETURN_CAPTURES_DIR)
     captured_raw = str(capture.get('captured_at') or capture.get('capturedAt') or '')
     captured_at = parse_iso(captured_raw)
+    return_image_path = capture_image_path(capture, RETURN_IMAGE_PATH)
     local_monitor = evaluate_local_monitor(
         config,
         image_path=RETURN_IMAGE_PATH,
@@ -1377,7 +1407,7 @@ def publish_return_camera(
     try:
         if not captured_at:
             raise ValueError('Return camera status is missing a valid captured_at')
-        image = read_jpeg(RETURN_IMAGE_PATH)
+        image = read_jpeg(return_image_path)
         payload = build_camera_payload('return', config, capture, image, health, 'Return chamber')
         result = post_json(endpoint_with_camera(endpoint, 'return'), token, payload, timeout=55)
         return {
@@ -1450,6 +1480,7 @@ def main() -> int:
         catalog = capture_catalog()
         captured_raw = str(capture.get('captured_at') or capture.get('capturedAt') or '')
         captured_at = parse_iso(captured_raw)
+        overview_image_path = capture_image_path(capture, IMAGE_PATH)
         previous_publish_status: dict[str, Any] = {}
         try:
             previous_publish_status = read_json(PUBLISH_STATUS_PATH)
@@ -1458,13 +1489,13 @@ def main() -> int:
         now = utc_now_dt()
         daily_images = select_daily_images(config, catalog, now)
         local_monitor = evaluate_local_monitor(config)
-        filter_roll = evaluate_filter_roll(config, capture, image_path=IMAGE_PATH, now=now)
+        filter_roll = evaluate_filter_roll(config, capture, image_path=overview_image_path, now=now)
         health = collect_health(config, capture, catalog, previous_publish_status, daily_images, local_monitor)
 
         try:
             if not captured_at:
                 raise ValueError('Capture status is missing a valid captured_at')
-            image = read_jpeg(IMAGE_PATH)
+            image = read_jpeg(overview_image_path)
             history = select_history(catalog, captured_at)
             payload = build_payload(config, capture, image, history, health, filter_roll)
             result = post_json(endpoint, token, payload)

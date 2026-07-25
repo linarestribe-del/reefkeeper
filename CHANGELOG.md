@@ -1,3 +1,9 @@
+## 4.3.49 — Maintenance 9C.1 Publisher Capture-Race Patch
+
+- Publisher 2.7.1 now reads the immutable dated capture file recorded in camera status instead of relying only on the replaceable `latest.jpg`.
+- The 2.7.1 installer forces a fresh return-camera capture and retries controlled verification once before rollback.
+- Installer failure output now includes the precise return-camera error.
+
 ## 4.3.49 — Maintenance 9C Manual Roll Initialization + Outer-Edge Detector
 
 - Added an Observer form for initializing an existing, already-used fleece roll from physical current/full/core diameters.

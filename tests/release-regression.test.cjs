@@ -113,7 +113,7 @@ assert(fs.readFileSync('api/observer-status.js', 'utf8').includes('../lib/observ
 assert(fs.readFileSync('api/observer-image.js', 'utf8').includes('../lib/observer-r2.js'));
 
 // Maintenance 8D dual-camera Observer safeguards.
-assert(fs.existsSync('connector/install-observer-publisher-2.7.sh'));
+assert(fs.existsSync('connector/install-observer-publisher-2.7.1.sh'));
 assert(fs.existsSync('tests/observer-dual-camera.test.mjs'));
 assert(fs.existsSync('tests/observer-dual-camera-api.test.mjs'));
 assert(fs.existsSync('tests/observer-dual-camera-publisher.test.py'));
@@ -124,7 +124,7 @@ assert(html.includes('id="observer-filter-roll-current-diameter"'));
 assert(html.includes('initializeExistingFilterRollFromForm(event)'));
 assert(html.includes('id="observer-camera-overview"'));
 assert(html.includes('id="observer-camera-return"'));
-assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBLISHER_VERSION = '2.7'"));
+assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBLISHER_VERSION = '2.7.1'"));
 assert(fs.readFileSync('lib/observer-common.js', 'utf8').includes('OBSERVER_SCHEMA_VERSION = 10'));
 assert(fs.readFileSync('api/observer-publish.js', 'utf8').includes("cameraId === 'return'"));
 assert(fs.readFileSync('api/observer-image.js', 'utf8').includes("cameraId === 'return'"));
