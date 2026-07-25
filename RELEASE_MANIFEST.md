@@ -1,7 +1,7 @@
 # Reef Keeper Release Manifest
 
-Current release: **v4.3.50 Maintenance 9C.2**
+Current release: **v4.3.51 Maintenance 9C.3**
 
-Primary correction: Publisher 2.7.2 keeps overview and return-camera local-monitor state in their respective status files, restoring return-chamber water-level status reporting.
+Primary correction: Publisher 2.7.3 counts confirmation streaks once per unique camera capture, preventing repeated publisher runs from creating false return-chamber water-level alerts during a normal feed cycle.
 
-See `MAINTENANCE_9C_2_RELEASE_MANIFEST.md` and `MAINTENANCE_9C_2_TEST_REPORT.md`.
+See `MAINTENANCE_9C_3_RELEASE_MANIFEST.md` and `MAINTENANCE_9C_3_TEST_REPORT.md`.

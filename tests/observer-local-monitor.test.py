@@ -102,11 +102,35 @@ with tempfile.TemporaryDirectory() as temporary:
     }))
     publisher.decode_monitor_frame = lambda _path: water_frame(HEIGHT // 2)
 
-    first = publisher.evaluate_local_monitor({}, base / 'latest.jpg', datetime(2026, 7, 23, 2, 0, tzinfo=timezone.utc))
+    first = publisher.evaluate_local_monitor(
+        {},
+        base / 'latest.jpg',
+        datetime(2026, 7, 23, 2, 0, tzinfo=timezone.utc),
+        capture_key='return-capture-001',
+    )
     assert first['waterLevel']['configured'] is True
     assert first['waterLevel']['status'] == 'pending'
-    second = publisher.evaluate_local_monitor({}, base / 'latest.jpg', datetime(2026, 7, 23, 2, 5, tzinfo=timezone.utc))
+    assert first['waterLevel']['streak'] == 1
+
+    repeated = publisher.evaluate_local_monitor(
+        {},
+        base / 'latest.jpg',
+        datetime(2026, 7, 23, 2, 1, tzinfo=timezone.utc),
+        capture_key='return-capture-001',
+    )
+    assert repeated['waterLevel']['status'] == 'pending'
+    assert repeated['waterLevel']['streak'] == 1, 'Repeated evaluation of one image must not advance the water-level streak.'
+    repeated_state = json.loads(publisher.MONITOR_STATUS_PATH.read_text())
+    assert repeated_state['lastCaptureWasNew'] is False
+
+    second = publisher.evaluate_local_monitor(
+        {},
+        base / 'latest.jpg',
+        datetime(2026, 7, 23, 2, 5, tzinfo=timezone.utc),
+        capture_key='return-capture-002',
+    )
     assert second['waterLevel']['status'] == 'attention'
+    assert second['waterLevel']['streak'] == 2
     assert second['waterLevel']['direction'] == 'higher'
     assert any(item['code'] == 'water_level_watch' for item in second['issues'])
 
@@ -138,6 +162,7 @@ with tempfile.TemporaryDirectory() as temporary:
         config_path=return_config,
         state_path=return_state,
         source_key='return_local_monitoring',
+        capture_key='return-state-path-test-001',
     )
     assert result['waterLevel']['configured'] is True
     assert return_state.exists(), 'Return monitor state must be written to the caller-provided state path.'

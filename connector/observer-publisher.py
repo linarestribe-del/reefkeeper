@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.7.2'
+PUBLISHER_VERSION = '2.7.3'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -888,6 +888,7 @@ def evaluate_local_monitor(
     config_path: Path | None = None,
     state_path: Path | None = None,
     source_key: str = 'local_monitoring',
+    capture_key: str | None = None,
 ) -> dict[str, Any]:
     image_path = image_path or IMAGE_PATH
     config_path = config_path or MONITOR_CONFIG_PATH
@@ -903,6 +904,9 @@ def evaluate_local_monitor(
         state = read_json(state_path)
     except Exception:
         state = {}
+    resolved_capture_key = safe_text(capture_key, 300) or now.isoformat()
+    previous_capture_key = safe_text(state.get('lastCaptureKey'), 300)
+    is_new_capture = resolved_capture_key != previous_capture_key
     result = local_monitor_default()
     result['evaluatedAt'] = now.isoformat()
     try:
@@ -925,7 +929,11 @@ def evaluate_local_monitor(
     absolute_blank = (metrics['contrast'] < 4.0 and metrics['edgeEnergy'] < 2.0) or metrics['darkFraction'] > 0.985 or metrics['brightFraction'] > 0.985
     relative_flat = bool(baseline_metrics) and metrics['contrast'] < max(4.0, float(baseline_metrics.get('contrast') or 0) * 0.34) and metrics['edgeEnergy'] < max(2.0, float(baseline_metrics.get('edgeEnergy') or 0) * 0.34)
     obstruction_candidate = absolute_blank or relative_flat
-    obstruction_streak = (int(state.get('obstructionStreak') or 0) + 1) if obstruction_candidate else 0
+    previous_obstruction_streak = int(state.get('obstructionStreak') or 0)
+    if is_new_capture:
+        obstruction_streak = previous_obstruction_streak + 1 if obstruction_candidate else 0
+    else:
+        obstruction_streak = previous_obstruction_streak
     obstruction_limit = int(clamp_number(settings.get('obstruction_alert_streak'), 1, 6, 2))
     quality_status = 'attention' if obstruction_streak >= obstruction_limit else ('pending' if obstruction_candidate else 'healthy')
     if quality_status == 'attention':
@@ -937,8 +945,14 @@ def evaluate_local_monitor(
 
     threshold = clamp_number(settings.get('scene_change_threshold'), 0.08, 0.5, 0.18)
     scene_candidate = comparison.get('available') and comparison['changeScore'] >= threshold
-    scene_streak = (int(state.get('sceneStreak') or 0) + 1) if scene_candidate else 0
-    movement_streak = (int(state.get('movementStreak') or 0) + 1) if comparison.get('movementLikely') else 0
+    previous_scene_streak = int(state.get('sceneStreak') or 0)
+    previous_movement_streak = int(state.get('movementStreak') or 0)
+    if is_new_capture:
+        scene_streak = previous_scene_streak + 1 if scene_candidate else 0
+        movement_streak = previous_movement_streak + 1 if comparison.get('movementLikely') else 0
+    else:
+        scene_streak = previous_scene_streak
+        movement_streak = previous_movement_streak
     scene_limit = int(clamp_number(settings.get('scene_alert_streak'), 2, 8, 3))
     movement_limit = 2
     if not comparison.get('available'):
@@ -992,7 +1006,11 @@ def evaluate_local_monitor(
             warning_delta = clamp_number(water_settings.get('warning_delta_percent'), 1.0, 30.0, 5.0)
             urgent_delta = max(warning_delta + 1.0, clamp_number(water_settings.get('urgent_delta_percent'), 2.0, 45.0, 10.0))
             candidate = abs(delta) >= warning_delta
-            water_streak = (int(state.get('waterLevelStreak') or 0) + 1) if candidate else 0
+            previous_water_streak = int(state.get('waterLevelStreak') or 0)
+            if is_new_capture:
+                water_streak = previous_water_streak + 1 if candidate else 0
+            else:
+                water_streak = previous_water_streak
             water_limit = int(clamp_number(water_settings.get('alert_streak'), 1, 6, 2))
             water_result.update({
                 'configured': True,
@@ -1030,7 +1048,7 @@ def evaluate_local_monitor(
     baseline_can_learn = not obstruction_candidate and (not comparison.get('available') or comparison['changeScore'] < min(threshold * 0.55, 0.09))
     if baseline is None:
         baselines[mode] = {'signature': signature, 'metrics': metrics, 'learnedAt': now.isoformat(), 'samples': 1}
-    elif baseline_can_learn:
+    elif baseline_can_learn and is_new_capture:
         learning_rate = clamp_number(settings.get('baseline_learning_rate'), 0.002, 0.1, 0.025)
         baselines[mode] = {
             **baseline,
@@ -1048,6 +1066,8 @@ def evaluate_local_monitor(
         'sceneStreak': scene_streak,
         'movementStreak': movement_streak,
         'waterLevelStreak': water_streak,
+        'lastCaptureKey': resolved_capture_key,
+        'lastCaptureWasNew': is_new_capture,
         'lastMode': mode,
         'lastMetrics': metrics,
         'lastComparison': comparison,
@@ -1387,10 +1407,11 @@ def publish_return_camera(
     return_image_path = capture_image_path(capture, RETURN_IMAGE_PATH)
     local_monitor = evaluate_local_monitor(
         config,
-        image_path=RETURN_IMAGE_PATH,
+        image_path=return_image_path,
         config_path=RETURN_MONITOR_CONFIG_PATH,
         state_path=RETURN_MONITOR_STATUS_PATH,
         source_key='return_local_monitoring',
+        capture_key=captured_raw or str(return_image_path),
     )
     health = collect_health(
         config,
@@ -1488,7 +1509,11 @@ def main() -> int:
             previous_publish_status = {}
         now = utc_now_dt()
         daily_images = select_daily_images(config, catalog, now)
-        local_monitor = evaluate_local_monitor(config)
+        local_monitor = evaluate_local_monitor(
+            config,
+            image_path=overview_image_path,
+            capture_key=captured_raw or str(overview_image_path),
+        )
         filter_roll = evaluate_filter_roll(config, capture, image_path=overview_image_path, now=now)
         health = collect_health(config, capture, catalog, previous_publish_status, daily_images, local_monitor)
 

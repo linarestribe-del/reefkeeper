@@ -1,3 +1,11 @@
+## 4.3.51 — Maintenance 9C.3 Unique-Capture Alert Streak Fix
+
+- Publisher 2.7.3 advances water-level, obstruction, scene-change, and camera-movement confirmation streaks only when a new camera capture is evaluated.
+- Repeated publisher runs against the same return-chamber image no longer turn one five-minute feed-mode observation into a false multi-capture alert.
+- Local visual baselines also learn at most once per unique capture, preventing repeated processing of one frame from overweighting it.
+- Overview and return monitoring now evaluate the immutable dated image associated with each capture timestamp.
+- Added a regression test proving that one repeated image remains at streak 1 and a second unique image advances to streak 2.
+
 ## 4.3.50 — Maintenance 9C.2 Return-Monitor State-Path Fix
 
 - Fixed Publisher 2.7.1 writing return-camera monitor results to the overview monitor status file.
