@@ -11,14 +11,14 @@ const rootCss = fs.readFileSync('app.css', 'utf8');
 const rootChat = fs.readFileSync('chat.js', 'utf8');
 const apiChat = fs.readFileSync('api/chat.js', 'utf8');
 
-assert(html.includes('css/app.css?v=20260724-maintenance-9b-filter-roll'));
+assert(html.includes('css/app.css?v=20260724-maintenance-9c-outer-edge'));
 assert(html.includes('ai/evidence-engine.js?v=20260717-build-1b'));
 assert(html.includes('ai/decision-engine.js?v=20260718-build-1c'));
 assert(html.includes('ai/explainability.js?v=20260718-build-2c'));
 assert(html.includes('ai/trend-engine.js?v=20260718-build-2a'));
 assert(html.includes('ai/trend-chart.js?v=20260718-build-2b'));
-assert(html.includes('app.js?v=20260724-maintenance-9b-filter-roll'));
-assert(html.includes('observer.js?v=20260724-maintenance-9b-filter-roll'));
+assert(html.includes('app.js?v=20260724-maintenance-9c-outer-edge'));
+assert(html.includes('observer.js?v=20260724-maintenance-9c-outer-edge'));
 assert(app.includes('window.ReefKeeperDecisionEngine.evaluate(evidenceContext)'));
 assert(app.includes('window.ReefKeeperExplainability.build'));
 assert(app.includes('Evidence review'));
@@ -47,7 +47,7 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.48');
+assert.equal(pkg.version, '4.3.49');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
 assert(fs.existsSync('tests/index-js-cleanup.test.mjs'));
@@ -65,7 +65,7 @@ for (const file of ['MAINTENANCE_8D_RELEASE_MANIFEST.md', 'MAINTENANCE_8D_TEST_R
 assert(fs.existsSync('tests/ai-abuse-guard.test.mjs'));
 assert(fs.existsSync('tests/ai-access-control.test.mjs'));
 assert(html.includes('id="reef-ai-access-key"'));
-assert(html.includes('Reef Keeper v4.3.48 Maintenance 9B'));
+assert(html.includes('Reef Keeper v4.3.49 Maintenance 9C'));
 assert(app.includes("const REEF_AI_ACCESS_STORAGE_KEY = 'reef_ai_access_key_v1'"));
 assert(app.includes("headers['X-Reef-AI-Access-Key'] = key"));
 assert(app.includes('function testReefAiAccessKey()'));
@@ -113,28 +113,33 @@ assert(fs.readFileSync('api/observer-status.js', 'utf8').includes('../lib/observ
 assert(fs.readFileSync('api/observer-image.js', 'utf8').includes('../lib/observer-r2.js'));
 
 // Maintenance 8D dual-camera Observer safeguards.
-assert(fs.existsSync('connector/install-observer-publisher-2.6.sh'));
+assert(fs.existsSync('connector/install-observer-publisher-2.7.sh'));
 assert(fs.existsSync('tests/observer-dual-camera.test.mjs'));
 assert(fs.existsSync('tests/observer-dual-camera-api.test.mjs'));
 assert(fs.existsSync('tests/observer-dual-camera-publisher.test.py'));
+assert(fs.existsSync('tests/observer-filter-roll.test.py'));
+assert(fs.existsSync('connector/observer-filter-roll-calibrate.py'));
+assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes('outer silhouette'));
+assert(html.includes('id="observer-filter-roll-current-diameter"'));
+assert(html.includes('initializeExistingFilterRollFromForm(event)'));
 assert(html.includes('id="observer-camera-overview"'));
 assert(html.includes('id="observer-camera-return"'));
-assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBLISHER_VERSION = '2.6'"));
+assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBLISHER_VERSION = '2.7'"));
 assert(fs.readFileSync('lib/observer-common.js', 'utf8').includes('OBSERVER_SCHEMA_VERSION = 10'));
 assert(fs.readFileSync('api/observer-publish.js', 'utf8').includes("cameraId === 'return'"));
 assert(fs.readFileSync('api/observer-image.js', 'utf8').includes("cameraId === 'return'"));
 
 
-// Maintenance 9B Integration Core safeguards.
+// Maintenance 9C Integration Core safeguards.
 assert(fs.existsSync('integration-core.js'));
 assert(fs.existsSync('tests/integration-core.test.mjs'));
-assert(html.includes('integration-core.js?v=20260724-maintenance-9b-filter-roll'));
+assert(html.includes('integration-core.js?v=20260724-maintenance-9c-outer-edge'));
 assert(html.includes('id="action-equipment"'));
 assert(html.includes('id="action-code"'));
 assert(app.includes("'reef_tank_events_v1'"));
 assert(app.includes("'reef_observer_filter_roll_state_v1'"));
-for (const file of ['MAINTENANCE_9B_RELEASE_MANIFEST.md', 'MAINTENANCE_9B_TEST_REPORT.md', 'checksums/maintenance-9B.sha256']) {
-  assert(fs.existsSync(file), `Maintenance 9B release file is missing: ${file}`);
+for (const file of ['MAINTENANCE_9C_RELEASE_MANIFEST.md', 'MAINTENANCE_9C_TEST_REPORT.md', 'checksums/maintenance-9C.sha256']) {
+  assert(fs.existsSync(file), `Maintenance 9C release file is missing: ${file}`);
 }
 
 // Parameter Log recursion regression: direct routing must remain present and recursive body absent.

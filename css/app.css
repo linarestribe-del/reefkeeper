@@ -5093,3 +5093,60 @@ html.theme-dark .connected-action-note { color: rgba(224,244,251,0.72); }
 @media (max-width: 520px) {
   .connected-action-grid { grid-template-columns: 1fr; }
 }
+
+/* Maintenance 9C: manual partial-roll initialization */
+.observer-filter-roll-init {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(0,180,216,.18);
+  border-radius: 15px;
+  background: rgba(202,240,248,.22);
+}
+.observer-filter-roll-init-head { display: grid; gap: 3px; }
+.observer-filter-roll-init-head strong { color: var(--text-dark); font-size: 13px; font-weight: 900; }
+.observer-filter-roll-init-head span,
+.observer-filter-roll-init > small { color: var(--text-mid); font-size: 11px; font-weight: 700; line-height: 1.4; }
+.observer-filter-roll-init-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 8px;
+}
+.observer-filter-roll-init-grid label { display: grid; gap: 5px; min-width: 0; }
+.observer-filter-roll-init-grid label > span {
+  color: var(--text-light);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.observer-filter-roll-init-grid label > div {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(0,180,216,.18);
+  border-radius: 12px;
+  background: rgba(255,255,255,.82);
+  padding: 0 9px;
+}
+.observer-filter-roll-init-grid input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 10px 0;
+  color: var(--text-dark);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+}
+.observer-filter-roll-init-grid b { color: var(--text-light); font-size: 10px; }
+.observer-filter-roll-init-btn { width: 100%; }
+html.theme-dark .observer-filter-roll-init { background: rgba(3,21,34,.58); border-color: rgba(155,216,240,.18); }
+html.theme-dark .observer-filter-roll-init-grid label > div { background: rgba(8,27,42,.78); border-color: rgba(155,216,240,.18); }
+@media (max-width: 520px) {
+  .observer-filter-roll-init-grid { grid-template-columns: 1fr; }
+}

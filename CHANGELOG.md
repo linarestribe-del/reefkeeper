@@ -1,3 +1,11 @@
+## 4.3.49 — Maintenance 9C Manual Roll Initialization + Outer-Edge Detector
+
+- Added an Observer form for initializing an existing, already-used fleece roll from physical current/full/core diameters.
+- The current 85 mm roll can now be saved as a partial cycle at approximately 64.8% remaining instead of being treated as new.
+- Replaced the core/spindle-sensitive camera logic with a multi-scan outer-silhouette detector. Apparent radius values remain fixed-view pixels, not millimeters.
+- Added calibration metadata that maps the physical roll measurement to the first outer-edge camera reference and then estimates future remaining percentage by projected annulus area.
+- Added Publisher 2.7 and `observer-filter-roll-calibrate.py`, with a verified 2.7 installer and rollback to Publisher 2.6.
+
 ## 4.3.48 — Maintenance 9B Filter Roller Measurement
 
 - Added low-frequency overview-camera filter-roller measurement plumbing to the Pi publisher with a private ROI configuration file, scheduled sampling windows, and safe status persistence.

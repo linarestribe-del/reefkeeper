@@ -301,10 +301,11 @@
   }
 
   function normalizeMeasurement(input) {
-    const remainingPct = clamp(input?.remainingPct, 0, 100);
-    const outerRadius = clamp(input?.apparentOuterRadius, 0, 100000);
-    const coreRadius = clamp(input?.apparentCoreRadius, 0, 100000);
-    const confidence = clamp(input?.confidence, 0, 1);
+    const nullableClamp = (value, min, max) => value === null || value === undefined || value === '' ? null : clamp(value, min, max);
+    const remainingPct = nullableClamp(input?.remainingPct, 0, 100);
+    const outerRadius = nullableClamp(input?.apparentOuterRadius, 0, 100000);
+    const coreRadius = nullableClamp(input?.apparentCoreRadius, 0, 100000);
+    const confidence = nullableClamp(input?.confidence, 0, 1);
     return {
       id: cleanText(input?.id) || `roll-measure-${hashText(`${input?.captureAt || nowIso()}|${remainingPct}|${outerRadius}|${coreRadius}`)}`,
       captureAt: validIso(input?.captureAt || input?.measuredAt || nowIso()),
@@ -386,8 +387,19 @@
       replacementEventId: eventId,
       startedAt: validIso(event?.occurredAt || nowIso()),
       baselinePending: true,
+      cameraReferencePending: true,
+      partialCycle: false,
       baselineCaptureAfter: validIso(event?.occurredAt || nowIso()),
       measurements: [],
+      calibration: {
+        mode:'new-roll',
+        fullDiameterMm:100,
+        coreDiameterMm:46,
+        startingRemainingPct:100,
+        apparentFullRadius:null,
+        apparentCoreRadius:null,
+        referenceMeasurementId:null
+      },
       source: 'maintenance-event'
     };
     writeFilterRollState(state);
@@ -465,7 +477,10 @@
       .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
     const existing = readFilterRollState();
     if (!replacements.length) {
-      return writeFilterRollState({ ...existing, currentCycle:null, completedCycles:[] });
+      const manualCurrent = existing.currentCycle?.source === 'manual-existing-roll' ? existing.currentCycle : null;
+      const manualCompleted = (Array.isArray(existing.completedCycles) ? existing.completedCycles : [])
+        .filter(cycle => !cleanText(cycle?.replacementEventId));
+      return writeFilterRollState({ ...existing, currentCycle:manualCurrent, completedCycles:manualCompleted });
     }
 
     const preserved = new Map();
@@ -486,8 +501,14 @@
         replacementEventId: event.id,
         startedAt: event.occurredAt,
         baselinePending: Array.isArray(prior.measurements) && prior.measurements.length ? false : true,
+        cameraReferencePending: prior.cameraReferencePending !== false,
+        partialCycle: prior.partialCycle === true,
         baselineCaptureAfter: prior.baselineCaptureAfter || event.occurredAt,
         measurements: Array.isArray(prior.measurements) ? prior.measurements.map(normalizeMeasurement) : [],
+        calibration: prior.calibration && typeof prior.calibration === 'object' ? prior.calibration : {
+          mode:'new-roll', fullDiameterMm:100, coreDiameterMm:46, startingRemainingPct:100,
+          apparentFullRadius:null, apparentCoreRadius:null, referenceMeasurementId:null
+        },
         source:'maintenance-event'
       };
       if (nextEvent) {
@@ -505,7 +526,10 @@
     return writeFilterRollState({
       ...existing,
       currentCycle: cycles[cycles.length - 1],
-      completedCycles: cycles.slice(0, -1).reverse().slice(0, MAX_COMPLETED_ROLLS)
+      completedCycles: [
+        ...cycles.slice(0, -1).reverse(),
+        ...(Array.isArray(existing.completedCycles) ? existing.completedCycles.filter(cycle => !cleanText(cycle?.replacementEventId)) : [])
+      ].slice(0, MAX_COMPLETED_ROLLS)
     });
   }
 
@@ -639,69 +663,154 @@
       usagePctPerDay: Number.isFinite(weightedRate) ? Number(weightedRate.toFixed(3)) : null,
       estimatedDaysRemaining: Number.isFinite(estimatedDaysRemaining) ? Number(estimatedDaysRemaining.toFixed(1)) : null,
       baselinePending: Boolean(state.currentCycle?.baselinePending),
+      cameraReferencePending: Boolean(state.currentCycle?.cameraReferencePending),
+      partialCycle: Boolean(state.currentCycle?.partialCycle),
+      initializationMode: cleanText(state.currentCycle?.calibration?.mode),
+      startingRemainingPct: Number.isFinite(Number(state.currentCycle?.calibration?.startingRemainingPct))
+        ? Number(Number(state.currentCycle.calibration.startingRemainingPct).toFixed(1)) : null,
+      currentDiameterMm: Number.isFinite(Number(state.currentCycle?.calibration?.currentDiameterMm))
+        ? Number(state.currentCycle.calibration.currentDiameterMm) : null,
       measurementsPerDay: Number(state.sampling?.measurementsPerDay || 3),
-      note: stage === 'established'
-        ? 'Estimate uses the current roll plus prior completed roll cycles.'
-        : stage === 'preliminary'
-          ? 'Estimate is preliminary and will improve after more completed rolls.'
-          : 'Observer is collecting roll measurements; no dependable usage forecast yet.'
+      note: state.currentCycle?.cameraReferencePending
+        ? 'The physical starting amount is saved; Observer is waiting for its first outer-edge camera reference.'
+        : stage === 'established'
+          ? 'Estimate uses the current roll plus prior completed roll cycles.'
+          : stage === 'preliminary'
+            ? 'Estimate is preliminary and will improve after more completed rolls.'
+            : 'Observer is collecting roll measurements; no dependable usage forecast yet.'
     };
   }
 
-  function computeFilterRollRemainingPct(list, measurement) {
-    if (Number.isFinite(measurement.remainingPct)) {
-      return clamp(measurement.remainingPct, 0, 100);
+  function filterRollRemainingFromDiameters(currentDiameterMm, fullDiameterMm = 100, coreDiameterMm = 46) {
+    const current = Number(currentDiameterMm);
+    const full = Number(fullDiameterMm);
+    const core = Number(coreDiameterMm);
+    if (!Number.isFinite(current) || !Number.isFinite(full) || !Number.isFinite(core)) return null;
+    if (core <= 0 || full <= core || current <= core || current > full) return null;
+    const denominator = (full * full) - (core * core);
+    return denominator > 0 ? clamp((((current * current) - (core * core)) / denominator) * 100, 0, 100) : null;
+  }
+
+  function remainingFromOuterRadius(outerRadius, calibration) {
+    const outer = outerRadius === null || outerRadius === undefined || outerRadius === '' ? null : Number(outerRadius);
+    const fullRadius = calibration?.apparentFullRadius === null || calibration?.apparentFullRadius === undefined || calibration?.apparentFullRadius === '' ? null : Number(calibration.apparentFullRadius);
+    const coreRadius = calibration?.apparentCoreRadius === null || calibration?.apparentCoreRadius === undefined || calibration?.apparentCoreRadius === '' ? null : Number(calibration.apparentCoreRadius);
+    if (![outer, fullRadius, coreRadius].every(Number.isFinite)) return null;
+    if (fullRadius <= coreRadius || outer <= 0) return null;
+    const denominator = (fullRadius * fullRadius) - (coreRadius * coreRadius);
+    return denominator > 0 ? clamp((((outer * outer) - (coreRadius * coreRadius)) / denominator) * 100, 0, 100) : null;
+  }
+
+  function initializeExistingFilterRoll(input = {}) {
+    const currentDiameterMm = Number(input.currentDiameterMm);
+    const fullDiameterMm = Number(input.fullDiameterMm || 100);
+    const coreDiameterMm = Number(input.coreDiameterMm || 46);
+    const measuredAt = validIso(input.measuredAt || nowIso());
+    const startingRemainingPct = filterRollRemainingFromDiameters(currentDiameterMm, fullDiameterMm, coreDiameterMm);
+    if (!Number.isFinite(startingRemainingPct)) {
+      return { ok:false, error:'Current diameter must be larger than the core and no larger than the full roll.' };
     }
 
-    const currentThickness = Number.isFinite(measurement.apparentOuterRadius) && Number.isFinite(measurement.apparentCoreRadius)
-      ? measurement.apparentOuterRadius - measurement.apparentCoreRadius
-      : null;
-    if (!Number.isFinite(currentThickness) || currentThickness <= 0) return null;
+    const state = readFilterRollState();
+    if (!state.currentCycle) {
+      state.currentCycle = {
+        id:`filter-roll-manual-${hashText(measuredAt)}`,
+        replacementEventId:'',
+        startedAt:measuredAt,
+        baselineCaptureAfter:measuredAt,
+        measurements:[],
+        source:'manual-existing-roll'
+      };
+    }
+    const cycle = state.currentCycle;
+    cycle.partialCycle = true;
+    cycle.baselinePending = false;
+    cycle.cameraReferencePending = true;
+    cycle.source = cycle.source || 'manual-existing-roll';
+    cycle.calibration = {
+      mode:'manual-existing-roll',
+      currentDiameterMm:Number(currentDiameterMm.toFixed(2)),
+      fullDiameterMm:Number(fullDiameterMm.toFixed(2)),
+      coreDiameterMm:Number(coreDiameterMm.toFixed(2)),
+      startingRemainingPct:Number(startingRemainingPct.toFixed(3)),
+      measuredAt,
+      apparentFullRadius:null,
+      apparentCoreRadius:null,
+      referenceMeasurementId:null
+    };
 
-    const ordered = (Array.isArray(list) ? list : [])
-      .filter(item => Number.isFinite(item.apparentOuterRadius) && Number.isFinite(item.apparentCoreRadius))
-      .sort((a, b) => new Date(a.captureAt).getTime() - new Date(b.captureAt).getTime());
-    const baseline = ordered[0] || null;
-    const baselineThickness = baseline
-      ? baseline.apparentOuterRadius - baseline.apparentCoreRadius
-      : currentThickness;
-    if (!Number.isFinite(baselineThickness) || baselineThickness <= 0) return null;
-    return clamp((currentThickness / baselineThickness) * 100, 0, 100);
+    const manualMeasurement = normalizeMeasurement({
+      id:`filter-roll-manual-${hashText(`${cycle.id}|${measuredAt}|${currentDiameterMm}`)}`,
+      captureAt:measuredAt,
+      remainingPct:startingRemainingPct,
+      confidence:1,
+      cameraId:'manual',
+      notes:`Physical roll diameter ${currentDiameterMm} mm; full ${fullDiameterMm} mm; core ${coreDiameterMm} mm.`
+    });
+    // Manual re-initialization invalidates any earlier camera baseline for this cycle.
+    cycle.measurements = [manualMeasurement];
+    cycle.lastMeasurementAt = measuredAt;
+    writeFilterRollState(state);
+
+    const event = upsertEvent({
+      eventType:'observer.filter_roller.manual_initialized',
+      occurredAt:measuredAt,
+      source:{ system:'reefkeeper', key:'filter-roll-manual-initialization', recordId:manualMeasurement.id },
+      entity:{ type:'equipment', id:'filter-roller', name:'Filter Roller' },
+      summary:`Existing filter roll initialized at ${startingRemainingPct.toFixed(1)}% remaining`,
+      details:`Physical outside diameter ${currentDiameterMm} mm; full roll ${fullDiameterMm} mm; core ${coreDiameterMm} mm.`,
+      data:{ currentDiameterMm, fullDiameterMm, coreDiameterMm, startingRemainingPct, cycleId:cycle.id, partialCycle:true },
+      tags:['observer','filter-roller','manual-initialization','partial-cycle']
+    });
+    const learning = getFilterRollLearningSummary();
+    renderFilterRollIntegrationStatus();
+    return { ok:true, startingRemainingPct:Number(startingRemainingPct.toFixed(1)), cycle, event, learning };
   }
 
   function recordFilterRollMeasurement(input) {
     const state = readFilterRollState();
     if (!state.currentCycle) {
-      return { ok:false, error:'No active filter-roll cycle. Log a fleece-roll replacement in Maintenance first.' };
+      return { ok:false, error:'No active filter-roll cycle. Log a fleece replacement or initialize an existing roll first.' };
     }
     const measurement = normalizeMeasurement(input || {});
-    if (!Number.isFinite(measurement.remainingPct) && !(Number.isFinite(measurement.apparentOuterRadius) && Number.isFinite(measurement.apparentCoreRadius))) {
-      return { ok:false, error:'A remaining percentage or apparent outer/core radius measurement is required.' };
+    if (!Number.isFinite(measurement.remainingPct) && !Number.isFinite(measurement.apparentOuterRadius)) {
+      return { ok:false, error:'A remaining percentage or apparent outer radius measurement is required.' };
     }
 
-    const list = Array.isArray(state.currentCycle.measurements) ? state.currentCycle.measurements.slice() : [];
-    if (!Number.isFinite(measurement.remainingPct)) {
-      measurement.remainingPct = computeFilterRollRemainingPct(list, measurement);
+    const cycle = state.currentCycle;
+    const calibration = cycle.calibration && typeof cycle.calibration === 'object'
+      ? cycle.calibration
+      : { mode:'new-roll', fullDiameterMm:100, coreDiameterMm:46, startingRemainingPct:100 };
+    const outer = measurement.apparentOuterRadius === null || measurement.apparentOuterRadius === undefined ? null : Number(measurement.apparentOuterRadius);
+    const existingFullRadius = calibration.apparentFullRadius === null || calibration.apparentFullRadius === undefined || calibration.apparentFullRadius === '' ? null : Number(calibration.apparentFullRadius);
+    if (Number.isFinite(outer) && !Number.isFinite(existingFullRadius)) {
+      const fullDiameter = Number(calibration.fullDiameterMm || 100);
+      const coreDiameter = Number(calibration.coreDiameterMm || 46);
+      const currentDiameter = calibration.mode === 'manual-existing-roll'
+        ? Number(calibration.currentDiameterMm)
+        : fullDiameter;
+      const diameterRatio = Number.isFinite(currentDiameter) && fullDiameter > 0 ? currentDiameter / fullDiameter : 1;
+      if (diameterRatio > 0) {
+        calibration.apparentFullRadius = outer / diameterRatio;
+        calibration.apparentCoreRadius = calibration.apparentFullRadius * (coreDiameter / fullDiameter);
+        calibration.referenceMeasurementId = measurement.id;
+        calibration.referenceCapturedAt = measurement.captureAt;
+        cycle.cameraReferencePending = false;
+      }
     }
+    if (!Number.isFinite(measurement.remainingPct) && Number.isFinite(outer)) {
+      measurement.remainingPct = remainingFromOuterRadius(outer, calibration);
+    }
+    cycle.calibration = calibration;
+
+    const list = Array.isArray(cycle.measurements) ? cycle.measurements.slice() : [];
     const index = list.findIndex(item => item.id === measurement.id || item.captureAt === measurement.captureAt);
     if (index >= 0) list[index] = measurement;
     else list.push(measurement);
     list.sort((a, b) => new Date(a.captureAt).getTime() - new Date(b.captureAt).getTime());
-
-    // If the baseline was revised in-place, recompute all derived remaining percentages.
-    const baselineMeasurements = list.slice();
-    for (const item of baselineMeasurements) {
-      if (!Number.isFinite(item.remainingPct) && Number.isFinite(item.apparentOuterRadius) && Number.isFinite(item.apparentCoreRadius)) {
-        item.remainingPct = computeFilterRollRemainingPct(baselineMeasurements, item);
-      }
-    }
-    if (baselineMeasurements.length && Number.isFinite(baselineMeasurements[0].apparentOuterRadius) && Number.isFinite(baselineMeasurements[0].apparentCoreRadius)) {
-      baselineMeasurements[0].remainingPct = 100;
-    }
-
-    state.currentCycle.measurements = baselineMeasurements.slice(-MAX_MEASUREMENTS_PER_ROLL);
-    state.currentCycle.baselinePending = false;
-    state.currentCycle.lastMeasurementAt = measurement.captureAt;
+    cycle.measurements = list.slice(-MAX_MEASUREMENTS_PER_ROLL);
+    cycle.baselinePending = false;
+    cycle.lastMeasurementAt = measurement.captureAt;
     writeFilterRollState(state);
 
     const event = upsertEvent({
@@ -711,10 +820,10 @@
       entity: { type:'equipment', id:'filter-roller', name:'Filter Roller' },
       summary: Number.isFinite(measurement.remainingPct)
         ? `Filter roller measured at ${measurement.remainingPct.toFixed(1)}% remaining`
-        : 'Filter roller visual measurement recorded',
-      details: 'Scheduled low-frequency overview-camera measurement.',
-      data: { ...measurement, cycleId:state.currentCycle.id },
-      tags: ['observer', 'filter-roller', 'measurement']
+        : 'Filter roller outer-edge measurement recorded',
+      details: 'Scheduled low-frequency overview-camera outer-edge measurement.',
+      data: { ...measurement, cycleId:cycle.id, calibrationMode:calibration.mode },
+      tags: ['observer', 'filter-roller', 'measurement', 'outer-edge']
     });
 
     const learning = getFilterRollLearningSummary();
@@ -778,21 +887,45 @@
 
     const remaining = learning.currentRemainingPct === null ? 'Not measured' : `${learning.currentRemainingPct}% remaining`;
     const forecast = learning.estimatedDaysRemaining === null ? learning.stage : `About ${Math.round(learning.estimatedDaysRemaining)} days`;
-    setElementText('observer-filter-roll-summary', current.baselinePending
-      ? 'Replacement received from Maintenance. Waiting for the first overview-camera measurement.'
-      : `${remaining} · ${learning.note}`);
+    const manualLabel = learning.partialCycle && learning.startingRemainingPct !== null
+      ? `Physical starting estimate ${learning.startingRemainingPct}%` : '';
+    setElementText('observer-filter-roll-summary', learning.cameraReferencePending
+      ? `${manualLabel || 'Roll cycle is ready'}. Waiting for the first outer-edge camera reference.`
+      : current.baselinePending
+        ? 'Replacement received from Maintenance. Waiting for the first overview-camera measurement.'
+        : `${remaining} · ${learning.note}`);
     setElementText('observer-filter-roll-started', formatDisplayDate(current.startedAt));
     setElementText('observer-filter-roll-measurements', learning.currentMeasurementCount);
     setElementText('observer-filter-roll-sampling', `${learning.measurementsPerDay} per day`);
     setElementText('observer-filter-roll-forecast', forecast);
-    setElementText('observer-filter-roll-note', current.baselinePending
-      ? 'The next scheduled roller analysis will establish the new-roll visual baseline.'
-      : `Learning stage: ${learning.stage}. ${learning.completedRollCount} completed roll${learning.completedRollCount === 1 ? '' : 's'} available.`);
+    setElementText('observer-filter-roll-note', learning.cameraReferencePending
+      ? `Manual initialization saved${learning.currentDiameterMm ? ` from a ${learning.currentDiameterMm} mm outside diameter` : ''}. The current roll is marked as a partial cycle.`
+      : current.baselinePending
+        ? 'The next scheduled outer-edge analysis will establish the new-roll visual baseline.'
+        : `Learning stage: ${learning.stage}. ${learning.completedRollCount} completed roll${learning.completedRollCount === 1 ? '' : 's'} available.`);
     if (badge) {
-      badge.textContent = current.baselinePending ? 'Baseline pending' : (learning.stage === 'established' ? 'Established' : 'Learning');
-      badge.className = `observer-health-badge ${current.baselinePending ? 'pending' : 'healthy'}`;
+      badge.textContent = learning.cameraReferencePending ? 'Camera reference pending' : (current.baselinePending ? 'Baseline pending' : (learning.stage === 'established' ? 'Established' : 'Learning'));
+      badge.className = `observer-health-badge ${(learning.cameraReferencePending || current.baselinePending) ? 'pending' : 'healthy'}`;
+    }
+    const setupResult = global.document?.getElementById?.('observer-filter-roll-init-result');
+    if (setupResult && learning.startingRemainingPct !== null) {
+      setupResult.textContent = `Saved starting estimate: ${learning.startingRemainingPct}% remaining${learning.partialCycle ? ' · partial cycle' : ''}.`;
     }
     return learning;
+  }
+
+  function initializeExistingFilterRollFromForm(event) {
+    event?.preventDefault?.();
+    const current = Number(global.document?.getElementById?.('observer-filter-roll-current-diameter')?.value);
+    const full = Number(global.document?.getElementById?.('observer-filter-roll-full-diameter')?.value || 100);
+    const core = Number(global.document?.getElementById?.('observer-filter-roll-core-diameter')?.value || 46);
+    const result = initializeExistingFilterRoll({ currentDiameterMm:current, fullDiameterMm:full, coreDiameterMm:core });
+    const output = global.document?.getElementById?.('observer-filter-roll-init-result');
+    if (output) output.textContent = result.ok
+      ? `Saved starting estimate: ${result.startingRemainingPct}% remaining · partial cycle.`
+      : result.error;
+    try { if (typeof global.showToast === 'function') global.showToast(result.ok ? `Filter roll initialized at ${result.startingRemainingPct}%` : result.error); } catch (_) {}
+    return result;
   }
 
   function applyConnectedMaintenancePreset() {
@@ -826,7 +959,7 @@
   }
 
   const api = {
-    version:'9B.1',
+    version:'9C.1',
     schemaVersion:SCHEMA_VERSION,
     keys: {
       events:EVENT_STORE_KEY,
@@ -849,6 +982,9 @@
     getSystemSnapshot,
     getFilterRollState:readFilterRollState,
     getFilterRollLearningSummary,
+    filterRollRemainingFromDiameters,
+    initializeExistingFilterRoll,
+    initializeExistingFilterRollFromForm,
     recordFilterRollMeasurement,
     startFilterRollCycle,
     reconcileFilterRollCyclesFromEvents,
@@ -858,6 +994,7 @@
 
   global.ReefKeeperIntegration = api;
   global.applyConnectedMaintenancePreset = applyConnectedMaintenancePreset;
+  global.initializeExistingFilterRollFromForm = initializeExistingFilterRollFromForm;
 
   try {
     global.addEventListener?.('reefkeeper:event', renderFilterRollIntegrationStatus);

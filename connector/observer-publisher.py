@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.6'
+PUBLISHER_VERSION = '2.7'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -662,48 +662,100 @@ def find_peak_index(values: list[float], start: int, end: int) -> int | None:
     return best_index
 
 
+def median_number(values: list[float]) -> float:
+    ordered = sorted(values)
+    if not ordered:
+        return 0.0
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return float(ordered[middle])
+    return (float(ordered[middle - 1]) + float(ordered[middle])) / 2.0
+
+
 def analyze_filter_roll_frame(image_path: Path, roi: tuple[float, float, float, float], probe_y: float = 0.5) -> dict[str, Any]:
+    """Measure only the roll's outer silhouette.
+
+    The result is an apparent radius in the fixed camera projection, not a physical
+    millimeter measurement. Multiple nearby scan lines are combined so acrylic
+    spindle/core reflections cannot be mistaken for the consumable roll boundary.
+    """
     pixels = decode_monitor_region(image_path, roi)
     width = FILTER_ROLL_ANALYSIS_WIDTH
     height = FILTER_ROLL_ANALYSIS_HEIGHT
-    row_center = max(3, min(height - 4, int(round(probe_y * (height - 1)))))
-    scanline: list[float] = []
-    for column in range(width):
-        samples = [pixels[(row_center + offset) * width + column] for offset in (-2, -1, 0, 1, 2)]
-        scanline.append(sum(samples) / len(samples))
-    smoothed = smooth_series(scanline, 3)
-    gradients = [abs(smoothed[index + 1] - smoothed[index]) for index in range(width - 1)]
-    median_gradient = sorted(gradients)[len(gradients) // 2] if gradients else 0.0
-    left_outer = find_peak_index(gradients, int(width * 0.04), int(width * 0.35))
-    right_outer = find_peak_index(gradients, int(width * 0.65), int(width * 0.96))
-    if left_outer is None or right_outer is None or right_outer - left_outer < int(width * 0.2):
-        return {'available': False, 'confidence': 0.0, 'message': 'Roll silhouette could not be isolated.'}
-    span = right_outer - left_outer
-    midpoint = left_outer + span // 2
-    core_left = find_peak_index(gradients, left_outer + max(8, int(span * 0.14)), midpoint - max(6, int(span * 0.06)))
-    core_right = find_peak_index(gradients, midpoint + max(6, int(span * 0.06)), right_outer - max(8, int(span * 0.14)))
-    if core_left is None or core_right is None or core_right - core_left < max(8, int(span * 0.08)):
-        return {'available': False, 'confidence': 0.0, 'message': 'Roll core could not be separated from the outer edge.'}
-    outer_strength = (gradients[left_outer] + gradients[right_outer]) / 2.0
-    core_strength = (gradients[core_left] + gradients[core_right]) / 2.0
-    symmetry = 1.0 - min(1.0, abs((midpoint - core_left) - (core_right - midpoint)) / max(1.0, span * 0.24))
-    prominence = min(1.0, (outer_strength + core_strength) / max(12.0, median_gradient * 5.0))
-    confidence = max(0.0, min(1.0, 0.18 + prominence * 0.46 + symmetry * 0.24 + min(1.0, outer_strength / 18.0) * 0.12))
-    apparent_outer_radius = span / 2.0
-    apparent_core_radius = (core_right - core_left) / 2.0
-    apparent_thickness_pct = (apparent_core_radius / apparent_outer_radius) * 100.0 if apparent_outer_radius > 0 else 0.0
+    center_row = max(8, min(height - 9, int(round(probe_y * (height - 1)))))
+    offsets = [-8, -6, -4, -2, 0, 2, 4, 6, 8]
+    samples: list[dict[str, float]] = []
+
+    for offset in offsets:
+        row = max(3, min(height - 4, center_row + offset))
+        scanline: list[float] = []
+        for column in range(width):
+            values = [pixels[(row + vertical) * width + column] for vertical in (-2, -1, 0, 1, 2)]
+            scanline.append(sum(values) / len(values))
+        smoothed = smooth_series(scanline, 3)
+        gradients = [abs(smoothed[index + 1] - smoothed[index]) for index in range(width - 1)]
+        if not gradients:
+            continue
+        left = find_peak_index(gradients, int(width * 0.03), int(width * 0.46))
+        right = find_peak_index(gradients, int(width * 0.54), int(width * 0.97))
+        if left is None or right is None:
+            continue
+        span = right - left
+        if span < int(width * 0.28) or span > int(width * 0.96):
+            continue
+        baseline = median_number(gradients)
+        left_strength = gradients[left]
+        right_strength = gradients[right]
+        prominence = ((left_strength + right_strength) / 2.0) / max(1.0, baseline)
+        samples.append({
+            'row': float(row),
+            'left': float(left),
+            'right': float(right),
+            'span': float(span),
+            'center': (left + right) / 2.0,
+            'edgeStrength': (left_strength + right_strength) / 2.0,
+            'prominence': prominence,
+        })
+
+    if len(samples) < 4:
+        return {
+            'available': False,
+            'confidence': 0.0,
+            'sampleCount': len(samples),
+            'message': 'The outer filter-roll silhouette was not consistent across enough scan lines.',
+        }
+
+    spans = [item['span'] for item in samples]
+    centers = [item['center'] for item in samples]
+    strengths = [item['edgeStrength'] for item in samples]
+    prominences = [item['prominence'] for item in samples]
+    median_span = median_number(spans)
+    median_center = median_number(centers)
+    median_strength = median_number(strengths)
+    median_prominence = median_number(prominences)
+    span_deviation = median_number([abs(value - median_span) for value in spans])
+    center_deviation = median_number([abs(value - median_center) for value in centers])
+    consistency = max(0.0, min(1.0, 1.0 - (span_deviation / max(1.0, median_span) * 7.0) - (center_deviation / max(1.0, median_span) * 5.0)))
+    prominence_score = max(0.0, min(1.0, (median_prominence - 1.0) / 5.0))
+    strength_score = max(0.0, min(1.0, median_strength / 24.0))
+    sample_score = max(0.0, min(1.0, len(samples) / len(offsets)))
+    confidence = max(0.0, min(1.0, consistency * 0.48 + prominence_score * 0.20 + strength_score * 0.18 + sample_score * 0.14))
+    left = median_center - median_span / 2.0
+    right = median_center + median_span / 2.0
     return {
         'available': True,
         'confidence': round(confidence, 3),
-        'rowCenterPx': row_center,
-        'outerLeftPx': left_outer,
-        'outerRightPx': right_outer,
-        'coreLeftPx': core_left,
-        'coreRightPx': core_right,
-        'apparentOuterRadius': round(apparent_outer_radius, 3),
-        'apparentCoreRadius': round(apparent_core_radius, 3),
-        'apparentThicknessPct': round(max(0.0, min(100.0, apparent_thickness_pct)), 3),
-        'message': 'Filter-roll edges detected from the configured scan line.',
+        'rowCenterPx': center_row,
+        'sampleCount': len(samples),
+        'outerLeftPx': round(left, 3),
+        'outerRightPx': round(right, 3),
+        'outerCenterPx': round(median_center, 3),
+        'apparentOuterRadius': round(median_span / 2.0, 3),
+        'apparentCoreRadius': None,
+        'apparentThicknessPct': None,
+        'spanDeviationPx': round(span_deviation, 3),
+        'centerDeviationPx': round(center_deviation, 3),
+        'message': 'Filter-roll outer silhouette detected from multiple nearby scan lines.',
     }
 
 
@@ -776,7 +828,7 @@ def evaluate_filter_roll(
         'status': 'healthy' if analysis.get('available') and float(analysis.get('confidence') or 0) >= settings.get('minimum_confidence') else ('pending' if analysis.get('available') else 'attention'),
         'available': analysis.get('available') is True and float(analysis.get('confidence') or 0) >= settings.get('minimum_confidence'),
         'message': safe_text(analysis.get('message') or '', 240),
-        'note': 'App derives remaining percent from the baseline after a fleece replacement.',
+        'note': 'App converts the fixed-view outer radius into remaining percent using the saved physical calibration.',
         'confidence': round(float(analysis.get('confidence') or 0.0), 3),
         'apparentOuterRadius': analysis.get('apparentOuterRadius'),
         'apparentCoreRadius': analysis.get('apparentCoreRadius'),

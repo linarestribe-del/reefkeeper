@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260724-maintenance-9b-filter-roll">
+<link rel="stylesheet" href="css/app.css?v=20260724-maintenance-9c-outer-edge">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -1157,6 +1157,19 @@
           <div><span>Forecast</span><strong id="observer-filter-roll-forecast">Learning</strong></div>
         </div>
         <div class="observer-connection-note" id="observer-filter-roll-note">Log Filter Roller → Fleece roll replaced in Maintenance to start a connected roll cycle.</div>
+        <form class="observer-filter-roll-init" id="observer-filter-roll-init" onsubmit="initializeExistingFilterRollFromForm(event)">
+          <div class="observer-filter-roll-init-head">
+            <strong>Existing roll already in use</strong>
+            <span>Use a physical outside-diameter measurement instead of calling the current roll full.</span>
+          </div>
+          <div class="observer-filter-roll-init-grid">
+            <label><span>Current outside diameter</span><div><input id="observer-filter-roll-current-diameter" type="number" min="1" max="200" step="0.1" value="85" inputmode="decimal"><b>mm</b></div></label>
+            <label><span>New roll diameter</span><div><input id="observer-filter-roll-full-diameter" type="number" min="1" max="200" step="0.1" value="100" inputmode="decimal"><b>mm</b></div></label>
+            <label><span>Core outside diameter</span><div><input id="observer-filter-roll-core-diameter" type="number" min="1" max="200" step="0.1" value="46" inputmode="decimal"><b>mm</b></div></label>
+          </div>
+          <button class="observer-primary-btn observer-filter-roll-init-btn" type="submit">Initialize current roll</button>
+          <small id="observer-filter-roll-init-result">85 mm corresponds to about 64.8% remaining.</small>
+        </form>
       </section>
 
       <section class="observer-health-card" aria-labelledby="observer-health-title">
@@ -1715,7 +1728,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.48 Maintenance 9B</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.49 Maintenance 9C</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3399,9 +3412,9 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260724-maintenance-9b-filter-roll"></script>
-<script src="integration-core.js?v=20260724-maintenance-9b-filter-roll"></script>
-<script src="observer.js?v=20260724-maintenance-9b-filter-roll"></script>
+<script src="app.js?v=20260724-maintenance-9c-outer-edge"></script>
+<script src="integration-core.js?v=20260724-maintenance-9c-outer-edge"></script>
+<script src="observer.js?v=20260724-maintenance-9c-outer-edge"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>

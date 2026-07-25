@@ -5,8 +5,8 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const html = fs.readFileSync('index.html', 'utf8');
 const testCommand = pkg.scripts?.test || '';
 
-assert.equal(pkg.version, '4.3.48');
-assert.ok(html.includes('Reef Keeper v4.3.48 Maintenance 9B'));
+assert.equal(pkg.version, '4.3.49');
+assert.ok(html.includes('Reef Keeper v4.3.49 Maintenance 9C'));
 
 for (const requiredTest of [
   'javascript-syntax.test.mjs',
@@ -19,6 +19,7 @@ for (const requiredTest of [
   'index-data-snapshot-cleanup.test.mjs',
   'index-storage-helper-cleanup.test.mjs',
   'integration-core.test.mjs',
+  'observer-filter-roll.test.py',
   'repository-integrity.test.mjs',
   'vercel-function-count.test.mjs',
 ]) {

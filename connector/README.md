@@ -105,3 +105,10 @@ Water-level tracking starts disabled. Use `observer-water-level-calibrate.py` on
 Publisher 2.6 preserves the existing overview workflow and additionally reads `/mnt/reef-ssd/aquarium-observer/return-chamber/`. It publishes the return camera to the same authenticated Observer endpoint using the `camera=return` selector. Return capture health and local-monitor state are independent, and a return-camera outage does not prevent a valid overview publish.
 
 Use `install-observer-publisher-2.6.sh` after the v4.3.46 web deployment is Ready. The installer discovers the actual systemd publisher path, verifies pinned checksums, creates validated Publisher 2.4 backups, requires successful overview and return publishes, and rolls back automatically on failure. The calibration helper now supports `--camera return|overview` and defaults to Return Chamber.
+
+
+## Maintenance 9C filter-roll outer-edge monitoring
+
+Publisher 2.7 replaces the earlier core-sensitive filter-roll scan with a multi-scan outer-silhouette measurement. The reported `apparentOuterRadius` is a fixed-camera pixel measurement, not millimeters. Reef Keeper combines it with either a new-roll baseline or a manual physical initialization for an already-used roll.
+
+After the v4.3.49 web deployment is live, install Publisher 2.7 with `install-observer-publisher-2.7.sh`. Test and save the private ROI using `observer-filter-roll-calibrate.py`; the default candidate ROI is `0.552,0,0.130,0.240` with probe band `0.38`.

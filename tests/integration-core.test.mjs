@@ -51,7 +51,7 @@ vm.runInContext(source, context, { filename:'integration-core.js' });
 
 const api = context.ReefKeeperIntegration;
 assert.ok(api, 'Integration Core must install a global API.');
-assert.equal(api.version, '9B.1');
+assert.equal(api.version, '9C.1');
 assert.equal(api.schemaVersion, 1);
 
 const events = api.listEvents();
@@ -67,25 +67,36 @@ assert.equal(initialRoll.currentCycle.replacementEventId, events.find(event => e
 assert.equal(initialRoll.currentCycle.baselinePending, true);
 assert.equal(initialRoll.sampling.measurementsPerDay, 3);
 
+const manual = api.initializeExistingFilterRoll({
+  measuredAt:'2026-07-22T12:00:00.000Z',
+  currentDiameterMm:85,
+  fullDiameterMm:100,
+  coreDiameterMm:46
+});
+assert.equal(manual.ok, true);
+assert.equal(manual.startingRemainingPct, 64.8);
+assert.equal(api.getFilterRollState().currentCycle.partialCycle, true);
+assert.equal(api.getFilterRollState().currentCycle.cameraReferencePending, true);
+
 const measurement = api.recordFilterRollMeasurement({
   captureAt:'2026-07-22T20:00:00.000Z',
-  apparentOuterRadius:120,
-  apparentCoreRadius:36,
+  apparentOuterRadius:85,
   confidence:0.86,
   cameraId:'overview'
 });
 assert.equal(measurement.ok, true);
-assert.equal(Math.round(measurement.measurement.remainingPct), 100);
+assert.equal(Math.round(measurement.measurement.remainingPct), 65);
+assert.equal(api.getFilterRollState().currentCycle.cameraReferencePending, false);
+assert.equal(Math.round(api.getFilterRollState().currentCycle.calibration.apparentFullRadius), 100);
 const followup = api.recordFilterRollMeasurement({
   captureAt:'2026-07-23T20:00:00.000Z',
-  apparentOuterRadius:108,
-  apparentCoreRadius:36,
+  apparentOuterRadius:80,
   confidence:0.88,
   cameraId:'overview'
 });
 assert.equal(followup.ok, true);
-assert.equal(Math.round(followup.measurement.remainingPct), 86);
-assert.equal(api.getFilterRollLearningSummary().currentMeasurementCount, 2);
+assert.equal(Math.round(followup.measurement.remainingPct), 54);
+assert.equal(api.getFilterRollLearningSummary().currentMeasurementCount, 3);
 assert.equal(api.getFilterRollLearningSummary().stage, 'learning');
 
 api.syncLegacySources();
@@ -113,11 +124,13 @@ assert.ok(timeline.some(event => event.integrationKind === 'completed'));
 assert.match(api.buildAiContext('filter roller usage'), /SHARED REEF KEEPER EVENT STREAM/);
 assert.match(api.buildAiContext('filter roller usage'), /FILTER ROLLER LEARNING/);
 
-assert.ok(html.includes('integration-core.js?v=20260724-maintenance-9b-filter-roll'));
+assert.ok(html.includes('integration-core.js?v=20260724-maintenance-9c-outer-edge'));
 assert.ok(html.includes('id="action-equipment"'));
 assert.ok(html.includes('id="action-code"'));
 assert.ok(html.includes('id="observer-filter-roll-card"'));
 assert.ok(html.includes('id="observer-filter-roll-badge"'));
+assert.ok(html.includes('id="observer-filter-roll-current-diameter"'));
+assert.ok(html.includes('initializeExistingFilterRollFromForm(event)'));
 assert.ok(html.includes("window.ReefKeeperIntegration?.getTimelineEvents"));
 assert.ok(app.includes("window.ReefKeeperIntegration?.recordParameterLog?.(entry)"));
 assert.ok(app.includes("window.ReefKeeperIntegration?.recordAction?.(entry)"));
