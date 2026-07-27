@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9E — stable-condition operational alerts and visual alerts
+// Reef Keeper Maintenance 9E.1 — stable alerts with maintenance-aware scene guidance
 
 import {
   cleanObserverString,
@@ -33,7 +33,7 @@ const SYSTEM_ALERT_DETAILS = Object.freeze({
   daily_summary_paused: ['daily_summary', 'Daily visual summary paused after repeated failures', 'Review the publisher log and OpenAI availability; the attempt budget resets with the next daily frame.'],
   camera_view_obstructed: ['camera_quality', 'Sump camera view may be obstructed', 'Check the camera lens and confirm that salt spray, condensation, a hand, cable, or equipment is not blocking the view.'],
   camera_view_shifted: ['camera_quality', 'Sump camera framing appears to have moved', 'Compare the current image with the learned view and reposition the camera if the sump is no longer framed correctly.'],
-  sump_scene_changed: ['other', 'Persistent sump-view change needs review', 'Inspect the current sump image for moved equipment, open cabinet doors, maintenance activity, or another persistent visual change.'],
+  sump_scene_changed: ['other', 'Sump view changed after maintenance or equipment movement', 'Review the current image. If the skimmer, GFO reactor, hoses, lids, or cords moved during expected maintenance, mark reviewed; no exact image match is required.'],
   water_level_watch: ['water_level', 'Possible sump water-level shift', 'Verify the sump water level directly and check the ATO, return section, and visible plumbing before taking action.'],
   water_level_urgent: ['water_level', 'Possible urgent sump water-level shift', 'Inspect the sump immediately for overflow, low return-section level, ATO malfunction, or displaced plumbing.'],
   local_monitor_state_error: ['camera_quality', 'Local visual monitor could not save its baseline', 'Check that the Observer SSD is writable and review the publisher service log.'],

@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9E — compact Filter-Roll Status UI.
+/* Reef Keeper Maintenance 9E.1 — actionable Filter-Roll Status UI.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Publisher 2.7.3 and all server routes remain unchanged.
  */
@@ -289,6 +289,18 @@
     return 'learning';
   }
 
+  function actionableTrackingWarning(status, latest) {
+    const tracking = status?.tracking || {};
+    if (tracking.state === 'needs-calibration') {
+      const since = latest?.measuredAt ? formatDate(latest.measuredAt) : 'the initial camera reference';
+      return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains anchored to the manual baseline. Recalibrate camera tracking before using it for replacement planning.`;
+    }
+    if (tracking.state === 'stale' && latest?.measuredAt) {
+      return `No accepted filter-roll camera reading has arrived since ${formatDate(latest.measuredAt)}. The current estimate may be outdated; wait for or troubleshoot the next scheduled measurement before planning replacement.`;
+    }
+    return '';
+  }
+
   function renderCard(status, meta) {
     const card = document.getElementById(CARD_ID);
     if (!card) return;
@@ -303,7 +315,7 @@
     const sourceLabel = current.source === 'manual with camera reference'
       ? 'Manual baseline with camera reference established'
       : current.source === 'camera' ? 'Latest independent camera measurement' : 'Manual starting measurement';
-    const primaryWarning = [...(status.warnings || []), ...(meta.usingCache ? ['Showing cached Observer data.'] : []), ...(meta.failure && !meta.usingCache ? [`Observer refresh failed: ${meta.failure}`] : [])][0] || '';
+    const primaryWarning = actionableTrackingWarning(status, latest) || [...(status.warnings || []), ...(meta.usingCache ? ['Showing cached Observer data.'] : []), ...(meta.failure && !meta.usingCache ? [`Observer refresh failed: ${meta.failure}`] : [])][0] || '';
     const forecastText = forecast.available ? forecast.dateRange : (forecast.label || 'Still learning');
     const confidenceReason = confidence.reasons?.join('; ') || 'More independent camera history is required.';
 

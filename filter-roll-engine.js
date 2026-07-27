@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9E — deterministic, schedule-aware filter-roll status engine.
+/* Reef Keeper Maintenance 9E.1 — deterministic, schedule-aware filter-roll status engine.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9E.0';
+  const VERSION = '9E.1';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',

@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260727-maintenance-9e-observer-simplification">
+<link rel="stylesheet" href="css/app.css?v=20260727-maintenance-9e1-observer-followup">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -788,7 +788,7 @@
   }
 </style>
 
-  <link rel="stylesheet" href="/filter-roll-status.css?v=4.3.53">
+  <link rel="stylesheet" href="/filter-roll-status.css?v=4.3.54">
 </head>
 <body>
 
@@ -1166,7 +1166,7 @@
           <summary>Reviewed history <span id="observer-alert-history-count">0</span></summary>
           <div class="observer-reviewed-history-list" id="observer-alert-history-list"></div>
         </details>
-        <div class="observer-alert-note">Reviewed removes an item from this inbox; the underlying condition remains visible under Health until it clears.</div>
+        <div class="observer-alert-note">Reviewed removes an item from this inbox and stores it in history. Expected skimmer or GFO movement after maintenance does not require an exact image reset.</div>
       </section>
 
       <div id="observer-filter-roll-status-mount" data-observer-overview-only></div>
@@ -1209,6 +1209,7 @@
             <div class="observer-health-head observer-subsection-head">
               <div class="observer-safety-title" id="observer-health-title">System checks</div>
             </div>
+            <div class="observer-health-guidance" id="observer-health-guidance" hidden></div>
             <div class="observer-health-grid">
               <div class="observer-health-row" id="observer-health-capture-row"><span class="observer-health-icon">📷</span><div><strong>Camera capture</strong><small id="observer-health-capture-detail">Checking…</small></div><b id="observer-health-capture-state">—</b></div>
               <div class="observer-health-row" id="observer-health-publisher-row"><span class="observer-health-icon">☁️</span><div><strong>Remote publishing</strong><small id="observer-health-publisher-detail">Checking…</small></div><b id="observer-health-publisher-state">—</b></div>
@@ -1672,7 +1673,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.53 Maintenance 9E</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.54 Maintenance 9E.1</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3356,9 +3357,9 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260727-maintenance-9e-observer-simplification"></script>
-<script src="integration-core.js?v=20260727-maintenance-9e-observer-simplification"></script>
-<script src="observer.js?v=20260727-maintenance-9e-observer-simplification"></script>
+<script src="app.js?v=20260727-maintenance-9e1-observer-followup"></script>
+<script src="integration-core.js?v=20260727-maintenance-9e1-observer-followup"></script>
+<script src="observer.js?v=20260727-maintenance-9e1-observer-followup"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
@@ -4593,7 +4594,7 @@ function startVisionPrompt(prompt, preferCamera) {
 </script>
 
 
-  <script src="/filter-roll-engine.js?v=4.3.53"></script>
-  <script src="/filter-roll-status.js?v=4.3.53"></script>
+  <script src="/filter-roll-engine.js?v=4.3.54"></script>
+  <script src="/filter-roll-status.js?v=4.3.54"></script>
 </body>
 </html>

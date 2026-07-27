@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9E — compact Aquarium Observer dashboard and persistent alert lifecycle
+// Reef Keeper Maintenance 9E.1 — reviewed-alert certainty and maintenance-tolerant health presentation
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -11,6 +11,7 @@
   const ALERT_REVIEWED_KEY = 'reef_observer_reviewed_alert_ids_v1';
   const ALERT_HISTORY_KEY = 'reef_observer_reviewed_alert_history_v1';
   const ALERT_ACTIVE_KEY = 'reef_observer_active_alert_keys_v1';
+  const ALERT_CLEARED_KEY = 'reef_observer_cleared_alert_keys_v1';
   const ALERT_SEEN_KEY = 'reef_observer_seen_alert_ids_v1';
   const REFRESH_INTERVAL_MS = 60_000;
   const CAPTURE_STALE_AFTER_MS = 15 * 60_000;
@@ -45,6 +46,7 @@
   let dailySummary = null;
   let observerAlerts = null;
   let observerTimelapses = null;
+  const sessionAlertIdSets = new Map();
 
   function byId(id) { return document.getElementById(id); }
 
@@ -405,14 +407,18 @@
   }
 
   function storedAlertIds(key) {
+    const ids = new Set(sessionAlertIdSets.get(key) || []);
     try {
       const value = JSON.parse(localStorage.getItem(key) || '[]');
-      return new Set(Array.isArray(value) ? value.map(String) : []);
-    } catch (_) { return new Set(); }
+      if (Array.isArray(value)) value.map(String).forEach(id => ids.add(id));
+    } catch (_) {}
+    return ids;
   }
 
   function saveAlertIds(key, ids) {
-    try { localStorage.setItem(key, JSON.stringify([...ids].slice(-150))); } catch (_) {}
+    const normalized = new Set([...ids].map(String).slice(-150));
+    sessionAlertIdSets.set(key, normalized);
+    try { localStorage.setItem(key, JSON.stringify([...normalized])); } catch (_) {}
   }
 
   function readReviewedAlertHistory() {
@@ -528,6 +534,7 @@
     saveAlertIds(ALERT_REVIEWED_KEY, reviewed);
     rememberReviewedAlerts([alert]);
     renderObserverAlerts(observerAlerts || normalizeObserverAlertFeed({}));
+    if (typeof showToast === 'function') showToast('Moved to reviewed history');
   }
 
   function markAllObserverAlertsReviewed() {
@@ -563,16 +570,30 @@
     const canReconcileLifecycle = Boolean(feed.updatedAt || feed.lastEvaluatedAt);
     if (canReconcileLifecycle) {
       const previousActive = storedAlertIds(ALERT_ACTIVE_KEY);
+      const cleared = storedAlertIds(ALERT_CLEARED_KEY);
+      const currentKeys = new Set(currentAlerts.map(alertReviewKey));
       let reviewedChanged = false;
+      let clearedChanged = false;
+
+      previousActive.forEach(key => {
+        if (!currentKeys.has(key)) {
+          cleared.add(key);
+          clearedChanged = true;
+        }
+      });
+
       currentAlerts.filter(alert => alert.kind === 'system').forEach(alert => {
         const key = alertReviewKey(alert);
-        if (!previousActive.has(key) && reviewed.has(key)) {
+        if (cleared.has(key) && reviewed.has(key)) {
           reviewed.delete(key);
           reviewedChanged = true;
         }
+        if (cleared.delete(key)) clearedChanged = true;
       });
+
       if (reviewedChanged) saveAlertIds(ALERT_REVIEWED_KEY, reviewed);
-      saveAlertIds(ALERT_ACTIVE_KEY, new Set(currentAlerts.map(alertReviewKey)));
+      if (clearedChanged) saveAlertIds(ALERT_CLEARED_KEY, cleared);
+      saveAlertIds(ALERT_ACTIVE_KEY, currentKeys);
     }
     const active = currentAlerts.filter(alert => !isAlertReviewed(alert, reviewed));
     const urgent = active.some(alert => alert.severity === 'urgent');
@@ -734,6 +755,26 @@
     return health;
   }
 
+  function isMaintenanceSceneAdvisory(health) {
+    if (!health || health.localMonitoring?.scene?.status !== 'attention') return false;
+    if (health.localMonitoring.scene.movementLikely === true) return false;
+    const materialIssues = (health.issues || []).filter(issue =>
+      ['critical', 'warning'].includes(issue.severity) && issue.code !== 'sump_scene_changed'
+    );
+    const hardStates = [
+      health.capture?.status,
+      health.publisher?.status,
+      health.storage?.status,
+      health.power?.status,
+      health.archive?.status
+    ];
+    return materialIssues.length === 0 && !hardStates.some(state => state === 'attention' || state === 'offline');
+  }
+
+  function maintenanceSceneGuidance() {
+    return 'The fixed-view monitor noticed a persistent visual difference. Skimmer, GFO reactor, hose, lid, or cord movement after normal maintenance can cause this. Review the current image; if the equipment placement is expected, mark the alert reviewed. No exact image reset is required.';
+  }
+
   function normalizeCameraRecord(record, cameraId, rootRecord = {}) {
     const source = record && typeof record === 'object' ? record : {};
     const captured = captureDate(source);
@@ -746,6 +787,7 @@
     let label = 'Checking';
     if (!configured) { state = 'pending'; label = 'Not connected'; }
     else if (health.status === 'healthy') { state = 'online'; label = 'Healthy'; }
+    else if (health.status === 'attention' && isMaintenanceSceneAdvisory(health)) { state = 'advisory'; label = 'Advisory'; }
     else if (health.status === 'attention') { state = 'stale'; label = 'Attention'; }
     else { state = 'offline'; label = 'Offline'; }
 
@@ -754,7 +796,7 @@
       raw: source,
       cameraId,
       configured,
-      ok: state === 'online',
+      ok: state === 'online' || state === 'advisory',
       stale: state === 'stale',
       state,
       label,
@@ -910,20 +952,24 @@
     if (detailNode) detailNode.textContent = detail || 'No details received.';
   }
 
-  function renderLocalMonitoring(local) {
+  function renderLocalMonitoring(local, maintenanceAdvisory = false) {
     const source = local && typeof local === 'object' ? local : normalizeHealth({}).localMonitoring;
     const badge = byId('observer-local-monitor-badge');
     if (badge) {
-      badge.className = `observer-health-badge ${source.status}`;
-      badge.textContent = source.enabled === false ? 'Disabled' : healthLabel(source.status);
+      badge.className = `observer-health-badge ${maintenanceAdvisory ? 'advisory' : source.status}`;
+      badge.textContent = source.enabled === false ? 'Disabled' : (maintenanceAdvisory ? 'Advisory' : healthLabel(source.status));
     }
-    setText('observer-local-monitor-summary', source.message);
+    setText('observer-local-monitor-summary', maintenanceAdvisory ? 'Expected equipment-position variation was detected after normal sump activity.' : source.message);
     const qualityDetail = `${source.imageQuality.message}${source.mode && source.mode !== 'unknown' ? ` Mode: ${source.mode}.` : ''}`;
     setLocalMonitorItem('image', source.imageQuality.status, qualityDetail);
     const sceneDetail = source.scene.baselineReady
       ? `${source.scene.message} Change score: ${source.scene.changeScore.toFixed(2)}.`
       : source.scene.message;
-    setLocalMonitorItem('scene', source.scene.status, sceneDetail, source.scene.baselineReady ? healthLabel(source.scene.status) : 'Learning');
+    setLocalMonitorItem('scene', source.scene.status, maintenanceAdvisory ? maintenanceSceneGuidance() : sceneDetail, maintenanceAdvisory ? 'Advisory' : (source.scene.baselineReady ? healthLabel(source.scene.status) : 'Learning'));
+    if (maintenanceAdvisory) {
+      const sceneItem = byId('observer-local-scene-item');
+      if (sceneItem) sceneItem.className = 'observer-local-monitor-item advisory';
+    }
     const waterLabel = source.waterLevel.configured ? healthLabel(source.waterLevel.status) : 'Not set';
     const waterDetail = source.waterLevel.configured && source.waterLevel.confidence
       ? `${source.waterLevel.message} Confidence: ${Math.round(source.waterLevel.confidence * 100)}%.`
@@ -935,20 +981,27 @@
 
   function renderObserverHealth(record) {
     const health = record.health;
+    const maintenanceAdvisory = isMaintenanceSceneAdvisory(health);
     const badge = byId('observer-health-badge');
     if (badge) {
-      badge.className = `observer-health-badge ${health.status}`;
-      badge.textContent = healthLabel(health.status);
+      badge.className = `observer-health-badge ${maintenanceAdvisory ? 'advisory' : health.status}`;
+      badge.textContent = maintenanceAdvisory ? 'Advisory' : healthLabel(health.status);
     }
-    const healthStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.dailySummary.status, health.localMonitoring.status, health.archive.status];
+    const healthStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.dailySummary.status, maintenanceAdvisory ? 'healthy' : health.localMonitoring.status, health.archive.status];
     const attentionCount = healthStates.filter(state => state === 'attention' || state === 'offline').length;
     const healthyCount = healthStates.filter(state => state === 'healthy').length;
     const checkingCount = healthStates.filter(state => state === 'pending').length;
     const summaryParts = [];
+    if (maintenanceAdvisory) summaryParts.push('Expected sump-view variation · review only');
     if (attentionCount) summaryParts.push(`${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`);
     if (healthyCount) summaryParts.push(`${healthyCount} healthy`);
     if (checkingCount) summaryParts.push(`${checkingCount} checking`);
     setText('observer-health-summary', summaryParts.join(' · ') || health.summary);
+    const guidance = byId('observer-health-guidance');
+    if (guidance) {
+      guidance.hidden = !maintenanceAdvisory;
+      guidance.innerHTML = maintenanceAdvisory ? `<strong>What to do</strong><span>${maintenanceSceneGuidance()}</span>` : '';
+    }
     setHealthRow('capture', health.capture.status, health.capture.message);
     setHealthRow('publisher', health.publisher.status, health.publisher.message);
 
@@ -962,7 +1015,7 @@
       ? `${health.dailySummary.message} Next attempt ${formatCaptureTime(health.dailySummary.nextAttemptAt.toISOString())}.`
       : health.dailySummary.message;
     setHealthRow('daily', health.dailySummary.status, dailyDetail);
-    renderLocalMonitoring(health.localMonitoring);
+    renderLocalMonitoring(health.localMonitoring, maintenanceAdvisory);
 
     const servicesHealthy = health.services.captureTimerActive && health.services.publishTimerActive;
     const servicesState = servicesHealthy ? 'healthy' : 'attention';
@@ -978,7 +1031,11 @@
     if (issuesBox) {
       const issues = health.issues.filter(item => item.message);
       issuesBox.hidden = !issues.length;
-      issuesBox.innerHTML = issues.map(item => `<div class="observer-health-issue ${item.severity}">${item.message.replace(/[<>]/g, '')}</div>`).join('');
+      issuesBox.innerHTML = issues.map(item => {
+        const advisory = maintenanceAdvisory && item.code === 'sump_scene_changed';
+        const message = advisory ? maintenanceSceneGuidance() : item.message;
+        return `<div class="observer-health-issue ${advisory ? 'advisory' : item.severity}">${message.replace(/[<>]/g, '')}</div>`;
+      }).join('');
     }
   }
 
@@ -1077,13 +1134,17 @@
 
     const note = byId('observer-connection-note');
     if (note) {
+      const maintenanceAdvisory = isMaintenanceSceneAdvisory(record.health);
       const shouldShow = !record.configured || record.health.status !== 'healthy';
       note.hidden = !shouldShow;
+      note.classList.toggle('advisory', maintenanceAdvisory);
       if (shouldShow) {
         if (record.health.capture.status === 'offline') {
           note.innerHTML = `<strong>The camera capture needs attention.</strong><span>${cleanText(record.health.capture.message, 'The latest capture is not current.')}</span>`;
         } else if (record.health.storage.status === 'offline') {
           note.innerHTML = `<strong>The Observer drive needs attention.</strong><span>${cleanText(record.health.storage.message, 'The archive drive is unavailable or not writable.')}</span>`;
+        } else if (maintenanceAdvisory) {
+          note.innerHTML = '<strong>Expected sump-view variation detected.</strong><span>Review the image and mark the matching alert reviewed if the equipment movement is normal after maintenance. No exact image reset is required.</span>';
         } else if (record.configured) {
           note.innerHTML = `<strong>Observer is reporting with a warning.</strong><span>${cleanText(record.health.summary || record.message || 'Open Health and diagnostics for details.')}</span>`;
         } else {

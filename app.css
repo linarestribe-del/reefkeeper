@@ -5194,3 +5194,43 @@ body:has(#page-observer.active) .scroll-top-btn{width:34px!important;height:34px
   .observer-tools-card>.observer-disclosure>summary{align-items:flex-start;flex-wrap:wrap}
   .observer-tools-card>.observer-disclosure>summary>span:nth-child(2){width:100%;order:3}
 }
+
+/* Maintenance 9E.1 — reviewed-alert certainty and maintenance-scene advisory */
+.observer-state-badge.advisory,
+.observer-health-badge.advisory {
+  background: rgba(0, 180, 216, .14);
+  color: #08789a;
+}
+.observer-connection-note.advisory {
+  border-left-color: #00a7c7;
+  background: rgba(202, 240, 248, .38);
+}
+.observer-health-guidance {
+  display: grid;
+  gap: 5px;
+  margin: 0 0 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(0, 167, 199, .22);
+  border-radius: 15px;
+  background: rgba(202, 240, 248, .32);
+  color: #0a6090;
+  line-height: 1.45;
+}
+.observer-health-guidance[hidden] { display: none !important; }
+.observer-health-guidance strong { color: #074b91; }
+.observer-health-guidance span { font-size: .9rem; font-weight: 650; }
+.observer-local-monitor-item.advisory > b {
+  background: rgba(0, 180, 216, .14);
+  color: #08789a;
+}
+.observer-health-issue.advisory {
+  border-left-color: #00a7c7;
+  background: rgba(202, 240, 248, .28);
+  color: #0a6090;
+}
+html.theme-dark .observer-health-guidance,
+html.theme-dark .observer-health-issue.advisory,
+html.theme-dark .observer-connection-note.advisory {
+  background: rgba(0, 119, 182, .14);
+  color: rgba(224, 244, 251, .88);
+}
