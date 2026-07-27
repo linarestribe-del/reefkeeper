@@ -1,3 +1,21 @@
+## 4.3.55 — Maintenance 9F Observer Visual Reliability
+
+- Upgraded Raspberry Pi Observer Publisher to 2.8.0.
+- Replaced exact whole-sump baseline matching with fixed anchor zones and maintenance-tolerant baseline adaptation.
+- Kept real camera movement, obstruction, and fixed-anchor changes as actionable Attention conditions.
+- Added multi-frame filter-roll consensus, a 65% default confidence threshold, and large-change confirmation guardrails.
+- Preserved the last accepted filter-roll result while retaining each rejected attempt's actual analysis and rejection reason.
+- Updated both calibration helpers and the installer to maintain `root:reefkeeper` ownership with `0640` private-file permissions.
+- Retained the dual-camera architecture and 12/12 Vercel function boundary.
+
+## 4.3.52 — Maintenance 9D Filter-Roll Status and History
+
+- Added current filter-roll percentage and partial-cycle labeling.
+- Added latest accepted camera measurement and current-cycle measurement history.
+- Added usage trend, confidence grading, warnings, and provisional replacement date ranges.
+- Added explicit static routes for the new filter-roll JavaScript and stylesheet assets.
+- Kept Observer Publisher 2.7.3, unique-capture streak handling, and the Vercel function count unchanged.
+
 ## 4.3.51 — Maintenance 9C.3 Unique-Capture Alert Streak Fix
 
 - Publisher 2.7.3 advances water-level, obstruction, scene-change, and camera-movement confirmation streaks only when a new camera capture is evaluated.

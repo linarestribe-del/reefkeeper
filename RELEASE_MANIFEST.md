@@ -1,7 +1,7 @@
 # Reef Keeper Release Manifest
 
-Current release: **v4.3.54 Maintenance 9E.1**
+Current release: **v4.3.55 Maintenance 9F**
 
-Primary addition: Aquarium Observer now uses a compact operational layout with a true current-alert inbox, collapsed reviewed history and diagnostics, and corrected filter-roll measurement semantics without changing Observer Publisher 2.7.3.
+Primary addition: Aquarium Observer Publisher 2.8.0 uses maintenance-tolerant fixed anchor zones, multi-frame filter-roll consensus, preserved rejected-reading evidence, and automatic private calibration-file permissions.
 
-See `MAINTENANCE_9E_1_RELEASE_MANIFEST.md` and `MAINTENANCE_9E_1_TEST_REPORT.md`.
+See `MAINTENANCE_9F_RELEASE_MANIFEST.md` and `MAINTENANCE_9F_TEST_REPORT.md`.

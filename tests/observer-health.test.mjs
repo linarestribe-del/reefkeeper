@@ -21,7 +21,7 @@ assert.match(observer, /PUBLISH_STALE_AFTER_MS/);
 assert.match(observer, /The camera capture needs attention/);
 assert.match(observer, /Reef Keeper Aquarium Observer diagnostic/);
 assert.doesNotMatch(observer, /REEF_OBSERVER_WRITE_TOKEN|publisher\.json|Authorization: Bearer/);
-assert.match(publisher, /PUBLISHER_VERSION = '2\.7\.3'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.8\.0'/);
 assert.match(publisher, /vcgencmd/);
 assert.match(publisher, /os\.path\.ismount/);
 assert.match(publisher, /systemctl', 'is-active'/);

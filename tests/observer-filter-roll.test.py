@@ -31,7 +31,7 @@ assert 95 <= result['apparentOuterRadius'] <= 105
 assert 'outer silhouette' in result['message'].lower()
 
 calibrator = (ROOT / 'connector' / 'observer-filter-roll-calibrate.py').read_text(encoding='utf-8')
-assert 'outer-edge-multiscan-v1' in calibrator
+assert 'outer-edge-consensus-v2' in calibrator
 assert 'apparentOuterRadius is measured in pixels' in calibrator
 
 print('Observer outer-edge filter-roll tests passed.')

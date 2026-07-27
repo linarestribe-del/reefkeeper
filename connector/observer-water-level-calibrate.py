@@ -6,6 +6,7 @@ import argparse
 import importlib.util
 import json
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -45,8 +46,13 @@ def write_config(config_path: Path, value: dict) -> None:
         with os.fdopen(descriptor, 'w', encoding='utf-8') as handle:
             json.dump(value, handle, indent=2)
             handle.write('\n')
-        os.chmod(temporary, 0o644)
+        os.chmod(temporary, 0o640)
         os.replace(temporary, config_path)
+        try:
+            shutil.chown(config_path, user='root', group='reefkeeper')
+            os.chmod(config_path, 0o640)
+        except (LookupError, PermissionError, OSError) as error:
+            print(f'Warning: calibration permissions could not be finalized automatically: {error}', file=sys.stderr)
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)

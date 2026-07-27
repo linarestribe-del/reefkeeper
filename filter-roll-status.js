@@ -1,6 +1,6 @@
-/* Reef Keeper Maintenance 9E.1 — actionable Filter-Roll Status UI.
+/* Reef Keeper Maintenance 9F — actionable Filter-Roll Status UI.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
- * Publisher 2.7.3 and all server routes remain unchanged.
+ * Reads Publisher 2.8.0 consensus attempts and preserved rejection reasons.
  */
 (function installFilterRollStatus() {
   'use strict';
@@ -80,7 +80,7 @@
       cameraReferencePending: cycle?.cameraReferencePending === true,
       baselinePending: cycle?.baselinePending === true,
       calibration,
-      scheduleHoursLocal: [9, 15, 21],
+      scheduleHoursLocal: [9, 15],
       minSpacingMinutes: 240
     };
   }
@@ -293,7 +293,9 @@
     const tracking = status?.tracking || {};
     if (tracking.state === 'needs-calibration') {
       const since = latest?.measuredAt ? formatDate(latest.measuredAt) : 'the initial camera reference';
-      return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains anchored to the manual baseline. Recalibrate camera tracking before using it for replacement planning.`;
+      const rejected = (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
+      const detail = rejected ? ` Latest rejected attempt: ${rejected.reason}` : '';
+      return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains anchored to the manual baseline.${detail}`;
     }
     if (tracking.state === 'stale' && latest?.measuredAt) {
       return `No accepted filter-roll camera reading has arrived since ${formatDate(latest.measuredAt)}. The current estimate may be outdated; wait for or troubleshoot the next scheduled measurement before planning replacement.`;
@@ -397,8 +399,10 @@
         if (Number.isFinite(Number(liveFilterRoll?.schedule?.minSpacingMinutes))) config.minSpacingMinutes = Number(liveFilterRoll.schedule.minSpacingMinutes);
         const cycleMeasurements = currentCycleMeasurements(loaded.state, config);
         const observerMeasurement = canonicalObserverMeasurement(loaded.observerPayload, config);
+        const observerMeasurements = window.ReefKeeperFilterRollEngine.extractMeasurements(liveFilterRoll, config);
         const merged = mergeLocalHistory(config.cycleId, [
           ...cycleMeasurements,
+          ...observerMeasurements,
           ...(observerMeasurement ? [observerMeasurement] : [])
         ]);
         const status = window.ReefKeeperFilterRollEngine.buildStatus({

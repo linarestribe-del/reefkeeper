@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9E.1 — stable alerts with maintenance-aware scene guidance
+// Reef Keeper Maintenance 9F — stable alerts with anchor-zone camera guidance
 
 import {
   cleanObserverString,
@@ -33,6 +33,7 @@ const SYSTEM_ALERT_DETAILS = Object.freeze({
   daily_summary_paused: ['daily_summary', 'Daily visual summary paused after repeated failures', 'Review the publisher log and OpenAI availability; the attempt budget resets with the next daily frame.'],
   camera_view_obstructed: ['camera_quality', 'Sump camera view may be obstructed', 'Check the camera lens and confirm that salt spray, condensation, a hand, cable, or equipment is not blocking the view.'],
   camera_view_shifted: ['camera_quality', 'Sump camera framing appears to have moved', 'Compare the current image with the learned view and reposition the camera if the sump is no longer framed correctly.'],
+  camera_anchor_changed: ['camera_quality', 'Fixed sump camera anchors changed', 'Inspect the cabinet wall, sump edge, and fixed plumbing zones. Reposition the camera or remove an obstruction if those fixed areas no longer match.'],
   sump_scene_changed: ['other', 'Sump view changed after maintenance or equipment movement', 'Review the current image. If the skimmer, GFO reactor, hoses, lids, or cords moved during expected maintenance, mark reviewed; no exact image match is required.'],
   water_level_watch: ['water_level', 'Possible sump water-level shift', 'Verify the sump water level directly and check the ATO, return section, and visible plumbing before taking action.'],
   water_level_urgent: ['water_level', 'Possible urgent sump water-level shift', 'Inspect the sump immediately for overflow, low return-section level, ATO malfunction, or displaced plumbing.'],

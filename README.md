@@ -1,12 +1,12 @@
 # Reef Keeper
 
-**Current application version:** `4.3.47`  
-**Current release family:** Maintenance 9A — Integration Core  
-**Maintenance state:** Maintenance 9A adds a shared structured tank-event stream that connects Maintenance, Parameters, Observer, Timeline, reports, recent changes, backups, and Ask AI while preserving the verified Maintenance 8D dual-camera pipeline.
+**Current application version:** `4.3.55`  
+**Current release family:** Maintenance 9F — Observer Visual Reliability  
+**Maintenance state:** Maintenance 9F upgrades Observer Publisher to 2.8.0 with maintenance-tolerant fixed anchor zones, multi-frame filter-roll consensus, preserved rejected-reading evidence, and safe private calibration-file permissions.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 9A is documented in `MAINTENANCE_9A_RELEASE_MANIFEST.md` and `MAINTENANCE_9A_TEST_REPORT.md`. It is a browser-side integration release and does not require a Raspberry Pi publisher update.
+Maintenance 9F is documented in `MAINTENANCE_9F_RELEASE_MANIFEST.md` and `MAINTENANCE_9F_TEST_REPORT.md`. It includes both a web application update and the rollback-ready Raspberry Pi Publisher 2.8.0 installer.
 
 ## Current major capabilities
 
@@ -14,7 +14,7 @@ Maintenance 9A is documented in `MAINTENANCE_9A_RELEASE_MANIFEST.md` and `MAINTE
 - Evidence, decision, explainability, trend, and chart modules
 - Ask AI with tank context, document input, single-photo analysis, and 2–4 photo comparison
 - Apex telemetry display
-- Aquarium Observer dual-camera current views, independent health checks, overview history, daily summaries, change alerts, and rolling time-lapses
+- Aquarium Observer dual-camera current views, independent health checks, overview history, daily summaries, change alerts, rolling time-lapses, and filter-roll status/history
 - Private Observer uploads from the Raspberry Pi through Vercel APIs to Cloudflare R2
 
 ## Repository layout
@@ -122,3 +122,13 @@ Publisher 2.5 keeps the existing sump-overview pipeline and adds a separate retu
 `integration-core.js` mirrors existing parameter logs, maintenance actions, and completed tasks into a device-local structured event stream without changing the original records. Stable event IDs make repeated synchronization safe. Timeline, reports, Home recent changes, backups, and Ask AI can consume the same events.
 
 A connected filter-roller replacement entry starts a new Observer roll cycle. The cycle store is ready for one to three overview-camera measurements per day and future multi-roll usage learning, but this release does not yet include the image-segmentation detector.
+
+
+## Maintenance 9D Filter-Roll Status and History
+
+The Observer page now displays the active roll percentage, partial/full-cycle label, latest accepted camera measurement, unique current-cycle history, usage trend, confidence reasons, warnings, and a provisional replacement date range. The calculation stays in deterministic browser code and reads the existing Maintenance 9A cycle state. Publisher 2.7.3 and the 12-function Vercel deployment remain unchanged.
+
+
+## Maintenance 9F Observer Visual Reliability
+
+Publisher 2.8.0 compares fixed cabinet/plumbing anchor zones separately from the serviceable skimmer, GFO, hose, lid, and cord areas. Expected maintenance variation can settle and become part of the learned baseline without creating a persistent whole-scene alert, while actual camera movement, obstruction, or fixed-anchor changes still raise Attention. Filter-roll tracking now uses recent-frame consensus, a 65% default confidence threshold, schedule-aware validation, plausible-change guardrails, and preserved accepted/rejected attempt history. Both calibration helpers save private JSON files as `root:reefkeeper` with mode `0640`.

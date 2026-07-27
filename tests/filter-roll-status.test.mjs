@@ -77,10 +77,10 @@ const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
 const css = fs.readFileSync('filter-roll-status.css', 'utf8');
 const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.54'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.54'));
-assert.ok(html.includes('/filter-roll-status.css?v=4.3.54'));
-assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.54') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.55'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.55'));
+assert.ok(html.includes('/filter-roll-status.css?v=4.3.55'));
+assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.55') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
 assert.match(ui, /getFilterRollState/);
 assert.match(ui, /reef_observer_filter_roll_state_v1/);
 assert.match(ui, /latestCameraMeasurement/);
@@ -92,4 +92,4 @@ for (const route of ['/filter-roll-engine.js', '/filter-roll-status.js', '/filte
 }
 assert.equal(vercel.functions && Object.keys(vercel.functions).length, 3, 'Maintenance 9D must not add a Vercel function.');
 
-console.log('Maintenance 9E.1 filter-roll status tests passed.');
+console.log('Maintenance 9F filter-roll status tests passed.');

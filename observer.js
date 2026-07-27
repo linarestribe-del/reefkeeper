@@ -157,9 +157,14 @@
           ...normalizeHealthComponent(local.scene, 'Learning the stable sump view.'),
           baselineReady: local.scene?.baselineReady === true,
           changeScore: Math.max(0, Math.min(1, Number(local.scene?.changeScore) || 0)),
+          anchorChangeScore: Math.max(0, Math.min(1, Number(local.scene?.anchorChangeScore ?? local.scene?.changeScore) || 0)),
+          fullChangeScore: Math.max(0, Math.min(1, Number(local.scene?.fullChangeScore ?? local.scene?.changeScore) || 0)),
           shiftX: Math.trunc(Number(local.scene?.shiftX) || 0),
           shiftY: Math.trunc(Number(local.scene?.shiftY) || 0),
           movementLikely: local.scene?.movementLikely === true,
+          maintenanceVariation: local.scene?.maintenanceVariation === true,
+          learningState: cleanText(local.scene?.learningState, 'unknown'),
+          anchorZones: Array.isArray(local.scene?.anchorZones) ? local.scene.anchorZones.slice(0, 8) : [],
           streak: Math.max(0, Number(local.scene?.streak) || 0)
         },
         waterLevel: {
@@ -211,6 +216,29 @@
     const roi = Array.isArray(item.roi) && item.roi.length === 4
       ? item.roi.map(number => Math.max(0, Math.min(1, Number(number) || 0)))
       : null;
+    const nullable = value => value === null || value === undefined || value === '' ? null : (Number.isFinite(Number(value)) ? Number(value) : null);
+    const normalizeAttempt = value => {
+      const source = value && typeof value === 'object' ? value : null;
+      if (!source) return null;
+      const measuredAt = parseDate(source.measuredAt || source.attemptedAt || source.captureAt);
+      const radius = nullable(source.apparentOuterRadius);
+      const remaining = nullable(source.remainingPct);
+      if (!measuredAt && radius == null && remaining == null) return null;
+      return {
+        ...source,
+        accepted: source.accepted === true || source.available === true,
+        available: source.available === true,
+        measuredAt,
+        attemptedAt: parseDate(source.attemptedAt || source.measuredAt),
+        confidence: Math.max(0, Math.min(1, Number(source.confidence) || 0)),
+        remainingPct: remaining == null ? null : Math.max(0, Math.min(100, remaining)),
+        apparentOuterRadius: radius == null ? null : Math.max(0, radius),
+        analysisMessage: cleanText(source.analysisMessage || source.message),
+        rejectionReason: cleanText(source.rejectionReason),
+        frameCount: Math.max(0, Number(source.frameCount) || 0),
+        successfulFrameCount: Math.max(0, Number(source.successfulFrameCount) || 0)
+      };
+    };
     return {
       enabled: item.enabled !== false,
       configured: item.configured === true,
@@ -219,19 +247,27 @@
       state: cleanText(item.state || item.status, 'pending'),
       status: cleanText(item.status || item.state, 'pending'),
       message: cleanText(item.message),
+      analysisMessage: cleanText(item.analysisMessage),
+      rejectionReason: cleanText(item.rejectionReason),
       note: cleanText(item.note),
       measuredAt: parseDate(item.measuredAt || item.captureAt),
       measurementId: cleanText(item.measurementId || item.measuredAt || ''),
       sourceImageId: cleanText(item.sourceImageId || ''),
       confidence: Math.max(0, Math.min(1, Number(item.confidence) || 0)),
-      remainingPct: item.remainingPct === null || item.remainingPct === undefined || item.remainingPct === '' ? null : (Number.isFinite(Number(item.remainingPct)) ? Math.max(0, Math.min(100, Number(item.remainingPct))) : null),
-      apparentOuterRadius: item.apparentOuterRadius === null || item.apparentOuterRadius === undefined || item.apparentOuterRadius === '' ? null : (Number.isFinite(Number(item.apparentOuterRadius)) ? Math.max(0, Number(item.apparentOuterRadius)) : null),
-      apparentCoreRadius: item.apparentCoreRadius === null || item.apparentCoreRadius === undefined || item.apparentCoreRadius === '' ? null : (Number.isFinite(Number(item.apparentCoreRadius)) ? Math.max(0, Number(item.apparentCoreRadius)) : null),
-      apparentThicknessPct: item.apparentThicknessPct === null || item.apparentThicknessPct === undefined || item.apparentThicknessPct === '' ? null : (Number.isFinite(Number(item.apparentThicknessPct)) ? Math.max(0, Math.min(100, Number(item.apparentThicknessPct))) : null),
+      remainingPct: nullable(item.remainingPct) == null ? null : Math.max(0, Math.min(100, nullable(item.remainingPct))),
+      apparentOuterRadius: nullable(item.apparentOuterRadius) == null ? null : Math.max(0, nullable(item.apparentOuterRadius)),
+      apparentCoreRadius: nullable(item.apparentCoreRadius) == null ? null : Math.max(0, nullable(item.apparentCoreRadius)),
+      apparentThicknessPct: nullable(item.apparentThicknessPct) == null ? null : Math.max(0, Math.min(100, nullable(item.apparentThicknessPct))),
+      frameCount: Math.max(0, Number(item.frameCount) || 0),
+      successfulFrameCount: Math.max(0, Number(item.successfulFrameCount) || 0),
+      referenceOnly: item.referenceOnly === true,
+      lastAccepted: normalizeAttempt(item.lastAccepted),
+      lastAttempt: normalizeAttempt(item.lastAttempt),
+      attemptHistory: Array.isArray(item.attemptHistory) ? item.attemptHistory.slice(-12).map(normalizeAttempt).filter(Boolean) : [],
       roi,
       schedule: {
         hoursLocal: Array.isArray(schedule.hoursLocal) ? schedule.hoursLocal.map(value => Math.max(0, Math.min(23, Number(value) || 0))) : [],
-        measurementsPerDay: Math.max(1, Number(schedule.measurementsPerDay || item.measurementsPerDay) || 3),
+        measurementsPerDay: Math.max(1, Number(schedule.measurementsPerDay || item.measurementsPerDay) || 2),
         minSpacingMinutes: Math.max(30, Number(schedule.minSpacingMinutes) || 240)
       }
     };
@@ -963,7 +999,7 @@
     const qualityDetail = `${source.imageQuality.message}${source.mode && source.mode !== 'unknown' ? ` Mode: ${source.mode}.` : ''}`;
     setLocalMonitorItem('image', source.imageQuality.status, qualityDetail);
     const sceneDetail = source.scene.baselineReady
-      ? `${source.scene.message} Change score: ${source.scene.changeScore.toFixed(2)}.`
+      ? `${source.scene.message} Fixed-anchor score: ${source.scene.anchorChangeScore.toFixed(2)}; full-view score: ${source.scene.fullChangeScore.toFixed(2)}.`
       : source.scene.message;
     setLocalMonitorItem('scene', source.scene.status, maintenanceAdvisory ? maintenanceSceneGuidance() : sceneDetail, maintenanceAdvisory ? 'Advisory' : (source.scene.baselineReady ? healthLabel(source.scene.status) : 'Learning'));
     if (maintenanceAdvisory) {
@@ -1070,7 +1106,7 @@
       diagnosticLine('Daily attempts', `${health.dailySummary.attemptCount}/${health.dailySummary.maxAttempts}${health.dailySummary.nextAttemptAt ? `; next ${health.dailySummary.nextAttemptAt.toISOString()}` : ''}`),
       diagnosticLine('Local visual monitoring', `${healthLabel(health.localMonitoring.status)} — ${health.localMonitoring.message}`),
       diagnosticLine('Image quality', `${healthLabel(health.localMonitoring.imageQuality.status)} — ${health.localMonitoring.imageQuality.message}`),
-      diagnosticLine('Scene stability', `${healthLabel(health.localMonitoring.scene.status)} — score=${health.localMonitoring.scene.changeScore.toFixed(3)}; ${health.localMonitoring.scene.message}`),
+      diagnosticLine('Scene stability', `${healthLabel(health.localMonitoring.scene.status)} — anchor=${health.localMonitoring.scene.anchorChangeScore.toFixed(3)}; full=${health.localMonitoring.scene.fullChangeScore.toFixed(3)}; state=${health.localMonitoring.scene.learningState}; ${health.localMonitoring.scene.message}`),
       diagnosticLine('Water level', health.localMonitoring.waterLevel.configured ? `${healthLabel(health.localMonitoring.waterLevel.status)} — delta=${health.localMonitoring.waterLevel.deltaPercent.toFixed(2)}%; confidence=${health.localMonitoring.waterLevel.confidence.toFixed(2)}` : 'Not calibrated'),
       diagnosticLine('Archive count', health.archive.captureCount),
       diagnosticLine('History ready', ready),

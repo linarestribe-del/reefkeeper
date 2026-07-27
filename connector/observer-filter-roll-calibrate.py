@@ -6,6 +6,7 @@ import argparse
 import importlib.util
 import json
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -65,9 +66,9 @@ def main() -> int:
     parser.add_argument('--image', type=Path, default=None, help='JPEG to test. Defaults to the overview latest.jpg used by the publisher.')
     parser.add_argument('--roi', type=parse_roi, default=(0.552, 0.0, 0.130, 0.240), help='Normalized x,y,width,height. Default: 0.552,0,0.130,0.240')
     parser.add_argument('--probe-y', type=float, default=0.38, help='Vertical scan-band center inside the ROI. Default: 0.38')
-    parser.add_argument('--hours', type=parse_hours, default=[9, 15, 21], help='Local analysis hours. Default: 9,15,21')
+    parser.add_argument('--hours', type=parse_hours, default=[9, 15], help='Local analysis hours. Default: 9,15 (daylight views only)')
     parser.add_argument('--min-spacing-minutes', type=int, default=240)
-    parser.add_argument('--minimum-confidence', type=float, default=0.42)
+    parser.add_argument('--minimum-confidence', type=float, default=0.65)
     parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
     parser.add_argument('--save', action='store_true', help='Save the configuration after a successful test.')
     args = parser.parse_args()
@@ -95,12 +96,24 @@ def main() -> int:
         'probe_y': round(probe_y, 4),
         'measurement_hours_local': args.hours,
         'min_spacing_minutes': max(30, min(1440, int(args.min_spacing_minutes))),
-        'minimum_confidence': max(0.15, min(0.95, float(args.minimum_confidence))),
-        'detector': 'outer-edge-multiscan-v1',
+        'minimum_confidence': max(0.35, min(0.95, float(args.minimum_confidence))),
+        'consensus_frames': 3,
+        'minimum_consensus_frames': 2,
+        'consensus_max_age_minutes': 20,
+        'maximum_radius_deviation_px': 4.5,
+        'maximum_radius_drop_fraction_per_day': 0.08,
+        'minimum_large_change_fraction': 0.06,
+        'large_change_confirmations': 2,
+        'detector': 'outer-edge-consensus-v2',
     }
     write_json_atomic(args.config, data)
+    try:
+        shutil.chown(args.config, user='root', group='reefkeeper')
+        os.chmod(args.config, 0o640)
+    except (LookupError, PermissionError, OSError) as error:
+        print(f'Warning: saved configuration permissions could not be finalized automatically: {error}')
     print(f'Saved: {args.config}')
-    print('CALIBRATION RESULT: PASS — OUTER-EDGE FILTER-ROLL MONITORING ENABLED')
+    print('CALIBRATION RESULT: PASS — CONSENSUS FILTER-ROLL MONITORING ENABLED')
     return 0
 
 

@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.7.3'
+PUBLISHER_VERSION = '2.8.0'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -382,9 +382,17 @@ def monitor_config(primary: dict[str, Any], config_path: Path | None = None, sou
     defaults: dict[str, Any] = {
         'enabled': True,
         'scene_change_threshold': 0.18,
+        'anchor_change_threshold': 0.12,
         'scene_alert_streak': 3,
+        'camera_movement_streak': 2,
+        'maintenance_settle_streak': 4,
         'obstruction_alert_streak': 2,
         'baseline_learning_rate': 0.025,
+        'maintenance_learning_rate': 0.16,
+        'scene_anchor_zones': [
+            {'x': 0.76, 'y': 0.0, 'width': 0.24, 'height': 1.0, 'weight': 1.0},
+            {'x': 0.50, 'y': 0.68, 'width': 0.50, 'height': 0.32, 'weight': 0.65},
+        ],
         'water_level': {
             'enabled': False,
             'roi': None,
@@ -406,6 +414,8 @@ def monitor_config(primary: dict[str, Any], config_path: Path | None = None, sou
     water_source = source.get('water_level') if isinstance(source.get('water_level'), dict) else {}
     water_override = override.get('water_level') if isinstance(override.get('water_level'), dict) else {}
     merged['water_level'] = {**defaults['water_level'], **water_source, **water_override}
+    zones = parse_monitor_zones(merged.get('scene_anchor_zones'))
+    merged['scene_anchor_zones'] = zones or parse_monitor_zones(defaults['scene_anchor_zones'])
     return merged
 
 
@@ -472,41 +482,94 @@ def normalized_signature(pixels: list[int], mean: float) -> list[int]:
     return [max(0, min(255, int(round(value + offset)))) for value in pixels]
 
 
-def shifted_difference(current: list[int], reference: list[int], width: int, height: int, dx: int = 0, dy: int = 0) -> float:
-    x_start = max(0, dx)
-    x_end = min(width, width + dx)
-    y_start = max(0, dy)
-    y_end = min(height, height + dy)
-    if x_start >= x_end or y_start >= y_end:
+def parse_monitor_zones(value: Any) -> list[dict[str, float]]:
+    if not isinstance(value, list):
+        return []
+    zones: list[dict[str, float]] = []
+    for item in value[:8]:
+        if isinstance(item, dict):
+            raw = [item.get('x'), item.get('y'), item.get('width'), item.get('height')]
+            weight_raw = item.get('weight', 1.0)
+        elif isinstance(item, (list, tuple)) and len(item) >= 4:
+            raw = list(item[:4])
+            weight_raw = item[4] if len(item) >= 5 else 1.0
+        else:
+            continue
+        roi = parse_roi(raw)
+        if not roi:
+            continue
+        try:
+            weight = float(weight_raw)
+        except (TypeError, ValueError):
+            weight = 1.0
+        x, y, width, height = roi
+        zones.append({
+            'x': round(x, 6),
+            'y': round(y, 6),
+            'width': round(width, 6),
+            'height': round(height, 6),
+            'weight': round(max(0.1, min(3.0, weight)), 3),
+        })
+    return zones
+
+
+def shifted_difference(
+    current: list[int],
+    reference: list[int],
+    width: int,
+    height: int,
+    dx: int = 0,
+    dy: int = 0,
+    zones: list[dict[str, float]] | None = None,
+) -> float:
+    selected = zones or [{'x': 0.0, 'y': 0.0, 'width': 1.0, 'height': 1.0, 'weight': 1.0}]
+    total = 0.0
+    weighted_count = 0.0
+    for zone in selected:
+        x0 = max(0, min(width - 1, int(round(float(zone.get('x') or 0.0) * width))))
+        y0 = max(0, min(height - 1, int(round(float(zone.get('y') or 0.0) * height))))
+        x1 = max(x0 + 1, min(width, int(round((float(zone.get('x') or 0.0) + float(zone.get('width') or 0.0)) * width))))
+        y1 = max(y0 + 1, min(height, int(round((float(zone.get('y') or 0.0) + float(zone.get('height') or 0.0)) * height))))
+        weight = max(0.1, min(3.0, float(zone.get('weight') or 1.0)))
+        for y in range(y0, y1):
+            reference_y = y - dy
+            if reference_y < 0 or reference_y >= height:
+                continue
+            current_row = y * width
+            reference_row = reference_y * width
+            for x in range(x0, x1):
+                reference_x = x - dx
+                if reference_x < 0 or reference_x >= width:
+                    continue
+                total += abs(current[current_row + x] - reference[reference_row + reference_x]) * weight
+                weighted_count += weight
+    if weighted_count <= 0:
         return 1.0
-    total = 0
-    count = 0
-    for y in range(y_start, y_end):
-        reference_y = y - dy
-        current_row = y * width
-        reference_row = reference_y * width
-        for x in range(x_start, x_end):
-            total += abs(current[current_row + x] - reference[reference_row + x - dx])
-            count += 1
-    return (total / max(1, count)) / 255.0
+    return (total / weighted_count) / 255.0
 
 
-def compare_to_baseline(current: list[int], reference: list[int], width: int = MONITOR_WIDTH, height: int = MONITOR_HEIGHT) -> dict[str, Any]:
+def compare_to_baseline(
+    current: list[int],
+    reference: list[int],
+    width: int = MONITOR_WIDTH,
+    height: int = MONITOR_HEIGHT,
+    zones: list[dict[str, float]] | None = None,
+) -> dict[str, Any]:
     if len(current) != width * height or len(reference) != width * height:
         return {'available': False, 'changeScore': 0.0, 'unshiftedScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'movementLikely': False}
-    unshifted = shifted_difference(current, reference, width, height)
+    unshifted = shifted_difference(current, reference, width, height, zones=zones)
     best_score = unshifted
     best_dx = best_dy = 0
     for dy in range(-2, 3):
         for dx in range(-3, 4):
             if dx == 0 and dy == 0:
                 continue
-            score = shifted_difference(current, reference, width, height, dx, dy)
+            score = shifted_difference(current, reference, width, height, dx, dy, zones=zones)
             if score < best_score:
                 best_score = score
                 best_dx, best_dy = dx, dy
     improvement = unshifted - best_score
-    movement = (abs(best_dx) >= 2 or abs(best_dy) >= 2) and improvement >= 0.025 and best_score <= unshifted * 0.82
+    movement = (abs(best_dx) >= 2 or abs(best_dy) >= 2) and improvement >= 0.018 and best_score <= unshifted * 0.86
     return {
         'available': True,
         'changeScore': round(best_score, 4),
@@ -589,6 +652,8 @@ def filter_roll_default() -> dict[str, Any]:
         'state': 'pending',
         'status': 'pending',
         'message': 'Filter-roller visual measurement is waiting for a configured region of interest.',
+        'analysisMessage': '',
+        'rejectionReason': '',
         'note': 'Low-frequency overview-camera measurement.',
         'measurementId': '',
         'sourceImageId': '',
@@ -599,9 +664,12 @@ def filter_roll_default() -> dict[str, Any]:
         'apparentCoreRadius': None,
         'apparentThicknessPct': None,
         'roi': None,
+        'lastAccepted': None,
+        'lastAttempt': None,
+        'attemptHistory': [],
         'schedule': {
-            'hoursLocal': [9, 15, 21],
-            'measurementsPerDay': 3,
+            'hoursLocal': [9, 15],
+            'measurementsPerDay': 2,
             'minSpacingMinutes': 240,
         },
     }
@@ -613,9 +681,16 @@ def filter_roll_config(primary: dict[str, Any], config_path: Path | None = None,
         'enabled': True,
         'roi': None,
         'probe_y': 0.5,
-        'measurement_hours_local': [9, 15, 21],
+        'measurement_hours_local': [9, 15],
         'min_spacing_minutes': 240,
-        'minimum_confidence': 0.42,
+        'minimum_confidence': 0.65,
+        'consensus_frames': 3,
+        'minimum_consensus_frames': 2,
+        'consensus_max_age_minutes': 20,
+        'maximum_radius_deviation_px': 4.5,
+        'maximum_radius_drop_fraction_per_day': 0.08,
+        'minimum_large_change_fraction': 0.06,
+        'large_change_confirmations': 2,
     }
     source = primary.get(source_key) if isinstance(primary.get(source_key), dict) else {}
     override: dict[str, Any] = {}
@@ -637,7 +712,14 @@ def filter_roll_config(primary: dict[str, Any], config_path: Path | None = None,
     merged['measurement_hours_local'] = sorted(set(hours or defaults['measurement_hours_local']))
     merged['probe_y'] = clamp_number(merged.get('probe_y'), 0.1, 0.9, 0.5)
     merged['min_spacing_minutes'] = int(clamp_number(merged.get('min_spacing_minutes'), 30, 1440, 240))
-    merged['minimum_confidence'] = clamp_number(merged.get('minimum_confidence'), 0.15, 0.95, 0.42)
+    merged['minimum_confidence'] = clamp_number(merged.get('minimum_confidence'), 0.35, 0.95, 0.65)
+    merged['consensus_frames'] = int(clamp_number(merged.get('consensus_frames'), 1, 5, 3))
+    merged['minimum_consensus_frames'] = int(clamp_number(merged.get('minimum_consensus_frames'), 1, merged['consensus_frames'], 2))
+    merged['consensus_max_age_minutes'] = int(clamp_number(merged.get('consensus_max_age_minutes'), 5, 60, 20))
+    merged['maximum_radius_deviation_px'] = clamp_number(merged.get('maximum_radius_deviation_px'), 1.0, 20.0, 4.5)
+    merged['maximum_radius_drop_fraction_per_day'] = clamp_number(merged.get('maximum_radius_drop_fraction_per_day'), 0.02, 0.5, 0.08)
+    merged['minimum_large_change_fraction'] = clamp_number(merged.get('minimum_large_change_fraction'), 0.02, 0.25, 0.06)
+    merged['large_change_confirmations'] = int(clamp_number(merged.get('large_change_confirmations'), 2, 4, 2))
     return merged
 
 
@@ -702,12 +784,7 @@ def median_number(values: list[float]) -> float:
 
 
 def analyze_filter_roll_frame(image_path: Path, roi: tuple[float, float, float, float], probe_y: float = 0.5) -> dict[str, Any]:
-    """Measure only the roll's outer silhouette.
-
-    The result is an apparent radius in the fixed camera projection, not a physical
-    millimeter measurement. Multiple nearby scan lines are combined so acrylic
-    spindle/core reflections cannot be mistaken for the consumable roll boundary.
-    """
+    """Measure only the roll's outer silhouette in one fixed-view frame."""
     pixels = decode_monitor_region(image_path, roi)
     width = FILTER_ROLL_ANALYSIS_WIDTH
     height = FILTER_ROLL_ANALYSIS_HEIGHT
@@ -788,6 +865,121 @@ def analyze_filter_roll_frame(image_path: Path, roi: tuple[float, float, float, 
     }
 
 
+def recent_filter_roll_images(image_path: Path, captured_at: datetime, settings: dict[str, Any]) -> list[tuple[datetime, Path]]:
+    frame_limit = int(settings.get('consensus_frames') or 3)
+    maximum_age = timedelta(minutes=int(settings.get('consensus_max_age_minutes') or 20))
+    candidates: list[tuple[datetime, Path]] = []
+    seen: set[Path] = set()
+
+    def add(path: Path, timestamp: datetime | None = None) -> None:
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path
+        if resolved in seen or not path.is_file():
+            return
+        time_value = timestamp or parse_capture_datetime(path) or captured_at
+        if time_value > captured_at + timedelta(minutes=2) or captured_at - time_value > maximum_age:
+            return
+        seen.add(resolved)
+        candidates.append((time_value, path))
+
+    add(image_path, captured_at)
+    try:
+        if image_path.parent.exists():
+            for sibling in image_path.parent.glob('*.jpg'):
+                add(sibling)
+    except OSError:
+        pass
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    return candidates[:frame_limit]
+
+
+def analyze_filter_roll_consensus(
+    image_path: Path,
+    captured_at: datetime,
+    roi: tuple[float, float, float, float],
+    probe_y: float,
+    settings: dict[str, Any],
+) -> dict[str, Any]:
+    frames = recent_filter_roll_images(image_path, captured_at, settings)
+    results: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for frame_at, frame_path in frames:
+        try:
+            analysis = analyze_filter_roll_frame(frame_path, roi, probe_y)
+        except Exception as error:
+            failures.append(safe_text(error, 120))
+            continue
+        if analysis.get('available') is True and analysis.get('apparentOuterRadius') is not None:
+            results.append({**analysis, 'frameCapturedAt': frame_at.isoformat(), 'frameName': frame_path.name})
+        else:
+            failures.append(safe_text(analysis.get('message') or 'No outer silhouette.', 120))
+
+    minimum_frames = int(settings.get('minimum_consensus_frames') or 2)
+    if len(results) < minimum_frames:
+        return {
+            'available': False,
+            'confidence': 0.0,
+            'frameCount': len(frames),
+            'successfulFrameCount': len(results),
+            'rejectionReason': f'Only {len(results)} of {len(frames)} recent frames produced a usable roll edge; {minimum_frames} agreeing frames are required.',
+            'message': 'Recent frames did not provide enough agreeing filter-roll measurements.',
+            'frameFailures': failures[:3],
+        }
+
+    radii = [float(item['apparentOuterRadius']) for item in results]
+    confidences = [float(item.get('confidence') or 0.0) for item in results]
+    median_radius = median_number(radii)
+    radius_deviation = median_number([abs(value - median_radius) for value in radii])
+    maximum_deviation = float(settings.get('maximum_radius_deviation_px') or 4.5)
+    if radius_deviation > maximum_deviation:
+        return {
+            'available': False,
+            'confidence': round(median_number(confidences), 3),
+            'frameCount': len(frames),
+            'successfulFrameCount': len(results),
+            'apparentOuterRadius': round(median_radius, 3),
+            'radiusDeviationPx': round(radius_deviation, 3),
+            'rejectionReason': f'Recent roll-edge readings disagreed by {radius_deviation:.1f} px; maximum allowed deviation is {maximum_deviation:.1f} px.',
+            'message': 'Recent filter-roll frames did not agree closely enough.',
+        }
+
+    consistency = max(0.0, min(1.0, 1.0 - radius_deviation / max(1.0, maximum_deviation)))
+    confidence = max(0.0, min(1.0, median_number(confidences) * (0.72 + 0.28 * consistency)))
+    representative = min(results, key=lambda item: abs(float(item['apparentOuterRadius']) - median_radius))
+    return {
+        **representative,
+        'available': True,
+        'confidence': round(confidence, 3),
+        'apparentOuterRadius': round(median_radius, 3),
+        'frameCount': len(frames),
+        'successfulFrameCount': len(results),
+        'radiusDeviationPx': round(radius_deviation, 3),
+        'message': f'Filter-roll radius agreed across {len(results)} recent frames.',
+    }
+
+
+def filter_roll_accepted_record(state: dict[str, Any]) -> dict[str, Any] | None:
+    accepted = state.get('lastAccepted') if isinstance(state.get('lastAccepted'), dict) else None
+    if accepted:
+        return dict(accepted)
+    if state.get('available') is True and state.get('measuredAt'):
+        return {key: state.get(key) for key in [
+            'measurementId', 'sourceImageId', 'measuredAt', 'confidence', 'remainingPct',
+            'apparentOuterRadius', 'apparentCoreRadius', 'apparentThicknessPct', 'analysisMessage',
+            'note', 'state', 'status', 'available', 'referenceOnly', 'frameCount', 'successfulFrameCount',
+        ]}
+    return None
+
+
+def filter_roll_candidate_match(candidate: dict[str, Any] | None, radius: float) -> bool:
+    if not candidate or candidate.get('apparentOuterRadius') is None:
+        return False
+    prior = float(candidate.get('apparentOuterRadius') or 0.0)
+    return prior > 0 and abs(radius - prior) / prior <= 0.06
+
+
 def evaluate_filter_roll(
     config: dict[str, Any],
     capture: dict[str, Any],
@@ -803,8 +995,8 @@ def evaluate_filter_roll(
     result = filter_roll_default()
     result['enabled'] = settings.get('enabled') is not False
     result['schedule'] = {
-        'hoursLocal': settings.get('measurement_hours_local') or [9, 15, 21],
-        'measurementsPerDay': len(settings.get('measurement_hours_local') or [9, 15, 21]),
+        'hoursLocal': settings.get('measurement_hours_local') or [9, 15],
+        'measurementsPerDay': len(settings.get('measurement_hours_local') or [9, 15]),
         'minSpacingMinutes': int(settings.get('min_spacing_minutes') or 240),
     }
     roi = parse_roi(settings.get('roi'))
@@ -814,14 +1006,21 @@ def evaluate_filter_roll(
         result.update({'status': 'healthy', 'state': 'disabled', 'message': 'Filter-roll visual measurement is disabled in the private Pi configuration.'})
         return result
 
-    state: dict[str, Any] = {}
     try:
         state = read_json(state_path)
     except Exception:
         state = {}
-    for key in ['measurementId', 'sourceImageId', 'message', 'note', 'measuredAt', 'confidence', 'remainingPct', 'apparentOuterRadius', 'apparentCoreRadius', 'apparentThicknessPct', 'state', 'status', 'available']:
-        if key in state:
-            result[key] = state.get(key)
+    accepted = filter_roll_accepted_record(state)
+    last_attempt = state.get('lastAttempt') if isinstance(state.get('lastAttempt'), dict) else None
+    attempt_history = state.get('attemptHistory') if isinstance(state.get('attemptHistory'), list) else []
+    if accepted:
+        for key, value in accepted.items():
+            if value is not None:
+                result[key] = value
+        result['available'] = True
+        result['lastAccepted'] = accepted
+    result['lastAttempt'] = last_attempt
+    result['attemptHistory'] = attempt_history[-12:]
     if not result['configured']:
         result['message'] = 'Filter-roller region of interest is not configured yet on the Pi.'
         return result
@@ -829,42 +1028,122 @@ def evaluate_filter_roll(
     captured_raw = str(capture.get('captured_at') or capture.get('capturedAt') or now.isoformat())
     captured_at = parse_iso(captured_raw) or now
     source_image_id = captured_at.isoformat()
-    last_measured_at = parse_iso(state.get('measuredAt'))
-    last_source = str(state.get('sourceImageId') or '')
+    last_attempt_at = parse_iso(last_attempt.get('attemptedAt')) if last_attempt else None
     local_now = now.astimezone()
-    allowed_hours = settings.get('measurement_hours_local') or [9, 15, 21]
+    allowed_hours = settings.get('measurement_hours_local') or [9, 15]
     in_window = local_now.hour in allowed_hours
-    spacing_ok = last_measured_at is None or (now - last_measured_at) >= timedelta(minutes=int(settings.get('min_spacing_minutes') or 240))
-    needs_measurement = in_window and spacing_ok and source_image_id != last_source
-    result['sourceImageId'] = last_source
+    spacing_ok = last_attempt_at is None or (now - last_attempt_at) >= timedelta(minutes=int(settings.get('min_spacing_minutes') or 240))
+    last_attempt_source = str(last_attempt.get('sourceImageId') or '') if last_attempt else ''
+    needs_measurement = in_window and spacing_ok and source_image_id != last_attempt_source
     if not needs_measurement:
-        if result.get('available') and result.get('measuredAt'):
-            result['state'] = 'idle'
-            result['status'] = 'healthy' if float(result.get('confidence') or 0) >= settings.get('minimum_confidence') else 'pending'
-            result['message'] = 'Waiting for the next scheduled filter-roll measurement window.'
-        else:
-            result['state'] = 'scheduled'
-            result['status'] = 'pending'
-            result['message'] = 'Waiting for the next scheduled filter-roll measurement window.'
+        result['state'] = 'idle' if accepted else 'scheduled'
+        result['status'] = 'healthy' if accepted else 'pending'
+        result['message'] = 'Waiting for the next scheduled filter-roll measurement window.'
         return result
 
-    analysis = analyze_filter_roll_frame(image_path, roi, float(settings.get('probe_y') or 0.5))
-    result.update({
-        'measurementId': f'filter-roll-{captured_at.isoformat()}',
+    analysis = analyze_filter_roll_consensus(image_path, captured_at, roi, float(settings.get('probe_y') or 0.5), settings)
+    confidence = round(float(analysis.get('confidence') or 0.0), 3)
+    radius = analysis.get('apparentOuterRadius')
+    rejection_reason = safe_text(analysis.get('rejectionReason') or '', 300)
+    accepted_measurement = analysis.get('available') is True and confidence >= float(settings.get('minimum_confidence') or 0.65) and radius is not None
+    if analysis.get('available') is True and confidence < float(settings.get('minimum_confidence') or 0.65):
+        rejection_reason = f'Detector confidence {confidence:.0%} was below the {float(settings.get("minimum_confidence") or 0.65):.0%} acceptance threshold.'
+        accepted_measurement = False
+
+    pending_candidate = state.get('pendingCandidate') if isinstance(state.get('pendingCandidate'), dict) else None
+    if accepted_measurement and accepted and accepted.get('apparentOuterRadius') is not None:
+        prior_radius = float(accepted.get('apparentOuterRadius') or 0.0)
+        elapsed_days = max(1 / 24, (captured_at - (parse_iso(accepted.get('measuredAt')) or captured_at)).total_seconds() / 86400)
+        drop_fraction = max(0.0, (prior_radius - float(radius)) / max(1.0, prior_radius))
+        allowed_drop = min(0.20, max(float(settings.get('minimum_large_change_fraction') or 0.06), float(settings.get('maximum_radius_drop_fraction_per_day') or 0.08) * elapsed_days))
+        if drop_fraction > allowed_drop:
+            confirmations = int(pending_candidate.get('confirmations') or 0) + 1 if filter_roll_candidate_match(pending_candidate, float(radius)) else 1
+            pending_candidate = {
+                'apparentOuterRadius': round(float(radius), 3),
+                'firstSeenAt': pending_candidate.get('firstSeenAt') if confirmations > 1 else captured_at.isoformat(),
+                'lastSeenAt': captured_at.isoformat(),
+                'confirmations': confirmations,
+                'reason': f'Radius fell {drop_fraction:.0%}; allowed change for this interval is {allowed_drop:.0%}.',
+            }
+            if confirmations < int(settings.get('large_change_confirmations') or 2):
+                rejection_reason = f'Large radius decrease ({drop_fraction:.0%}) requires confirmation in a later scheduled window.'
+                accepted_measurement = False
+            else:
+                pending_candidate = None
+        else:
+            pending_candidate = None
+
+    attempt = {
+        'measurementId': f'filter-roll-attempt-{captured_at.isoformat()}',
         'sourceImageId': source_image_id,
+        'attemptedAt': captured_at.isoformat(),
         'measuredAt': captured_at.isoformat(),
-        'state': 'measured' if analysis.get('available') else 'attention',
-        'status': 'healthy' if analysis.get('available') and float(analysis.get('confidence') or 0) >= settings.get('minimum_confidence') else ('pending' if analysis.get('available') else 'attention'),
-        'available': analysis.get('available') is True and float(analysis.get('confidence') or 0) >= settings.get('minimum_confidence'),
-        'message': safe_text(analysis.get('message') or '', 240),
-        'note': 'App converts the fixed-view outer radius into remaining percent using the saved physical calibration.',
-        'confidence': round(float(analysis.get('confidence') or 0.0), 3),
-        'apparentOuterRadius': analysis.get('apparentOuterRadius'),
+        'cameraId': 'overview',
+        'accepted': accepted_measurement,
+        'available': accepted_measurement,
+        'state': 'measured' if accepted_measurement else 'rejected',
+        'status': 'healthy' if accepted_measurement else 'pending',
+        'confidence': confidence,
+        'apparentOuterRadius': radius,
         'apparentCoreRadius': analysis.get('apparentCoreRadius'),
         'apparentThicknessPct': analysis.get('apparentThicknessPct'),
         'remainingPct': None,
-    })
-    write_json_atomic(state_path, result)
+        'frameCount': int(analysis.get('frameCount') or 0),
+        'successfulFrameCount': int(analysis.get('successfulFrameCount') or 0),
+        'radiusDeviationPx': analysis.get('radiusDeviationPx'),
+        'analysisMessage': safe_text(analysis.get('message') or '', 240),
+        'rejectionReason': '' if accepted_measurement else (rejection_reason or 'The scheduled filter-roll attempt did not pass validation.'),
+        'message': safe_text(analysis.get('message') or '', 240),
+        'note': 'Consensus measurement from recent fixed-view overview-camera frames.',
+    }
+    history = [item for item in attempt_history if isinstance(item, dict) and item.get('sourceImageId') != source_image_id]
+    history.append(attempt)
+    history = history[-12:]
+    if accepted_measurement:
+        accepted = {
+            **attempt,
+            'measurementId': f'filter-roll-{captured_at.isoformat()}',
+            'accepted': True,
+            'available': True,
+            'state': 'measured',
+            'status': 'healthy',
+            'rejectionReason': '',
+        }
+
+    state_out = {
+        'schemaVersion': 2,
+        'updatedAt': now.isoformat(),
+        'lastAccepted': accepted,
+        'lastAttempt': attempt,
+        'attemptHistory': history,
+        'pendingCandidate': pending_candidate,
+    }
+    write_json_atomic(state_path, state_out)
+
+    result = filter_roll_default()
+    result['configured'] = True
+    result['enabled'] = True
+    result['roi'] = [round(value, 4) for value in roi]
+    result['schedule'] = {
+        'hoursLocal': allowed_hours,
+        'measurementsPerDay': len(allowed_hours),
+        'minSpacingMinutes': int(settings.get('min_spacing_minutes') or 240),
+    }
+    result['lastAttempt'] = attempt
+    result['attemptHistory'] = history
+    result['lastAccepted'] = accepted
+    if accepted:
+        for key, value in accepted.items():
+            if value is not None:
+                result[key] = value
+        result['available'] = True
+        result['status'] = 'healthy'
+        result['state'] = 'measured' if accepted_measurement else 'idle'
+        result['message'] = accepted.get('analysisMessage') or accepted.get('message') or 'Accepted filter-roll measurement is available.'
+    else:
+        result['status'] = 'pending'
+        result['state'] = 'rejected'
+        result['message'] = attempt['rejectionReason']
     return result
 
 
@@ -876,7 +1155,7 @@ def local_monitor_default() -> dict[str, Any]:
         'evaluatedAt': None,
         'mode': 'unknown',
         'imageQuality': {'status': 'pending', 'message': 'Waiting for image-quality analysis.'},
-        'scene': {'status': 'pending', 'message': 'Learning the stable sump view.', 'baselineReady': False, 'changeScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'streak': 0},
+        'scene': {'status': 'pending', 'message': 'Learning fixed camera anchors.', 'baselineReady': False, 'changeScore': 0.0, 'anchorChangeScore': 0.0, 'fullChangeScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'movementLikely': False, 'maintenanceVariation': False, 'learningState': 'initial', 'streak': 0},
         'waterLevel': {'status': 'pending', 'message': 'Water-level monitoring is not calibrated.', 'configured': False, 'confidence': 0.0, 'streak': 0},
     }
 
@@ -899,7 +1178,6 @@ def evaluate_local_monitor(
         disabled.update({'status': 'healthy', 'enabled': False, 'message': 'Local visual monitoring is disabled in the private Pi configuration.'})
         return disabled
     now = now or utc_now_dt()
-    state: dict[str, Any] = {}
     try:
         state = read_json(state_path)
     except Exception:
@@ -923,17 +1201,16 @@ def evaluate_local_monitor(
     baselines = state.get('baselines') if isinstance(state.get('baselines'), dict) else {}
     baseline = baselines.get(mode) if isinstance(baselines.get(mode), dict) else None
     reference = baseline.get('signature') if baseline and isinstance(baseline.get('signature'), list) else None
-    comparison = compare_to_baseline(signature, reference) if reference else {'available': False, 'changeScore': 0.0, 'unshiftedScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'movementLikely': False}
+    anchor_zones = parse_monitor_zones(settings.get('scene_anchor_zones'))
+    full_comparison = compare_to_baseline(signature, reference) if reference else {'available': False, 'changeScore': 0.0, 'unshiftedScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'movementLikely': False}
+    anchor_comparison = compare_to_baseline(signature, reference, zones=anchor_zones) if reference else {'available': False, 'changeScore': 0.0, 'unshiftedScore': 0.0, 'shiftX': 0, 'shiftY': 0, 'movementLikely': False}
     baseline_metrics = baseline.get('metrics') if baseline and isinstance(baseline.get('metrics'), dict) else {}
 
     absolute_blank = (metrics['contrast'] < 4.0 and metrics['edgeEnergy'] < 2.0) or metrics['darkFraction'] > 0.985 or metrics['brightFraction'] > 0.985
     relative_flat = bool(baseline_metrics) and metrics['contrast'] < max(4.0, float(baseline_metrics.get('contrast') or 0) * 0.34) and metrics['edgeEnergy'] < max(2.0, float(baseline_metrics.get('edgeEnergy') or 0) * 0.34)
     obstruction_candidate = absolute_blank or relative_flat
     previous_obstruction_streak = int(state.get('obstructionStreak') or 0)
-    if is_new_capture:
-        obstruction_streak = previous_obstruction_streak + 1 if obstruction_candidate else 0
-    else:
-        obstruction_streak = previous_obstruction_streak
+    obstruction_streak = previous_obstruction_streak + 1 if is_new_capture and obstruction_candidate else (0 if is_new_capture else previous_obstruction_streak)
     obstruction_limit = int(clamp_number(settings.get('obstruction_alert_streak'), 1, 6, 2))
     quality_status = 'attention' if obstruction_streak >= obstruction_limit else ('pending' if obstruction_candidate else 'healthy')
     if quality_status == 'attention':
@@ -941,35 +1218,59 @@ def evaluate_local_monitor(
     elif obstruction_candidate:
         quality_message = 'The latest frame may be blocked or degraded; waiting for confirmation from the next capture.'
     else:
-        quality_message = f"Image texture and exposure are usable in {mode} mode."
+        quality_message = f'Image texture and exposure are usable in {mode} mode.'
 
-    threshold = clamp_number(settings.get('scene_change_threshold'), 0.08, 0.5, 0.18)
-    scene_candidate = comparison.get('available') and comparison['changeScore'] >= threshold
-    previous_scene_streak = int(state.get('sceneStreak') or 0)
-    previous_movement_streak = int(state.get('movementStreak') or 0)
+    dynamic_threshold = clamp_number(settings.get('scene_change_threshold'), 0.08, 0.5, 0.18)
+    anchor_threshold = clamp_number(settings.get('anchor_change_threshold'), 0.05, 0.4, 0.12)
+    dynamic_candidate = full_comparison.get('available') and full_comparison['changeScore'] >= dynamic_threshold
+    anchor_candidate = anchor_comparison.get('available') and anchor_comparison['changeScore'] >= anchor_threshold
+    movement_candidate = anchor_comparison.get('movementLikely') is True
+    expected_maintenance_variation = bool(dynamic_candidate and not anchor_candidate and not movement_candidate and not obstruction_candidate)
+
+    prior_anchor_streak = int(state.get('anchorChangeStreak') or state.get('sceneStreak') or 0)
+    prior_movement_streak = int(state.get('movementStreak') or 0)
+    prior_maintenance_streak = int(state.get('maintenanceVariationStreak') or 0)
     if is_new_capture:
-        scene_streak = previous_scene_streak + 1 if scene_candidate else 0
-        movement_streak = previous_movement_streak + 1 if comparison.get('movementLikely') else 0
+        anchor_streak = prior_anchor_streak + 1 if anchor_candidate else 0
+        movement_streak = prior_movement_streak + 1 if movement_candidate else 0
+        maintenance_streak = prior_maintenance_streak + 1 if expected_maintenance_variation else 0
     else:
-        scene_streak = previous_scene_streak
-        movement_streak = previous_movement_streak
-    scene_limit = int(clamp_number(settings.get('scene_alert_streak'), 2, 8, 3))
-    movement_limit = 2
-    if not comparison.get('available'):
+        anchor_streak = prior_anchor_streak
+        movement_streak = prior_movement_streak
+        maintenance_streak = prior_maintenance_streak
+
+    anchor_limit = int(clamp_number(settings.get('scene_alert_streak'), 2, 8, 3))
+    movement_limit = int(clamp_number(settings.get('camera_movement_streak'), 1, 5, 2))
+    settle_limit = int(clamp_number(settings.get('maintenance_settle_streak'), 2, 12, 4))
+    maintenance_variation = expected_maintenance_variation or maintenance_streak > 0
+    learning_state = 'stable'
+    if not anchor_comparison.get('available'):
         scene_status = 'pending'
-        scene_message = f'Learning a stable {mode}-lighting baseline.'
+        scene_message = f'Learning fixed camera anchors for {mode} lighting.'
+        learning_state = 'initial'
     elif movement_streak >= movement_limit:
         scene_status = 'attention'
-        scene_message = f"Camera framing appears shifted ({comparison['shiftX']}, {comparison['shiftY']} low-resolution pixels)."
-    elif scene_streak >= scene_limit:
+        scene_message = f"Camera framing appears shifted ({anchor_comparison['shiftX']}, {anchor_comparison['shiftY']} low-resolution pixels in fixed anchor zones)."
+        learning_state = 'camera-moved'
+    elif anchor_streak >= anchor_limit:
         scene_status = 'attention'
-        scene_message = f"A persistent sump-view change is present (score {comparison['changeScore']:.2f})."
-    elif scene_candidate:
+        scene_message = f"A persistent change is present in fixed camera-anchor areas (score {anchor_comparison['changeScore']:.2f})."
+        learning_state = 'anchor-changed'
+    elif expected_maintenance_variation and maintenance_streak < settle_limit:
         scene_status = 'pending'
-        scene_message = f"A possible scene change is being confirmed (score {comparison['changeScore']:.2f})."
+        scene_message = f'Expected equipment variation is settling; fixed camera anchors remain stable ({maintenance_streak}/{settle_limit}).'
+        learning_state = 'maintenance-settling'
+    elif expected_maintenance_variation:
+        scene_status = 'healthy'
+        scene_message = 'Movable sump equipment differs from the earlier view, while fixed camera anchors remain stable. The normal view is adapting automatically.'
+        learning_state = 'maintenance-adapting'
+    elif anchor_candidate:
+        scene_status = 'pending'
+        scene_message = f"A possible fixed-anchor change is being confirmed (score {anchor_comparison['changeScore']:.2f})."
+        learning_state = 'confirming-anchor'
     else:
         scene_status = 'healthy'
-        scene_message = f"Sump framing matches the learned {mode}-lighting baseline."
+        scene_message = f'Fixed camera anchors are stable in {mode} lighting.'
 
     water_settings = settings.get('water_level') if isinstance(settings.get('water_level'), dict) else {}
     water_enabled = water_settings.get('enabled') is True
@@ -1007,10 +1308,7 @@ def evaluate_local_monitor(
             urgent_delta = max(warning_delta + 1.0, clamp_number(water_settings.get('urgent_delta_percent'), 2.0, 45.0, 10.0))
             candidate = abs(delta) >= warning_delta
             previous_water_streak = int(state.get('waterLevelStreak') or 0)
-            if is_new_capture:
-                water_streak = previous_water_streak + 1 if candidate else 0
-            else:
-                water_streak = previous_water_streak
+            water_streak = previous_water_streak + 1 if is_new_capture and candidate else (0 if is_new_capture else previous_water_streak)
             water_limit = int(clamp_number(water_settings.get('alert_streak'), 1, 6, 2))
             water_result.update({
                 'configured': True,
@@ -1031,46 +1329,55 @@ def evaluate_local_monitor(
                 water_result['message'] = 'A possible water-level shift is being confirmed with the next capture.'
             else:
                 water_result['status'] = 'healthy'
-                water_result['message'] = f"Water level is within {warning_delta:.1f}% of its calibrated baseline."
+                water_result['message'] = f'Water level is within {warning_delta:.1f}% of its calibrated baseline.'
 
     issues: list[dict[str, str]] = []
     if quality_status == 'attention':
         issues.append(health_issue('camera_view_obstructed', 'warning', quality_message))
     if movement_streak >= movement_limit:
         issues.append(health_issue('camera_view_shifted', 'warning', scene_message))
-    elif scene_streak >= scene_limit:
-        issues.append(health_issue('sump_scene_changed', 'warning', scene_message))
+    elif anchor_streak >= anchor_limit:
+        issues.append(health_issue('camera_anchor_changed', 'warning', scene_message))
     if water_result['status'] == 'offline':
         issues.append(health_issue('water_level_urgent', 'critical', water_result['message']))
     elif water_result['status'] == 'attention':
         issues.append(health_issue('water_level_watch', 'warning', water_result['message']))
 
-    baseline_can_learn = not obstruction_candidate and (not comparison.get('available') or comparison['changeScore'] < min(threshold * 0.55, 0.09))
     if baseline is None:
-        baselines[mode] = {'signature': signature, 'metrics': metrics, 'learnedAt': now.isoformat(), 'samples': 1}
-    elif baseline_can_learn and is_new_capture:
-        learning_rate = clamp_number(settings.get('baseline_learning_rate'), 0.002, 0.1, 0.025)
-        baselines[mode] = {
-            **baseline,
-            'signature': blend_signature(reference, signature, learning_rate),
-            'metrics': {key: round(float(baseline_metrics.get(key, value)) * (1.0 - learning_rate) + float(value) * learning_rate, 4) for key, value in metrics.items()},
-            'updatedAt': now.isoformat(),
-            'samples': int(baseline.get('samples') or 1) + 1,
-        }
+        baselines[mode] = {'signature': signature, 'metrics': metrics, 'learnedAt': now.isoformat(), 'samples': 1, 'anchorZones': anchor_zones}
+    elif is_new_capture and not obstruction_candidate and not movement_candidate and not anchor_candidate:
+        normal_learning = full_comparison.get('available') and full_comparison['changeScore'] < min(dynamic_threshold * 0.55, 0.09)
+        maintenance_learning = expected_maintenance_variation and maintenance_streak >= settle_limit
+        if normal_learning or maintenance_learning:
+            rate_key = 'maintenance_learning_rate' if maintenance_learning else 'baseline_learning_rate'
+            fallback_rate = 0.16 if maintenance_learning else 0.025
+            learning_rate = clamp_number(settings.get(rate_key), 0.002, 0.3, fallback_rate)
+            baselines[mode] = {
+                **baseline,
+                'signature': blend_signature(reference, signature, learning_rate),
+                'metrics': {key: round(float(baseline_metrics.get(key, value)) * (1.0 - learning_rate) + float(value) * learning_rate, 4) for key, value in metrics.items()},
+                'updatedAt': now.isoformat(),
+                'samples': int(baseline.get('samples') or 1) + 1,
+                'anchorZones': anchor_zones,
+                'lastLearningMode': 'maintenance' if maintenance_learning else 'normal',
+            }
 
     new_state = {
-        'schemaVersion': 1,
+        'schemaVersion': 2,
         'updatedAt': now.isoformat(),
         'baselines': baselines,
         'obstructionStreak': obstruction_streak,
-        'sceneStreak': scene_streak,
+        'anchorChangeStreak': anchor_streak,
+        'sceneStreak': anchor_streak,
         'movementStreak': movement_streak,
+        'maintenanceVariationStreak': maintenance_streak,
         'waterLevelStreak': water_streak,
         'lastCaptureKey': resolved_capture_key,
         'lastCaptureWasNew': is_new_capture,
         'lastMode': mode,
         'lastMetrics': metrics,
-        'lastComparison': comparison,
+        'lastComparison': anchor_comparison,
+        'lastFullComparison': full_comparison,
         'lastWaterLevel': water_result,
     }
     try:
@@ -1081,10 +1388,10 @@ def evaluate_local_monitor(
     component_statuses = [quality_status, scene_status, water_result['status'] if water_result.get('configured') else 'healthy']
     overall = 'offline' if 'offline' in component_statuses else ('attention' if 'attention' in component_statuses else ('pending' if 'pending' in component_statuses else 'healthy'))
     message = {
-        'healthy': 'Local image quality, sump framing, and configured water-level checks are stable.',
-        'attention': 'Local monitoring found a repeated visual condition that should be checked.',
+        'healthy': 'Image quality and fixed camera anchors are stable; expected equipment movement is tolerated.',
+        'attention': 'Local monitoring found a camera-anchor, obstruction, or configured water-level condition that should be checked.',
         'offline': 'Local monitoring found a possible urgent water-level condition.',
-        'pending': 'Local monitoring is learning or confirming the sump view.',
+        'pending': 'Local monitoring is learning anchors or allowing expected maintenance changes to settle.',
     }[overall]
     result.update({
         'status': overall,
@@ -1102,17 +1409,23 @@ def evaluate_local_monitor(
         'scene': {
             'status': scene_status,
             'message': scene_message,
-            'baselineReady': comparison.get('available') is True,
-            'changeScore': comparison.get('changeScore', 0.0),
-            'unshiftedScore': comparison.get('unshiftedScore', 0.0),
-            'shiftX': comparison.get('shiftX', 0),
-            'shiftY': comparison.get('shiftY', 0),
-            'movementLikely': comparison.get('movementLikely') is True,
-            'streak': max(scene_streak, movement_streak),
+            'baselineReady': anchor_comparison.get('available') is True,
+            'changeScore': anchor_comparison.get('changeScore', 0.0),
+            'anchorChangeScore': anchor_comparison.get('changeScore', 0.0),
+            'fullChangeScore': full_comparison.get('changeScore', 0.0),
+            'unshiftedScore': anchor_comparison.get('unshiftedScore', 0.0),
+            'shiftX': anchor_comparison.get('shiftX', 0),
+            'shiftY': anchor_comparison.get('shiftY', 0),
+            'movementLikely': movement_candidate,
+            'maintenanceVariation': maintenance_variation,
+            'learningState': learning_state,
+            'anchorZones': anchor_zones,
+            'streak': max(anchor_streak, movement_streak, maintenance_streak),
         },
         'waterLevel': water_result,
     })
     return result
+
 
 def health_issue(code: str, severity: str, message: str) -> dict[str, str]:
     return {'code': code, 'severity': severity, 'message': safe_text(message, 240)}

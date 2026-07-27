@@ -126,7 +126,7 @@ assert.ok(timeline.some(event => event.integrationKind === 'completed'));
 assert.match(api.buildAiContext('filter roller usage'), /SHARED REEF KEEPER EVENT STREAM/);
 assert.match(api.buildAiContext('filter roller usage'), /FILTER ROLLER LEARNING/);
 
-assert.ok(html.includes('integration-core.js?v=20260727-maintenance-9e1-observer-followup'));
+assert.ok(html.includes('integration-core.js?v=20260728-maintenance-9f-observer-reliability'));
 assert.ok(html.includes('id="action-equipment"'));
 assert.ok(html.includes('id="action-code"'));
 assert.ok(html.includes('id="observer-filter-roll-status-mount"'));
