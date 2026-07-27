@@ -87,6 +87,7 @@ const measurement = api.recordFilterRollMeasurement({
 assert.equal(measurement.ok, true);
 assert.equal(Math.round(measurement.measurement.remainingPct), 65);
 assert.equal(api.getFilterRollState().currentCycle.cameraReferencePending, false);
+assert.equal(measurement.measurement.referenceOnly, true, 'The first camera radius establishes visual scale only.');
 assert.equal(Math.round(api.getFilterRollState().currentCycle.calibration.apparentFullRadius), 100);
 const followup = api.recordFilterRollMeasurement({
   captureAt:'2026-07-23T20:00:00.000Z',
@@ -95,8 +96,9 @@ const followup = api.recordFilterRollMeasurement({
   cameraId:'overview'
 });
 assert.equal(followup.ok, true);
+assert.equal(followup.measurement.referenceOnly, false, 'Later measurements are independent usage observations.');
 assert.equal(Math.round(followup.measurement.remainingPct), 54);
-assert.equal(api.getFilterRollLearningSummary().currentMeasurementCount, 3);
+assert.equal(api.getFilterRollLearningSummary().currentMeasurementCount, 2, 'The camera reference must not count as an independent usage measurement.');
 assert.equal(api.getFilterRollLearningSummary().stage, 'learning');
 
 api.syncLegacySources();
@@ -124,13 +126,13 @@ assert.ok(timeline.some(event => event.integrationKind === 'completed'));
 assert.match(api.buildAiContext('filter roller usage'), /SHARED REEF KEEPER EVENT STREAM/);
 assert.match(api.buildAiContext('filter roller usage'), /FILTER ROLLER LEARNING/);
 
-assert.ok(html.includes('integration-core.js?v=20260724-maintenance-9c-outer-edge'));
+assert.ok(html.includes('integration-core.js?v=20260727-maintenance-9e-observer-simplification'));
 assert.ok(html.includes('id="action-equipment"'));
 assert.ok(html.includes('id="action-code"'));
-assert.ok(html.includes('id="observer-filter-roll-card"'));
-assert.ok(html.includes('id="observer-filter-roll-badge"'));
-assert.ok(html.includes('id="observer-filter-roll-current-diameter"'));
-assert.ok(html.includes('initializeExistingFilterRollFromForm(event)'));
+assert.ok(html.includes('id="observer-filter-roll-status-mount"'));
+const filterUi = fs.readFileSync('filter-roll-status.js', 'utf8');
+assert.ok(filterUi.includes('id="observer-filter-roll-current-diameter"'));
+assert.ok(filterUi.includes('initializeExistingFilterRollFromForm(event)'));
 assert.ok(html.includes("window.ReefKeeperIntegration?.getTimelineEvents"));
 assert.ok(app.includes("window.ReefKeeperIntegration?.recordParameterLog?.(entry)"));
 assert.ok(app.includes("window.ReefKeeperIntegration?.recordAction?.(entry)"));

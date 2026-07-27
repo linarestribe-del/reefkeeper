@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260724-maintenance-9c-outer-edge">
+<link rel="stylesheet" href="css/app.css?v=20260727-maintenance-9e-observer-simplification">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -788,7 +788,7 @@
   }
 </style>
 
-  <link rel="stylesheet" href="/filter-roll-status.css?v=4.3.52">
+  <link rel="stylesheet" href="/filter-roll-status.css?v=4.3.53">
 </head>
 <body>
 
@@ -1083,10 +1083,10 @@
 
     <!-- AQUARIUM OBSERVER WORKSPACE -->
     <div class="page" id="page-observer">
-      <div class="compact-page-bar">
+      <div class="compact-page-bar observer-page-bar">
         <div>
           <div class="compact-page-title">Aquarium Observer</div>
-          <div class="compact-page-subtitle">Two-camera sump monitoring, Pi health, return-chamber tracking, history comparisons, and daily visual reports.</div>
+          <div class="compact-page-subtitle">Live sump monitoring, current alerts, filter-roll tracking, and daily visual reports.</div>
         </div>
         <button class="compact-page-action" type="button" onclick="rkDirectGo('vision')">Back</button>
       </div>
@@ -1096,7 +1096,7 @@
         <button id="observer-camera-return" class="observer-camera-choice" type="button" aria-pressed="false" onclick="selectObserverCamera('return')"><span>🌊</span><strong>Return chamber</strong><small>Waiting</small></button>
       </div>
 
-      <section class="observer-detail-card">
+      <section class="observer-detail-card observer-compact-live-card">
         <div class="observer-card-head observer-detail-head">
           <div class="observer-title-wrap">
             <span class="observer-camera-icon" aria-hidden="true">📹</span>
@@ -1113,228 +1113,171 @@
           <div class="observer-image-placeholder observer-detail-placeholder is-visible" id="observer-detail-placeholder">
             <b>🌊</b>
             <strong>Remote image not connected yet</strong>
-            <small>The Pi capture service is running independently. This page is ready for the secure image bridge.</small>
+            <small>The Pi capture service is running independently.</small>
           </div>
           <div class="observer-image-time" id="observer-detail-image-time" hidden>—</div>
         </div>
 
-        <div class="observer-detail-grid" aria-label="Aquarium Observer status details">
-          <div><span>Bridge status</span><strong id="observer-detail-status">Checking…</strong></div>
+        <div class="observer-detail-grid observer-primary-status-grid" aria-label="Aquarium Observer primary status">
+          <div><span>Overall status</span><strong id="observer-detail-status">Checking…</strong></div>
           <div><span>Last capture</span><strong id="observer-detail-captured">—</strong></div>
           <div><span>Image age</span><strong id="observer-detail-age">—</strong></div>
           <div><span>Capture interval</span><strong id="observer-detail-interval">5 minutes</strong></div>
-          <div><span>Camera</span><strong id="observer-detail-camera">Sump camera</strong></div>
-          <div><span>Stream</span><strong id="observer-detail-stream">stream2 · 720p</strong></div>
-          <div><span>Image size</span><strong id="observer-detail-size">—</strong></div>
-          <div><span>Last publish</span><strong id="observer-detail-published">—</strong></div>
-          <div><span>Publisher</span><strong id="observer-detail-publisher">—</strong></div>
-          <div><span>Archive storage</span><strong id="observer-detail-storage">Local Pi drive</strong></div>
-          <div><span>Drive space</span><strong id="observer-detail-drive-space">—</strong></div>
         </div>
 
-        <div class="observer-connection-note" id="observer-connection-note">
-          <strong>App-side setup is ready.</strong>
-          <span>The Pi currently keeps full-resolution captures on the local ext4 drive. The next Pi step will securely publish status and a selected thumbnail without exposing camera credentials or the home-network address.</span>
+        <details class="observer-disclosure observer-technical-details">
+          <summary>Technical details</summary>
+          <div class="observer-detail-grid" aria-label="Aquarium Observer technical details">
+            <div><span>Camera</span><strong id="observer-detail-camera">Sump camera</strong></div>
+            <div><span>Stream</span><strong id="observer-detail-stream">stream1 · 2560×1440</strong></div>
+            <div><span>Image size</span><strong id="observer-detail-size">—</strong></div>
+            <div><span>Last publish</span><strong id="observer-detail-published">—</strong></div>
+            <div><span>Publisher</span><strong id="observer-detail-publisher">—</strong></div>
+            <div><span>Archive storage</span><strong id="observer-detail-storage">Local Pi drive</strong></div>
+            <div><span>Drive space</span><strong id="observer-detail-drive-space">—</strong></div>
+          </div>
+        </details>
+
+        <div class="observer-connection-note" id="observer-connection-note" hidden>
+          <strong>Observer status requires attention.</strong>
+          <span>Open Health and diagnostics below for details.</span>
         </div>
 
         <div class="observer-card-actions observer-detail-actions">
-          <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh status</button>
+          <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh</button>
           <button class="observer-primary-btn" id="observer-analyze-btn" type="button" onclick="analyzeLatestObserverCapture()" disabled>Analyze latest capture</button>
         </div>
       </section>
 
-      <section class="observer-health-card observer-filter-roll-card" id="observer-filter-roll-card" aria-labelledby="observer-filter-roll-title">
-        <div class="observer-health-head">
-          <div>
-            <div class="observer-safety-title" id="observer-filter-roll-title">Filter Roller Learning</div>
-            <div class="observer-health-summary" id="observer-filter-roll-summary">Checking connected maintenance history…</div>
-          </div>
-          <span class="observer-health-badge pending" id="observer-filter-roll-badge">Checking</span>
-        </div>
-        <div class="observer-detail-grid" aria-label="Filter roller learning details">
-          <div><span>Current roll started</span><strong id="observer-filter-roll-started">—</strong></div>
-          <div><span>Measurements</span><strong id="observer-filter-roll-measurements">—</strong></div>
-          <div><span>Sampling plan</span><strong id="observer-filter-roll-sampling">1–3 per day</strong></div>
-          <div><span>Forecast</span><strong id="observer-filter-roll-forecast">Learning</strong></div>
-        </div>
-        <div class="observer-connection-note" id="observer-filter-roll-note">Log Filter Roller → Fleece roll replaced in Maintenance to start a connected roll cycle.</div>
-        <form class="observer-filter-roll-init" id="observer-filter-roll-init" onsubmit="initializeExistingFilterRollFromForm(event)">
-          <div class="observer-filter-roll-init-head">
-            <strong>Existing roll already in use</strong>
-            <span>Use a physical outside-diameter measurement instead of calling the current roll full.</span>
-          </div>
-          <div class="observer-filter-roll-init-grid">
-            <label><span>Current outside diameter</span><div><input id="observer-filter-roll-current-diameter" type="number" min="1" max="200" step="0.1" value="85" inputmode="decimal"><b>mm</b></div></label>
-            <label><span>New roll diameter</span><div><input id="observer-filter-roll-full-diameter" type="number" min="1" max="200" step="0.1" value="100" inputmode="decimal"><b>mm</b></div></label>
-            <label><span>Core outside diameter</span><div><input id="observer-filter-roll-core-diameter" type="number" min="1" max="200" step="0.1" value="46" inputmode="decimal"><b>mm</b></div></label>
-          </div>
-          <button class="observer-primary-btn observer-filter-roll-init-btn" type="submit">Initialize current roll</button>
-          <small id="observer-filter-roll-init-result">85 mm corresponds to about 64.8% remaining.</small>
-        </form>
-      </section>
-
-      <section class="observer-health-card" aria-labelledby="observer-health-title">
-        <div class="observer-health-head">
-          <div>
-            <div class="observer-safety-title" id="observer-health-title">Observer Health</div>
-            <div class="observer-health-summary" id="observer-health-summary">Checking the Pi, camera, drive, and publisher…</div>
-          </div>
-          <span class="observer-health-badge pending" id="observer-health-badge">Checking</span>
-        </div>
-
-        <div class="observer-health-grid">
-          <div class="observer-health-row" id="observer-health-capture-row">
-            <span class="observer-health-icon">📷</span><div><strong>Camera capture</strong><small id="observer-health-capture-detail">Checking…</small></div><b id="observer-health-capture-state">—</b>
-          </div>
-          <div class="observer-health-row" id="observer-health-publisher-row">
-            <span class="observer-health-icon">☁️</span><div><strong>Remote publishing</strong><small id="observer-health-publisher-detail">Checking…</small></div><b id="observer-health-publisher-state">—</b>
-          </div>
-          <div class="observer-health-row" id="observer-health-storage-row">
-            <span class="observer-health-icon">💾</span><div><strong>Observer drive</strong><small id="observer-health-storage-detail">Checking…</small></div><b id="observer-health-storage-state">—</b>
-          </div>
-          <div class="observer-health-row" id="observer-health-power-row">
-            <span class="observer-health-icon">⚡</span><div><strong>Pi power</strong><small id="observer-health-power-detail">Checking…</small></div><b id="observer-health-power-state">—</b>
-          </div>
-          <div class="observer-health-row" id="observer-health-daily-row">
-            <span class="observer-health-icon">📅</span><div><strong>Daily monitoring</strong><small id="observer-health-daily-detail">Checking summary schedule and retry budget…</small></div><b id="observer-health-daily-state">—</b>
-          </div>
-          <div class="observer-health-row" id="observer-health-local-row">
-            <span class="observer-health-icon">👁️</span><div><strong>Local visual monitor</strong><small id="observer-health-local-detail">Learning image quality and the stable sump view…</small></div><b id="observer-health-local-state">—</b>
-          </div>
-          <div class="observer-health-row" id="observer-health-services-row">
-            <span class="observer-health-icon">⏱️</span><div><strong>System services</strong><small id="observer-health-services-detail">Checking…</small></div><b id="observer-health-services-state">—</b>
-          </div>
-          <div class="observer-health-row" id="observer-health-archive-row">
-            <span class="observer-health-icon">🗂️</span><div><strong>Capture archive</strong><small id="observer-health-archive-detail">Checking…</small></div><b id="observer-health-archive-state">—</b>
-          </div>
-        </div>
-
-        <div class="observer-health-issues" id="observer-health-issues" hidden></div>
-        <div class="observer-card-actions observer-health-actions">
-          <button class="observer-secondary-btn" type="button" onclick="copyObserverDiagnosticReport()">Copy diagnostic report</button>
-          <button class="observer-primary-btn" type="button" onclick="refreshAquariumObserver(event)">Run health check</button>
-        </div>
-      </section>
-
-
-      <section class="observer-local-monitor-card" id="observer-local-monitor-card" aria-labelledby="observer-local-monitor-title">
-        <div class="observer-local-monitor-head">
-          <div>
-            <div class="observer-safety-title" id="observer-local-monitor-title">Local sump monitoring</div>
-            <div class="observer-local-monitor-summary" id="observer-local-monitor-summary">The Raspberry Pi is learning the stable sump view.</div>
-          </div>
-          <span class="observer-health-badge pending" id="observer-local-monitor-badge">Learning</span>
-        </div>
-        <div class="observer-local-monitor-grid">
-          <div class="observer-local-monitor-item pending" id="observer-local-image-item">
-            <span>📷</span><div><strong>Image quality</strong><small id="observer-local-image-detail">Waiting for local analysis…</small></div><b id="observer-local-image-state">Checking</b>
-          </div>
-          <div class="observer-local-monitor-item pending" id="observer-local-scene-item">
-            <span>🧭</span><div><strong>Scene stability</strong><small id="observer-local-scene-detail">Learning the fixed camera view…</small></div><b id="observer-local-scene-state">Learning</b>
-          </div>
-          <div class="observer-local-monitor-item pending" id="observer-local-water-item">
-            <span>🌊</span><div><strong>Sump water level</strong><small id="observer-local-water-detail">Calibration has not been completed.</small></div><b id="observer-local-water-state">Not set</b>
-          </div>
-        </div>
-        <div class="observer-local-monitor-note">These checks run separately for the selected camera on the Raspberry Pi from reduced grayscale frames. They do not send every capture to AI. Water-level calibration is intended for the Return Chamber camera.</div>
-      </section>
-
-      <section class="observer-alert-card" id="observer-alert-card" aria-labelledby="observer-alert-title">
+      <section class="observer-alert-card observer-needs-attention-card" id="observer-alert-card" aria-labelledby="observer-alert-title">
         <div class="observer-alert-head">
           <div>
-            <div class="observer-safety-title" id="observer-alert-title">Observer alerts</div>
-            <div class="observer-alert-summary" id="observer-alert-summary">Checking Pi health and the latest daily visual comparison…</div>
+            <div class="observer-safety-title" id="observer-alert-title">Needs attention</div>
+            <div class="observer-alert-summary" id="observer-alert-summary">Checking current Observer conditions…</div>
           </div>
           <span class="observer-alert-badge clear" id="observer-alert-badge">Checking</span>
         </div>
-        <small class="observer-alert-evaluated" id="observer-alert-evaluated">Waiting for the next daily comparison</small>
+        <small class="observer-alert-evaluated" id="observer-alert-evaluated">Waiting for the next evaluation</small>
         <div class="observer-alert-list" id="observer-alert-list"></div>
         <div class="observer-card-actions observer-alert-actions">
           <button class="observer-secondary-btn" id="observer-alert-review-all" type="button" onclick="markAllObserverAlertsReviewed()" disabled>Mark all reviewed</button>
         </div>
-        <div class="observer-alert-note">System alerts come from deterministic Pi health checks without AI. Visual alerts come only from the once-daily comparison and remain evidence-limited screening prompts. Verify the camera view and inspect the sump directly before acting.</div>
+        <details class="observer-disclosure observer-alert-history-disclosure" id="observer-alert-history-disclosure">
+          <summary>Reviewed history <span id="observer-alert-history-count">0</span></summary>
+          <div class="observer-reviewed-history-list" id="observer-alert-history-list"></div>
+        </details>
+        <div class="observer-alert-note">Reviewed removes an item from this inbox; the underlying condition remains visible under Health until it clears.</div>
       </section>
 
-      <section class="observer-daily-card" id="observer-daily-card" data-observer-overview-only aria-labelledby="observer-daily-title">
+      <div id="observer-filter-roll-status-mount" data-observer-overview-only></div>
+
+      <section class="observer-daily-card observer-daily-compact" id="observer-daily-card" data-observer-overview-only aria-labelledby="observer-daily-title">
         <div class="observer-daily-head">
           <div>
             <div class="observer-safety-title" id="observer-daily-title">Daily visual summary</div>
-            <div class="observer-daily-source" id="observer-daily-source">Waiting for today and the prior day representative frames.</div>
+            <div class="observer-daily-source" id="observer-daily-source">Waiting for representative frames.</div>
           </div>
           <span class="observer-daily-badge pending" id="observer-daily-badge">Waiting</span>
         </div>
         <div class="observer-daily-report">
           <strong class="observer-daily-headline" id="observer-daily-headline">Daily summary is not ready yet.</strong>
-          <p class="observer-daily-summary" id="observer-daily-summary">The Pi will select a representative midday capture and compare it with the prior day automatically.</p>
+          <p class="observer-daily-summary" id="observer-daily-summary">The Pi will compare today with the prior day automatically.</p>
           <small class="observer-daily-generated" id="observer-daily-generated">Generated automatically once per day</small>
         </div>
-        <div class="observer-daily-details" id="observer-daily-details" hidden></div>
-        <div class="observer-card-actions observer-daily-actions">
-          <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh report</button>
-          <button class="observer-primary-btn" id="observer-daily-compare-btn" type="button" onclick="openDailySummaryComparison()" disabled>Open comparison in Ask AI</button>
-        </div>
-        <p class="observer-history-note">The Pi selects frames near noon local time and waits about 20 minutes so the representative frame stays stable. Only the two daily frames are uploaded; the full five-minute archive remains local.</p>
-      </section>
-
-
-      <section class="observer-timelapse-card" id="observer-timelapse-card" data-observer-overview-only aria-labelledby="observer-timelapse-title">
-        <div class="observer-timelapse-head">
-          <div>
-            <div class="observer-safety-title" id="observer-timelapse-title">Weekly and monthly time-lapses</div>
-            <div class="observer-timelapse-summary" id="observer-timelapse-summary">Checking the local archive for enough history…</div>
+        <details class="observer-disclosure observer-daily-disclosure" id="observer-daily-disclosure">
+          <summary>View full report</summary>
+          <div class="observer-daily-details" id="observer-daily-details" hidden></div>
+          <div class="observer-card-actions observer-daily-actions">
+            <button class="observer-secondary-btn" type="button" onclick="refreshAquariumObserver(event)">Refresh report</button>
+            <button class="observer-primary-btn" id="observer-daily-compare-btn" type="button" onclick="openDailySummaryComparison()" disabled>Open comparison in Ask AI</button>
           </div>
-          <span class="observer-timelapse-badge waiting" id="observer-timelapse-badge">Checking</span>
-        </div>
-        <div class="observer-timelapse-grid">
-          <article class="observer-timelapse-item">
-            <div class="observer-timelapse-item-head"><span>📅</span><div><strong>Weekly</strong><small>Rolling 7-day view</small></div></div>
-            <video id="observer-timelapse-week-video" class="observer-timelapse-video" controls playsinline preload="metadata" hidden></video>
-            <div id="observer-timelapse-week-placeholder" class="observer-timelapse-placeholder"><span>🎞️</span><strong>Building weekly history</strong></div>
-            <p id="observer-timelapse-week-status">Waiting for 7 days of archived captures.</p>
-            <small id="observer-timelapse-week-meta">One frame about every hour</small>
-            <button id="observer-timelapse-week-play" type="button" onclick="playObserverTimelapse('week')" disabled>Not ready yet</button>
-          </article>
-          <article class="observer-timelapse-item">
-            <div class="observer-timelapse-item-head"><span>🗓️</span><div><strong>Monthly</strong><small>Rolling 30-day view</small></div></div>
-            <video id="observer-timelapse-month-video" class="observer-timelapse-video" controls playsinline preload="metadata" hidden></video>
-            <div id="observer-timelapse-month-placeholder" class="observer-timelapse-placeholder"><span>🎬</span><strong>Building monthly history</strong></div>
-            <p id="observer-timelapse-month-status">Waiting for 30 days of archived captures.</p>
-            <small id="observer-timelapse-month-meta">One frame about every 6 hours</small>
-            <button id="observer-timelapse-month-play" type="button" onclick="playObserverTimelapse('month')" disabled>Not ready yet</button>
-          </article>
-        </div>
-        <p class="observer-history-note">The Raspberry Pi creates small H.264 videos from selected archive frames once per day. Only the finished videos are uploaded; the complete five-minute image archive remains on the local drive.</p>
+          <p class="observer-history-note">Only the two daily representative frames are uploaded; the full five-minute archive remains local.</p>
+        </details>
       </section>
 
-      <section class="observer-history-card" data-observer-overview-only>
-        <div class="observer-history-head">
+      <section class="observer-tools-card" aria-labelledby="observer-tools-title">
+        <div class="observer-tools-head">
           <div>
-            <div class="observer-safety-title">Compare with history</div>
-            <div class="observer-history-summary" id="observer-history-summary">Checking for historical captures…</div>
+            <div class="observer-safety-title" id="observer-tools-title">Observer tools</div>
+            <div class="observer-tools-summary">Health, diagnostics, history comparisons, and timelapses.</div>
           </div>
-          <span class="observer-history-icon" aria-hidden="true">🆚</span>
         </div>
-        <div class="observer-history-actions">
-          <button class="observer-history-row" id="observer-compare-previous" type="button" onclick="compareObserverHistory('previous')" disabled>
-            <span><strong>Latest vs previous</strong><small id="observer-compare-previous-time">Not available yet</small></span><b>Compare</b>
-          </button>
-          <button class="observer-history-row" id="observer-compare-dayAgo" type="button" onclick="compareObserverHistory('dayAgo')" disabled>
-            <span><strong>Latest vs 24 hours ago</strong><small id="observer-compare-dayAgo-time">Not available yet</small></span><b>Compare</b>
-          </button>
-          <button class="observer-history-row" id="observer-compare-weekAgo" type="button" onclick="compareObserverHistory('weekAgo')" disabled>
-            <span><strong>Latest vs 7 days ago</strong><small id="observer-compare-weekAgo-time">Not available yet</small></span><b>Compare</b>
-          </button>
-        </div>
-        <p class="observer-history-note">Only these selected comparison frames are sent to Reef Keeper. The complete five-minute archive remains on the Raspberry Pi drive.</p>
-      </section>
 
-      <section class="observer-safety-card">
-        <div class="observer-safety-title">How Reef Keeper will use the camera</div>
-        <div class="observer-safety-list">
-          <div><span>1</span><p><strong>Observe first.</strong> Record visible conditions without treating an image as a diagnosis.</p></div>
-          <div><span>2</span><p><strong>Compare carefully.</strong> Flag lighting, blur, obstruction, or camera movement before calling something a real change.</p></div>
-          <div><span>3</span><p><strong>Combine evidence.</strong> Reef Brain will weigh visual observations with Apex telemetry, water tests, maintenance, and history.</p></div>
-        </div>
+        <details class="observer-disclosure observer-health-disclosure" id="observer-health-disclosure">
+          <summary><span>Health and diagnostics</span><span class="observer-health-summary-inline" id="observer-health-summary">Checking…</span><b class="observer-health-badge pending" id="observer-health-badge">Checking</b></summary>
+          <section class="observer-health-card observer-health-inner" aria-labelledby="observer-health-title">
+            <div class="observer-health-head observer-subsection-head">
+              <div class="observer-safety-title" id="observer-health-title">System checks</div>
+            </div>
+            <div class="observer-health-grid">
+              <div class="observer-health-row" id="observer-health-capture-row"><span class="observer-health-icon">📷</span><div><strong>Camera capture</strong><small id="observer-health-capture-detail">Checking…</small></div><b id="observer-health-capture-state">—</b></div>
+              <div class="observer-health-row" id="observer-health-publisher-row"><span class="observer-health-icon">☁️</span><div><strong>Remote publishing</strong><small id="observer-health-publisher-detail">Checking…</small></div><b id="observer-health-publisher-state">—</b></div>
+              <div class="observer-health-row" id="observer-health-storage-row"><span class="observer-health-icon">💾</span><div><strong>Observer drive</strong><small id="observer-health-storage-detail">Checking…</small></div><b id="observer-health-storage-state">—</b></div>
+              <div class="observer-health-row" id="observer-health-power-row"><span class="observer-health-icon">⚡</span><div><strong>Pi power</strong><small id="observer-health-power-detail">Checking…</small></div><b id="observer-health-power-state">—</b></div>
+              <div class="observer-health-row" id="observer-health-daily-row"><span class="observer-health-icon">📅</span><div><strong>Daily monitoring</strong><small id="observer-health-daily-detail">Checking…</small></div><b id="observer-health-daily-state">—</b></div>
+              <div class="observer-health-row" id="observer-health-services-row"><span class="observer-health-icon">⏱️</span><div><strong>System services</strong><small id="observer-health-services-detail">Checking…</small></div><b id="observer-health-services-state">—</b></div>
+              <div class="observer-health-row" id="observer-health-archive-row"><span class="observer-health-icon">🗂️</span><div><strong>Capture archive</strong><small id="observer-health-archive-detail">Checking…</small></div><b id="observer-health-archive-state">—</b></div>
+            </div>
+            <div class="observer-health-issues" id="observer-health-issues" hidden></div>
+
+            <div class="observer-local-monitor-section">
+              <div class="observer-health-head observer-subsection-head">
+                <div>
+                  <div class="observer-safety-title">Local visual monitoring</div>
+                  <div class="observer-local-monitor-summary" id="observer-local-monitor-summary">Waiting for local analysis…</div>
+                </div>
+                <span class="observer-health-badge pending" id="observer-local-monitor-badge">Learning</span>
+              </div>
+              <div class="observer-local-monitor-grid">
+                <div class="observer-local-monitor-item pending" id="observer-local-image-item"><span>📷</span><div><strong>Image quality</strong><small id="observer-local-image-detail">Waiting…</small></div><b id="observer-local-image-state">Checking</b></div>
+                <div class="observer-local-monitor-item pending" id="observer-local-scene-item"><span>🧭</span><div><strong>Scene stability</strong><small id="observer-local-scene-detail">Learning the fixed view…</small></div><b id="observer-local-scene-state">Learning</b></div>
+                <div class="observer-local-monitor-item pending" id="observer-local-water-item" data-return-camera-only hidden><span>🌊</span><div><strong>Return-chamber water level</strong><small id="observer-local-water-detail">Calibration has not been completed.</small></div><b id="observer-local-water-state">Not set</b></div>
+              </div>
+            </div>
+
+            <div class="observer-card-actions">
+              <button class="observer-secondary-btn" type="button" onclick="copyObserverDiagnosticReport()">Copy diagnostic report</button>
+              <button class="observer-primary-btn" type="button" onclick="refreshAquariumObserver(event)">Run health check</button>
+            </div>
+          </section>
+        </details>
+
+        <details class="observer-disclosure observer-timelapse-disclosure" id="observer-timelapse-disclosure" data-observer-overview-only>
+          <summary><span>Timelapses</span><span id="observer-timelapse-summary">Checking archive history…</span><b class="observer-timelapse-badge waiting" id="observer-timelapse-badge">Checking</b></summary>
+          <section class="observer-timelapse-card observer-tools-inner" id="observer-timelapse-card" aria-labelledby="observer-timelapse-title">
+            <div class="observer-safety-title" id="observer-timelapse-title">Weekly and monthly timelapses</div>
+            <div class="observer-timelapse-grid">
+              <article class="observer-timelapse-item">
+                <div class="observer-timelapse-item-head"><span>📅</span><div><strong>Weekly</strong><small>Rolling 7-day view</small></div></div>
+                <video id="observer-timelapse-week-video" class="observer-timelapse-video" controls playsinline preload="metadata" hidden></video>
+                <div id="observer-timelapse-week-placeholder" class="observer-timelapse-placeholder"><span>🎞️</span><strong>Building weekly history</strong></div>
+                <p id="observer-timelapse-week-status">Waiting for 7 days of archived captures.</p>
+                <small id="observer-timelapse-week-meta">One frame about every hour</small>
+                <button id="observer-timelapse-week-play" type="button" onclick="playObserverTimelapse('week')" disabled>Not ready yet</button>
+              </article>
+              <article class="observer-timelapse-item observer-timelapse-month-compact">
+                <div class="observer-timelapse-item-head"><span>🗓️</span><div><strong>Monthly</strong><small>Rolling 30-day view</small></div></div>
+                <video id="observer-timelapse-month-video" class="observer-timelapse-video" controls playsinline preload="metadata" hidden></video>
+                <div id="observer-timelapse-month-placeholder" class="observer-timelapse-placeholder"><span>🎬</span><strong>Building monthly history</strong></div>
+                <p id="observer-timelapse-month-status">Waiting for 30 days of archived captures.</p>
+                <small id="observer-timelapse-month-meta">One frame about every 6 hours</small>
+                <button id="observer-timelapse-month-play" type="button" onclick="playObserverTimelapse('month')" disabled>Not ready yet</button>
+              </article>
+            </div>
+          </section>
+        </details>
+
+        <details class="observer-disclosure observer-history-disclosure" id="observer-history-disclosure" data-observer-overview-only>
+          <summary><span>Compare with history</span><span id="observer-history-summary">Checking for historical captures…</span></summary>
+          <section class="observer-history-card observer-tools-inner">
+            <div class="observer-history-actions">
+              <button class="observer-history-row" id="observer-compare-previous" type="button" onclick="compareObserverHistory('previous')" disabled><span><strong>Latest vs previous</strong><small id="observer-compare-previous-time">Not available yet</small></span><b>Compare</b></button>
+              <button class="observer-history-row" id="observer-compare-dayAgo" type="button" onclick="compareObserverHistory('dayAgo')" disabled><span><strong>Latest vs 24 hours ago</strong><small id="observer-compare-dayAgo-time">Not available yet</small></span><b>Compare</b></button>
+              <button class="observer-history-row" id="observer-compare-weekAgo" type="button" onclick="compareObserverHistory('weekAgo')" disabled><span><strong>Latest vs 7 days ago</strong><small id="observer-compare-weekAgo-time">Not available yet</small></span><b>Compare</b></button>
+            </div>
+            <p class="observer-history-note">Only selected comparison frames are sent to Reef Keeper; the complete archive remains on the Raspberry Pi.</p>
+          </section>
+        </details>
       </section>
     </div>
 
@@ -1729,7 +1672,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.52 Maintenance 9D</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.53 Maintenance 9E</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3413,9 +3356,9 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260724-maintenance-9c-outer-edge"></script>
-<script src="integration-core.js?v=20260724-maintenance-9c-outer-edge"></script>
-<script src="observer.js?v=20260724-maintenance-9c-outer-edge"></script>
+<script src="app.js?v=20260727-maintenance-9e-observer-simplification"></script>
+<script src="integration-core.js?v=20260727-maintenance-9e-observer-simplification"></script>
+<script src="observer.js?v=20260727-maintenance-9e-observer-simplification"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
@@ -4650,7 +4593,7 @@ function startVisionPrompt(prompt, preferCamera) {
 </script>
 
 
-  <script src="/filter-roll-engine.js?v=4.3.52"></script>
-  <script src="/filter-roll-status.js?v=4.3.52"></script>
+  <script src="/filter-roll-engine.js?v=4.3.53"></script>
+  <script src="/filter-roll-status.js?v=4.3.53"></script>
 </body>
 </html>

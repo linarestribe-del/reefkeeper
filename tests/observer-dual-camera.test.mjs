@@ -55,7 +55,8 @@ const alerts = buildObserverOperationalAlerts(status, new Date('2026-07-24T01:02
 const returnAlert = alerts.find(alert => alert.issueCode === 'water_level_watch');
 assert.ok(returnAlert, 'return-camera issue should be exposed as an operational alert');
 assert.match(returnAlert.title, /^Return chamber:/);
-assert.match(returnAlert.id, /:return:water_level_watch$/);
+assert.equal(returnAlert.source.cameraId, 'return');
+assert.match(returnAlert.id, /:return:water_level_watch:watch$/);
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const ui = fs.readFileSync(new URL('../observer.js', import.meta.url), 'utf8');

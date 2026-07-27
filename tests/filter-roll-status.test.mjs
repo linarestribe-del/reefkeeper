@@ -62,15 +62,25 @@ assert.equal(status.latestCameraMeasurement.captureKey, 'capture-5');
 assert.ok(status.trend.pointCount >= 5, 'Accepted measurements must feed the usage trend.');
 assert.equal(status.forecast.available, true, 'A multi-day reliable history should produce a provisional forecast.');
 assert.ok(status.warnings.some(item => item.includes('rejected')), 'Excluded camera readings must remain disclosed.');
+const referenceScenario = engine.buildStatus({
+  config: { ...manualOnly.config, scheduleHoursLocal:[9,15,21], minSpacingMinutes:240 },
+  measurements: [manual, { ...cameraHistory[0], measuredAt:'2026-07-25T15:27:38Z', measuredAtMs:Date.parse('2026-07-25T15:27:38Z'), referenceOnly:true }, rejected],
+  nowMs: Date.parse('2026-07-27T19:00:00Z')
+});
+assert.equal(referenceScenario.trend.pointCount, 1, 'Only the manual baseline may remain; the camera reference must not add an independent trend point.');
+assert.equal(referenceScenario.tracking.state, 'needs-calibration');
+assert.equal(referenceScenario.current.source, 'manual with camera reference');
+const nextWindow = engine.nextExpectedMeasurementMs(Date.parse('2026-07-25T15:27:38Z'), { scheduleHoursLocal:[9,15,21], minSpacingMinutes:240 });
+assert.ok(nextWindow > Date.parse('2026-07-25T15:27:38Z'), 'The next expected measurement must be schedule-aware.');
 
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
 const css = fs.readFileSync('filter-roll-status.css', 'utf8');
 const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.52'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.52'));
-assert.ok(html.includes('/filter-roll-status.css?v=4.3.52'));
-assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.52') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.53'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.53'));
+assert.ok(html.includes('/filter-roll-status.css?v=4.3.53'));
+assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.53') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
 assert.match(ui, /getFilterRollState/);
 assert.match(ui, /reef_observer_filter_roll_state_v1/);
 assert.match(ui, /latestCameraMeasurement/);
@@ -82,4 +92,4 @@ for (const route of ['/filter-roll-engine.js', '/filter-roll-status.js', '/filte
 }
 assert.equal(vercel.functions && Object.keys(vercel.functions).length, 3, 'Maintenance 9D must not add a Vercel function.');
 
-console.log('Maintenance 9D filter-roll status tests passed.');
+console.log('Maintenance 9E filter-roll status tests passed.');

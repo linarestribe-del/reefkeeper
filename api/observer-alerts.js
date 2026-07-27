@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 8D — dual-camera visual, local-monitor, and deterministic operational alerts
+// Reef Keeper Maintenance 9E — stable-condition operational alerts and visual alerts
 
 import {
   cleanObserverString,
@@ -80,7 +80,7 @@ function operationalAlert(issue, status, checkedAt, cameraId = 'overview') {
   if (!details || issue.severity === 'info') return null;
   const [category, title, recommendedCheck] = details;
   return normalizeObserverChangeAlert({
-    id: `system:${dateKey(checkedAt)}:${cameraId}:${issue.code}`,
+    id: `system:${cameraId}:${issue.code}:${issue.severity === 'critical' ? 'urgent' : 'watch'}`,
     kind: 'system',
     issueCode: issue.code,
     severity: issue.severity === 'critical' ? 'urgent' : 'watch',
@@ -116,7 +116,7 @@ export function buildObserverOperationalAlerts(value, now = new Date()) {
   const publishAge = publishedAt && !Number.isNaN(publishedAt.getTime()) ? now.getTime() - publishedAt.getTime() : 0;
   if (publishAge > 20 * MINUTE && !alerts.some(alert => alert.issueCode === 'publisher_remote_stale')) {
     alerts.unshift(normalizeObserverChangeAlert({
-      id: `system:${dateKey(now)}:publisher_remote_stale`,
+      id: `system:overview:publisher_remote_stale:${publishAge > 60 * MINUTE ? 'urgent' : 'watch'}`,
       kind: 'system',
       issueCode: 'publisher_remote_stale',
       severity: publishAge > 60 * MINUTE ? 'urgent' : 'watch',

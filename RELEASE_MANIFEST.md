@@ -1,7 +1,7 @@
 # Reef Keeper Release Manifest
 
-Current release: **v4.3.51 Maintenance 9C.3**
+Current release: **v4.3.53 Maintenance 9E**
 
-Primary correction: Publisher 2.7.3 counts confirmation streaks once per unique camera capture, preventing repeated publisher runs from creating false return-chamber water-level alerts during a normal feed cycle.
+Primary addition: Aquarium Observer now uses a compact operational layout with a true current-alert inbox, collapsed reviewed history and diagnostics, and corrected filter-roll measurement semantics without changing Observer Publisher 2.7.3.
 
-See `MAINTENANCE_9C_3_RELEASE_MANIFEST.md` and `MAINTENANCE_9C_3_TEST_REPORT.md`.
+See `MAINTENANCE_9E_RELEASE_MANIFEST.md` and `MAINTENANCE_9E_TEST_REPORT.md`.

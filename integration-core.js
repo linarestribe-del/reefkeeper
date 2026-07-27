@@ -315,7 +315,8 @@
       confidence,
       cameraId: cleanText(input?.cameraId, 'overview'),
       sourceImageId: cleanText(input?.sourceImageId),
-      notes: cleanText(input?.notes)
+      notes: cleanText(input?.notes),
+      referenceOnly: input?.referenceOnly === true
     };
   }
 
@@ -329,6 +330,8 @@
       state.currentCycle.measurements = Array.isArray(state.currentCycle.measurements)
         ? state.currentCycle.measurements.map(normalizeMeasurement)
         : [];
+      const referenceMeasurementId = cleanText(state.currentCycle.calibration?.referenceMeasurementId);
+      if (referenceMeasurementId) state.currentCycle.measurements.forEach(item => { if (item.id === referenceMeasurementId) item.referenceOnly = true; });
     }
     return state;
   }
@@ -347,7 +350,7 @@
 
   function summarizeCycle(cycle) {
     const measurements = (Array.isArray(cycle?.measurements) ? cycle.measurements : [])
-      .filter(item => Number.isFinite(item.remainingPct))
+      .filter(item => Number.isFinite(item.remainingPct) && item.referenceOnly !== true)
       .sort((a, b) => new Date(a.captureAt).getTime() - new Date(b.captureAt).getTime());
     if (!measurements.length) {
       return { measurementCount:0, firstRemainingPct:null, lastRemainingPct:null, observedDays:0, usagePctPerDay:null };
@@ -794,6 +797,7 @@
         calibration.apparentFullRadius = outer / diameterRatio;
         calibration.apparentCoreRadius = calibration.apparentFullRadius * (coreDiameter / fullDiameter);
         calibration.referenceMeasurementId = measurement.id;
+        measurement.referenceOnly = true;
         calibration.referenceCapturedAt = measurement.captureAt;
         cycle.cameraReferencePending = false;
       }

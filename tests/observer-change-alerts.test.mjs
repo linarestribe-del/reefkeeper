@@ -71,6 +71,7 @@ assert.equal(operational.length, 1);
 assert.equal(operational[0].kind, 'system');
 assert.equal(operational[0].category, 'storage');
 assert.equal(operational[0].severity, 'watch');
+assert.equal(operational[0].id, 'system:overview:storage_low:watch');
 assert.match(operational[0].confidence, /no image analysis or OpenAI call/i);
 
 const stale = buildObserverOperationalAlerts({

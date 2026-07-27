@@ -304,3 +304,31 @@
   color: var(--muted, #667085);
   font-size: .7rem;
 }
+
+
+/* Maintenance 9E — compact filter-roll card */
+.rk-filter-roll-compact-card{padding:0!important;overflow:hidden}
+.rk-fr-compact-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:24px 26px 10px}
+.rk-fr-compact-head h3{margin:2px 0 0;font-size:1.65rem}
+.rk-fr-compact-body{padding:10px 26px 24px}
+.rk-fr-compact-percent{display:flex;align-items:baseline;gap:10px}
+.rk-fr-compact-percent strong{font-size:3.2rem;line-height:1}
+.rk-fr-compact-percent span{color:#65758d}
+.rk-fr-compact-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px}
+.rk-fr-compact-facts>div{display:flex;flex-direction:column;gap:4px;padding:14px;border:1px solid rgba(13,113,155,.16);border-radius:16px;background:rgba(255,255,255,.38)}
+.rk-fr-compact-facts span,.rk-fr-compact-facts small{color:#65758d}
+.rk-fr-inline-warning{display:flex;gap:10px;margin-top:14px;padding:12px 14px;border-radius:15px;background:rgba(255,185,65,.13);border:1px solid rgba(226,151,20,.26)}
+.rk-fr-inline-warning>span{font-weight:900;color:#a66a00}
+.rk-fr-details{border-top:1px solid rgba(13,113,155,.15)}
+.rk-fr-details>summary,.rk-fr-setup-disclosure>summary{cursor:pointer;list-style:none;padding:16px 26px;font-weight:800;color:#075493}
+.rk-fr-details>summary::-webkit-details-marker,.rk-fr-setup-disclosure>summary::-webkit-details-marker{display:none}
+.rk-fr-details>summary::after,.rk-fr-setup-disclosure>summary::after{content:'›';float:right;transform:rotate(90deg)}
+.rk-fr-details[open]>summary::after,.rk-fr-setup-disclosure[open]>summary::after{transform:rotate(-90deg)}
+.rk-fr-details-content{padding:0 26px 24px}
+.rk-fr-setup-disclosure{margin-top:18px;border:1px solid rgba(13,113,155,.16);border-radius:16px;overflow:hidden}
+.rk-fr-setup-form{padding:0 16px 16px}
+.rk-fr-history-row.reference{background:rgba(69,184,205,.08)}
+@media (max-width:700px){
+ .rk-fr-compact-head{padding:20px 20px 8px}.rk-fr-compact-body{padding:8px 20px 20px}.rk-fr-compact-percent strong{font-size:2.8rem}
+ .rk-fr-compact-facts{grid-template-columns:1fr}.rk-fr-details-content{padding:0 16px 18px}.rk-fr-details>summary{padding:15px 20px}
+}

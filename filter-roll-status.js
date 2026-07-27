@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9D — Filter-Roll Status and History UI.
+/* Reef Keeper Maintenance 9E — compact Filter-Roll Status UI.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Publisher 2.7.3 and all server routes remain unchanged.
  */
@@ -79,7 +79,9 @@
       cycleId: cycle?.id || 'partial-existing-roll',
       cameraReferencePending: cycle?.cameraReferencePending === true,
       baselinePending: cycle?.baselinePending === true,
-      calibration
+      calibration,
+      scheduleHoursLocal: [9, 15, 21],
+      minSpacingMinutes: 240
     };
   }
 
@@ -107,7 +109,8 @@
       accepted: remainingPercent != null,
       reason: item.notes || '',
       sourceType,
-      sourcePath: 'integration.currentCycle.measurements'
+      sourcePath: 'integration.currentCycle.measurements',
+      referenceOnly: item.referenceOnly === true || item.id === config.calibration?.referenceMeasurementId
     };
   }
 
@@ -117,9 +120,12 @@
     const measuredAt = item.measuredAt || item.captureAt || '';
     const captureKey = String(item.sourceImageId || item.measurementId || measuredAt || '').trim();
     const apparentOuterRadius = finite(item.apparentOuterRadius);
-    if (!measuredAt && !captureKey && apparentOuterRadius == null) return null;
+    const rawRemainingPercent = finite(item.remainingPct);
+    const rawDiameterMm = finite(item.diameterMm || item.outerDiameterMm);
+    const hasQuantitativeValue = rawRemainingPercent != null || rawDiameterMm != null || apparentOuterRadius != null;
+    if (!hasQuantitativeValue) return null;
 
-    let remainingPercent = finite(item.remainingPct);
+    let remainingPercent = rawRemainingPercent;
     const calibration = config.calibration || {};
     let apparentFullRadius = finite(calibration.apparentFullRadius);
     let apparentCoreRadius = finite(calibration.apparentCoreRadius);
@@ -131,20 +137,18 @@
           apparentCoreRadius = apparentFullRadius * (config.coreDiameterMm / config.newRollDiameterMm);
         }
       }
-      remainingPercent = window.ReefKeeperFilterRollEngine.calculateRemainingFromRadius(
-        apparentOuterRadius,
-        apparentFullRadius,
-        apparentCoreRadius
-      );
+      remainingPercent = window.ReefKeeperFilterRollEngine.calculateRemainingFromRadius(apparentOuterRadius, apparentFullRadius, apparentCoreRadius);
     }
 
     const status = String(item.status || item.state || '').toLowerCase();
+    const confidence = finite(item.confidence);
     const accepted = item.available === true && remainingPercent != null && !/attention|error|invalid|failed/.test(status);
-    const diameterMm = remainingPercent == null ? null : window.ReefKeeperFilterRollEngine.calculateDiameterFromRemainingPercent(
-      remainingPercent,
-      config.newRollDiameterMm,
-      config.coreDiameterMm
-    );
+    const diameterMm = rawDiameterMm ?? (remainingPercent == null ? null : window.ReefKeeperFilterRollEngine.calculateDiameterFromRemainingPercent(remainingPercent, config.newRollDiameterMm, config.coreDiameterMm));
+    let reason = accepted ? (item.note || '') : (item.rejectionReason || item.analysisMessage || item.message || 'Observer did not accept this filter-roll measurement.');
+    if (!accepted && /waiting for the next scheduled/i.test(reason) && confidence != null) {
+      reason = `Detector confidence ${Math.round(confidence * 100)}% was below the acceptance threshold.`;
+    }
+    const referenceOnly = captureKey && captureKey === String(calibration.referenceMeasurementId || '');
     return {
       id: captureKey || `observer:${measuredAt}:${apparentOuterRadius}`,
       captureKey,
@@ -153,11 +157,12 @@
       remainingPercent,
       diameterMm,
       apparentOuterRadius,
-      confidence: finite(item.confidence),
+      confidence,
       accepted,
-      reason: accepted ? (item.note || '') : (item.message || 'Observer did not accept this filter-roll measurement.'),
+      reason,
       sourceType: 'camera',
-      sourcePath: 'observer-status.filterRoll'
+      sourcePath: 'observer-status.filterRoll',
+      referenceOnly
     };
   }
 
@@ -169,7 +174,7 @@
   function mergeLocalHistory(cycleKey, measurements) {
     const stored = parseJson(localStorage.getItem(LOCAL_HISTORY_KEY), null) || {};
     let archivedCycles = Array.isArray(stored.archivedCycles) ? stored.archivedCycles.slice(0, 12) : [];
-    let prior = Array.isArray(stored.measurements) ? stored.measurements : [];
+    let prior = Array.isArray(stored.measurements) ? stored.measurements.filter(item => Number.isFinite(item?.remainingPercent) || Number.isFinite(item?.diameterMm) || Number.isFinite(item?.apparentOuterRadius)) : [];
     if (stored.cycleKey && stored.cycleKey !== cycleKey && prior.length) {
       archivedCycles.unshift({
         cycleKey: stored.cycleKey,
@@ -255,24 +260,16 @@
   }
 
   function measurementRows(measurements) {
-    if (!measurements.length) return '<div class="rk-fr-empty">No filter-roll measurements are available yet.</div>';
-    return `<div class="rk-fr-history-list">${measurements.slice(0, 8).map(item => {
+    const quantitative = measurements.filter(item => Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm) || Number.isFinite(item.apparentOuterRadius));
+    if (!quantitative.length) return '<div class="rk-fr-empty">No quantitative filter-roll measurements are available yet.</div>';
+    return `<div class="rk-fr-history-list">${quantitative.slice(0, 8).map(item => {
       const radius = Number.isFinite(item.apparentOuterRadius) ? `${item.apparentOuterRadius.toFixed(1)} px apparent radius` : formatMm(item.diameterMm);
-      const source = item.sourceType === 'manual' ? 'Manual baseline' : (item.accepted ? 'Camera · used' : 'Camera · excluded');
-      return `
-      <div class="rk-fr-history-row ${item.accepted ? '' : 'rejected'}">
-        <div class="rk-fr-history-main">
-          <strong>${escapeHtml(formatDate(item.measuredAt))}</strong>
-          <span>${escapeHtml(item.measuredAt ? ageLabel(item.measuredAt) : 'Undated')}</span>
-        </div>
-        <div class="rk-fr-history-value">
-          <strong>${escapeHtml(formatPercent(item.remainingPercent, item.accepted ? 'Pending' : 'Excluded'))}</strong>
-          <span>${escapeHtml(radius)}</span>
-        </div>
-        <div class="rk-fr-history-confidence">
-          <strong>${escapeHtml(formatConfidenceNumber(item.confidence))}</strong>
-          <span>${escapeHtml(source)}</span>
-        </div>
+      const source = item.sourceType === 'manual' ? 'Manual baseline' : (item.referenceOnly ? 'Camera reference' : (item.accepted ? 'Camera · used' : 'Camera · excluded'));
+      const confidence = item.sourceType === 'manual' ? 'Physical entry' : formatConfidenceNumber(item.confidence);
+      return `<div class="rk-fr-history-row ${item.accepted ? '' : 'rejected'} ${item.referenceOnly ? 'reference' : ''}">
+        <div class="rk-fr-history-main"><strong>${escapeHtml(formatDate(item.measuredAt))}</strong><span>${escapeHtml(item.measuredAt ? ageLabel(item.measuredAt) : 'Undated')}</span></div>
+        <div class="rk-fr-history-value"><strong>${escapeHtml(formatPercent(item.remainingPercent, item.accepted ? 'Pending' : 'Excluded'))}</strong><span>${escapeHtml(radius)}</span></div>
+        <div class="rk-fr-history-confidence"><strong>${escapeHtml(confidence)}</strong><span>${escapeHtml(source)}</span></div>
         ${item.accepted ? '' : `<div class="rk-fr-reject-reason">${escapeHtml(item.reason || 'Rejected or inconsistent measurement')}</div>`}
       </div>`;
     }).join('')}</div>`;
@@ -286,6 +283,12 @@
     return `<div class="rk-fr-warning-list">${all.map(item => `<div class="rk-fr-warning"><span>!</span><div>${escapeHtml(item)}</div></div>`).join('')}</div>`;
   }
 
+  function trackingClass(state) {
+    if (state === 'tracking') return 'good';
+    if (state === 'needs-calibration' || state === 'stale') return 'warn';
+    return 'learning';
+  }
+
   function renderCard(status, meta) {
     const card = document.getElementById(CARD_ID);
     if (!card) return;
@@ -294,86 +297,64 @@
     const trend = status.trend || {};
     const confidence = status.confidence || {};
     const forecast = status.forecast || {};
+    const tracking = status.tracking || { state:'learning', label:'Learning' };
     const percent = Number.isFinite(current.percentRemaining) ? current.percentRemaining : 0;
-    const latestDetail = latest
-      ? `${formatDate(latest.measuredAt)} · ${latest.measuredAt ? ageLabel(latest.measuredAt) : 'Undated'}`
-      : 'Waiting for the first accepted camera measurement.';
-    const rateText = Number.isFinite(trend.ratePerDay)
-      ? `${trend.ratePerDay.toFixed(2)} percentage points/day`
-      : 'Still learning the roll’s usage rate';
+    const latestDetail = latest ? `${formatDate(latest.measuredAt)} · ${latest.measuredAt ? ageLabel(latest.measuredAt) : 'Undated'}` : 'No accepted camera reading yet.';
+    const sourceLabel = current.source === 'manual with camera reference'
+      ? 'Manual baseline with camera reference established'
+      : current.source === 'camera' ? 'Latest independent camera measurement' : 'Manual starting measurement';
+    const primaryWarning = [...(status.warnings || []), ...(meta.usingCache ? ['Showing cached Observer data.'] : []), ...(meta.failure && !meta.usingCache ? [`Observer refresh failed: ${meta.failure}`] : [])][0] || '';
     const forecastText = forecast.available ? forecast.dateRange : (forecast.label || 'Still learning');
-    const confidenceReason = confidence.reasons?.length
-      ? confidence.reasons.join('; ')
-      : 'Measurement count, observation span, freshness, and consistency support this rating.';
+    const confidenceReason = confidence.reasons?.join('; ') || 'More independent camera history is required.';
 
-    card.innerHTML = `
-      <div class="rk-fr-head">
-        <div>
-          <div class="rk-fr-kicker">MAINTENANCE 9D</div>
-          <h3>Filter-Roll Status and History</h3>
-          <p>Current roll estimate, recent unique measurements, usage trend, confidence, and replacement planning.</p>
-        </div>
-        <div class="rk-fr-updated">Updated ${escapeHtml(new Date(status.generatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}</div>
+    card.innerHTML = `<div class="rk-fr-compact-head">
+      <div><div class="rk-fr-kicker">FILTER ROLL</div><h3>Filter-roll status</h3></div>
+      <span class="rk-fr-badge ${trackingClass(tracking.state)}">${escapeHtml(tracking.label)}</span>
+    </div>
+    <div class="rk-fr-compact-body">
+      <div class="rk-fr-compact-percent"><strong>${escapeHtml(formatPercent(current.percentRemaining))}</strong><span>estimated remaining</span></div>
+      <div class="rk-fr-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHtml(percent.toFixed(1))}"><span style="width:${escapeHtml(String(Math.max(0, Math.min(100, percent))))}%"></span></div>
+      <div class="rk-fr-cycle-label">${escapeHtml(current.partialCycleLabel || 'Current roll cycle')}</div>
+      <div class="rk-fr-compact-facts">
+        <div><span>Last valid camera reading</span><strong>${escapeHtml(latest ? formatPercent(latest.remainingPercent) : 'Pending')}</strong><small>${escapeHtml(latestDetail)}</small></div>
+        <div><span>Replacement forecast</span><strong>${escapeHtml(forecastText)}</strong><small>${escapeHtml(forecast.detail || 'More history is required.')}</small></div>
       </div>
-
-      <div class="rk-fr-current-grid">
-        <div class="rk-fr-current-main">
-          <div class="rk-fr-percent">${escapeHtml(formatPercent(current.percentRemaining))}</div>
-          <div class="rk-fr-percent-label">estimated remaining</div>
-          <div class="rk-fr-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHtml(percent.toFixed(1))}">
-            <span style="width:${escapeHtml(String(Math.max(0, Math.min(100, percent))))}%"></span>
-          </div>
-          <div class="rk-fr-cycle-label">${escapeHtml(current.partialCycleLabel || 'Current roll cycle')}</div>
-        </div>
+      ${primaryWarning ? `<div class="rk-fr-inline-warning"><span>!</span><div>${escapeHtml(primaryWarning)}</div></div>` : ''}
+    </div>
+    <details class="rk-fr-details">
+      <summary>Measurements and setup</summary>
+      <div class="rk-fr-details-content">
         <div class="rk-fr-current-details">
           <div><span>Current diameter</span><strong>${escapeHtml(formatMm(current.diameterMm))}</strong></div>
-          <div><span>Estimate source</span><strong>${escapeHtml(current.source === 'camera' ? 'Latest accepted camera measurement' : 'Manual starting measurement')}</strong></div>
+          <div><span>Estimate source</span><strong>${escapeHtml(sourceLabel)}</strong></div>
           <div><span>Roll geometry</span><strong>${escapeHtml(`${status.config.newRollDiameterMm} mm new · ${status.config.coreDiameterMm} mm core`)}</strong></div>
         </div>
+        <div class="rk-fr-metric-grid">
+          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Usage trend</div><strong><span class="rk-fr-badge ${trendClass(trend.state)}">${escapeHtml(trend.label || 'Insufficient data')}</span></strong><span>${escapeHtml(Number.isFinite(trend.ratePerDay) ? `${trend.ratePerDay.toFixed(2)} percentage points/day` : 'Still learning the usage rate')}</span></div>
+          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Confidence</div><strong><span class="rk-fr-badge ${confidenceClass(confidence.label)}">${escapeHtml(confidence.label || 'Learning')}</span></strong><span>${escapeHtml(confidenceReason)}</span></div>
+        </div>
+        <div class="rk-fr-section"><div class="rk-fr-section-title"><strong>Recent measurements</strong><span>Only quantitative readings; excluded readings remain visible for diagnostics.</span></div>${measurementRows(status.recentMeasurements || [])}</div>
+        <details class="rk-fr-setup-disclosure"><summary>Edit roll setup</summary>
+          <form class="observer-filter-roll-init rk-fr-setup-form" onsubmit="initializeExistingFilterRollFromForm(event)">
+            <div class="observer-filter-roll-init-head"><strong>Existing roll already in use</strong><span>Enter the physical outside diameter.</span></div>
+            <div class="observer-filter-roll-init-grid">
+              <label><span>Current outside diameter</span><div><input id="observer-filter-roll-current-diameter" type="number" min="1" max="200" step="0.1" value="${escapeHtml(String(status.config.currentDiameterMm || 85))}" inputmode="decimal"><b>mm</b></div></label>
+              <label><span>New roll diameter</span><div><input id="observer-filter-roll-full-diameter" type="number" min="1" max="200" step="0.1" value="${escapeHtml(String(status.config.newRollDiameterMm || 100))}" inputmode="decimal"><b>mm</b></div></label>
+              <label><span>Core outside diameter</span><div><input id="observer-filter-roll-core-diameter" type="number" min="1" max="200" step="0.1" value="${escapeHtml(String(status.config.coreDiameterMm || 46))}" inputmode="decimal"><b>mm</b></div></label>
+            </div>
+            <button class="observer-primary-btn observer-filter-roll-init-btn" type="submit">Save roll setup</button>
+            <small id="observer-filter-roll-init-result">Current saved estimate: ${escapeHtml(formatPercent(current.percentRemaining))}.</small>
+          </form>
+        </details>
+        <div class="rk-fr-archive-note">${escapeHtml(String(meta.completedRollCount || 0))} completed roll cycle${meta.completedRollCount === 1 ? '' : 's'} preserved${meta.archivedCount ? ` · ${meta.archivedCount} local diagnostic archive${meta.archivedCount === 1 ? '' : 's'}` : ''}.</div>
       </div>
-
-      <div class="rk-fr-metric-grid">
-        <div class="rk-fr-metric">
-          <div class="rk-fr-metric-label">Latest camera measurement</div>
-          <strong>${escapeHtml(latest ? formatPercent(latest.remainingPercent) : 'Pending')}</strong>
-          <span>${escapeHtml(latestDetail)}</span>
-        </div>
-        <div class="rk-fr-metric">
-          <div class="rk-fr-metric-label">Usage trend</div>
-          <strong><span class="rk-fr-badge ${trendClass(trend.state)}">${escapeHtml(trend.label || 'Insufficient data')}</span></strong>
-          <span>${escapeHtml(rateText)}</span>
-        </div>
-        <div class="rk-fr-metric">
-          <div class="rk-fr-metric-label">Confidence</div>
-          <strong><span class="rk-fr-badge ${confidenceClass(confidence.label)}">${escapeHtml(confidence.label || 'Learning')}</span></strong>
-          <span>${escapeHtml(confidenceReason)}</span>
-        </div>
-        <div class="rk-fr-metric">
-          <div class="rk-fr-metric-label">Replacement forecast</div>
-          <strong>${escapeHtml(forecastText)}</strong>
-          <span>${escapeHtml(forecast.detail || 'More history is required.')}</span>
-        </div>
-      </div>
-
-      <div class="rk-fr-section">
-        <div class="rk-fr-section-title"><strong>Recent measurements</strong><span>Unique captures only; excluded readings remain visible for diagnostics.</span></div>
-        ${measurementRows(status.recentMeasurements || [])}
-      </div>
-
-      <div class="rk-fr-section">
-        <div class="rk-fr-section-title"><strong>Status notes</strong><span>Forecasts remain provisional until the observation window is strong.</span></div>
-        ${warningHtml(status.warnings || [], meta.failure, meta.usingCache)}
-        <div class="rk-fr-archive-note">${escapeHtml(String(meta.completedRollCount || 0))} completed roll cycle${meta.completedRollCount === 1 ? '' : 's'} preserved by Maintenance${meta.archivedCount ? ` · ${meta.archivedCount} local diagnostic archive${meta.archivedCount === 1 ? '' : 's'}` : ''}.</div>
-      </div>`;
+    </details>`;
   }
 
   function findHost() {
-    const existing = document.querySelector('#observer-filter-roll-card') ||
-      Array.from(document.querySelectorAll('.card, .equipment-card, .workspace-list-card, section'))
-        .find(element => /filter[ -]?roller learning|filter[ -]?roll learning/i.test(element.textContent || ''));
-    if (existing) return { host: existing, insertAfter: true };
-    const fallback = document.querySelector('#page-observer .observer-detail-grid') ||
-      document.querySelector('#page-observer') || document.body;
+    const mount = document.getElementById('observer-filter-roll-status-mount');
+    if (mount) return { host: mount, appendInside: true };
+    const fallback = document.querySelector('#page-observer') || document.body;
     return { host: fallback, appendInside: true };
   }
 
@@ -382,7 +363,7 @@
     const location = findHost();
     const card = document.createElement('section');
     card.id = CARD_ID;
-    card.className = 'card rk-filter-roll-card';
+    card.className = 'card rk-filter-roll-card rk-filter-roll-compact-card';
     card.setAttribute('aria-live', 'polite');
     card.innerHTML = '<div class="rk-fr-loading">Loading filter-roll status…</div>';
     if (location.insertAfter && location.host.parentNode) location.host.insertAdjacentElement('afterend', card);
@@ -399,6 +380,9 @@
       try {
         const loaded = await loadData();
         const config = cycleConfig(loaded.state);
+        const liveFilterRoll = observerFilterRoll(loaded.observerPayload);
+        if (Array.isArray(liveFilterRoll?.schedule?.hoursLocal)) config.scheduleHoursLocal = liveFilterRoll.schedule.hoursLocal;
+        if (Number.isFinite(Number(liveFilterRoll?.schedule?.minSpacingMinutes))) config.minSpacingMinutes = Number(liveFilterRoll.schedule.minSpacingMinutes);
         const cycleMeasurements = currentCycleMeasurements(loaded.state, config);
         const observerMeasurement = canonicalObserverMeasurement(loaded.observerPayload, config);
         const merged = mergeLocalHistory(config.cycleId, [

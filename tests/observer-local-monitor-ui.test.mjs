@@ -55,8 +55,8 @@ assert.equal(water.severity, 'urgent');
 assert.equal(water.category, 'water_level');
 
 for (const id of [
-  'observer-health-local-row',
-  'observer-local-monitor-card',
+  'observer-health-disclosure',
+  'observer-local-monitor-summary',
   'observer-local-monitor-badge',
   'observer-local-image-detail',
   'observer-local-scene-detail',
@@ -65,7 +65,8 @@ for (const id of [
   assert.ok(html.includes(`id="${id}"`), `Missing Observer local-monitor UI element ${id}`);
 }
 assert.match(observer, /function renderLocalMonitoring\(/);
-assert.match(observer, /setHealthRow\('local'/);
+assert.doesNotMatch(observer, /setHealthRow\('local'/, 'Local monitoring must not be rendered twice.');
+assert.match(observer, /waterItem\.hidden = selectedCameraId !== 'return'/);
 assert.match(observer, /Local visual monitoring/);
 assert.match(publisher, /PUBLISHER_VERSION = '2\.7\.3'/);
 assert.match(publisher, /def evaluate_local_monitor\(/);

@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9D — deterministic filter-roll status engine.
+/* Reef Keeper Maintenance 9E — deterministic, schedule-aware filter-roll status engine.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9D.2';
+  const VERSION = '9E.0';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
@@ -17,7 +17,9 @@
     newRollDiameterMm: 100,
     coreDiameterMm: 46,
     initializedAt: '',
-    source: 'Maintenance 9C existing-roll initialization'
+    source: 'Maintenance 9C existing-roll initialization',
+    scheduleHoursLocal: [9, 15, 21],
+    minSpacingMinutes: 240
   });
 
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -191,6 +193,7 @@
       reason,
       sourceType,
       sourcePath: path || '',
+      referenceOnly: raw.referenceOnly === true,
       raw
     };
   }
@@ -282,7 +285,7 @@
 
   function slopePercentPerDay(measurements) {
     const points = measurements
-      .filter(item => item.accepted && Number.isFinite(item.remainingPercent) && Number.isFinite(item.measuredAtMs))
+      .filter(item => item.accepted && item.referenceOnly !== true && Number.isFinite(item.remainingPercent) && Number.isFinite(item.measuredAtMs))
       .sort((a, b) => a.measuredAtMs - b.measuredAtMs);
     if (points.length < 2) return null;
     const origin = points[0].measuredAtMs;
@@ -302,7 +305,7 @@
 
   function monotonicityScore(measurements) {
     const points = measurements
-      .filter(item => item.accepted && Number.isFinite(item.remainingPercent) && Number.isFinite(item.measuredAtMs))
+      .filter(item => item.accepted && item.referenceOnly !== true && Number.isFinite(item.remainingPercent) && Number.isFinite(item.measuredAtMs))
       .sort((a, b) => a.measuredAtMs - b.measuredAtMs);
     if (points.length < 2) return 0.5;
     let consistent = 0;
@@ -317,7 +320,7 @@
 
   function buildTrend(validMeasurements) {
     const points = validMeasurements
-      .filter(item => item.accepted && Number.isFinite(item.remainingPercent) && Number.isFinite(item.measuredAtMs))
+      .filter(item => item.accepted && item.referenceOnly !== true && Number.isFinite(item.remainingPercent) && Number.isFinite(item.measuredAtMs))
       .sort((a, b) => a.measuredAtMs - b.measuredAtMs);
     const days = spanDays(points);
     if (points.length < 3 || days < 2) {
@@ -365,32 +368,48 @@
     };
   }
 
-  function buildConfidence(validMeasurements, latest, nowMs) {
-    const points = validMeasurements.filter(item => item.accepted);
+  function nextExpectedMeasurementMs(latestMs, config = {}) {
+    if (!Number.isFinite(latestMs)) return null;
+    const hours = (Array.isArray(config.scheduleHoursLocal) ? config.scheduleHoursLocal : [9, 15, 21])
+      .map(Number).filter(hour => Number.isInteger(hour) && hour >= 0 && hour <= 23).sort((a, b) => a - b);
+    const minimumSpacingMs = Math.max(0, Number(config.minSpacingMinutes || 240)) * 60000;
+    if (!hours.length) return latestMs + Math.max(minimumSpacingMs, 24 * 3600000);
+    const earliest = latestMs + minimumSpacingMs;
+    const cursor = new Date(latestMs);
+    cursor.setMinutes(0, 0, 0);
+    for (let dayOffset = 0; dayOffset <= 3; dayOffset += 1) {
+      for (const hour of hours) {
+        const candidate = new Date(cursor);
+        candidate.setDate(cursor.getDate() + dayOffset);
+        candidate.setHours(hour, 0, 0, 0);
+        if (candidate.getTime() > latestMs && candidate.getTime() >= earliest) return candidate.getTime();
+      }
+    }
+    return latestMs + Math.max(minimumSpacingMs, 24 * 3600000);
+  }
+
+  function buildConfidence(validMeasurements, latest, nowMs, config = {}) {
+    const points = validMeasurements.filter(item => item.accepted && item.sourceType !== 'manual' && item.referenceOnly !== true);
     const days = spanDays(points);
     const averageDetectorConfidence = points.length
       ? points.reduce((sum, item) => sum + (item.confidence == null ? 0.6 : item.confidence), 0) / points.length
       : 0;
     const latestAgeHours = latest && latest.measuredAtMs ? (nowMs - latest.measuredAtMs) / 3600000 : Infinity;
+    const nextExpectedMs = latest?.measuredAtMs ? nextExpectedMeasurementMs(latest.measuredAtMs, config) : null;
+    const staleAfterMs = nextExpectedMs == null ? null : nextExpectedMs + 90 * 60000;
+    const isStale = staleAfterMs != null && nowMs > staleAfterMs;
     const countScore = clamp(points.length / 8, 0, 1);
     const spanScore = clamp(days / 7, 0, 1);
-    const freshnessScore = Number.isFinite(latestAgeHours) ? clamp(1 - (latestAgeHours / 48), 0, 1) : 0;
+    const freshnessWindowHours = staleAfterMs && latest?.measuredAtMs ? Math.max(1, (staleAfterMs - latest.measuredAtMs) / 3600000) : 48;
+    const freshnessScore = Number.isFinite(latestAgeHours) ? clamp(1 - (latestAgeHours / (freshnessWindowHours * 1.5)), 0, 1) : 0;
     const monotonicity = monotonicityScore(points);
-    const score = clamp(
-      (averageDetectorConfidence * 0.35) +
-      (countScore * 0.2) +
-      (spanScore * 0.2) +
-      (freshnessScore * 0.15) +
-      (monotonicity * 0.1),
-      0,
-      1
-    );
+    const score = clamp((averageDetectorConfidence * 0.35) + (countScore * 0.2) + (spanScore * 0.2) + (freshnessScore * 0.15) + (monotonicity * 0.1), 0, 1);
 
     const reasons = [];
-    if (points.length < 3) reasons.push('too few unique measurements');
+    if (points.length < 3) reasons.push('too few independent camera measurements');
     if (days < 2) reasons.push('observation period is still short');
     if (!latest || !latest.measuredAtMs) reasons.push('no dated camera measurement');
-    else if (latestAgeHours > 1.5) reasons.push('latest measurement is stale');
+    else if (isStale) reasons.push('latest measurement is stale');
     if (averageDetectorConfidence < 0.6 && points.length) reasons.push('detector confidence is inconsistent');
     if (monotonicity < 0.7 && points.length >= 3) reasons.push('measurements are not consistently decreasing');
 
@@ -400,7 +419,7 @@
       else if (score >= 0.58) label = 'Medium';
       else label = 'Low';
     }
-    return { score, label, reasons, latestAgeHours, pointCount: points.length, spanDays: days };
+    return { score, label, reasons, latestAgeHours, pointCount: points.length, spanDays: days, isStale, staleAfterHours: freshnessWindowHours, nextExpectedMs };
   }
 
   function formatDateRange(startMs, endMs) {
@@ -445,15 +464,19 @@
 
   function buildWarnings(config, measurements, latestCamera, currentPercent, confidence) {
     const warnings = [];
-    const cameraMeasurements = measurements.filter(item => item.sourceType !== 'manual');
-    if (!cameraMeasurements.length) warnings.push('No usable filter-roll camera captures are available yet.');
-    if (latestCamera && confidence.latestAgeHours > 1.5) warnings.push('The latest filter-roll camera measurement is stale.');
+    const cameraMeasurements = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm) || Number.isFinite(item.apparentOuterRadius)));
+    const independentAccepted = cameraMeasurements.filter(item => item.accepted && item.referenceOnly !== true);
+    if (!cameraMeasurements.length) warnings.push('No usable filter-roll camera measurements are available yet.');
+    if (latestCamera && confidence.isStale) warnings.push('The latest filter-roll camera measurement is stale.');
     const rejected = cameraMeasurements.filter(item => !item.accepted);
     if (rejected.length) warnings.push(`${rejected.length} recent camera measurement${rejected.length === 1 ? ' was' : 's were'} rejected or excluded from the trend.`);
     if (confidence.reasons.includes('measurements are not consistently decreasing')) warnings.push('Recent measurements are inconsistent; the usage trend may be unreliable.');
     const initializedPercent = calculateRemainingPercent(config.currentDiameterMm, config.newRollDiameterMm, config.coreDiameterMm);
-    if (latestCamera && Number.isFinite(initializedPercent) && Number.isFinite(currentPercent) && Math.abs(currentPercent - initializedPercent) > 18 && cameraMeasurements.filter(item => item.accepted).length < 3) {
+    if (latestCamera && Number.isFinite(initializedPercent) && Number.isFinite(currentPercent) && Math.abs(currentPercent - initializedPercent) > 18 && independentAccepted.length < 3) {
       warnings.push('The camera estimate differs substantially from the manual starting measurement.');
+    }
+    if (cameraMeasurements.some(item => item.referenceOnly) && (rejected.length >= 1 || confidence.isStale)) {
+      warnings.push('Camera tracking needs calibration before it can support a dependable usage trend.');
     }
     return warnings;
   }
@@ -482,9 +505,18 @@
         : config.currentDiameterMm;
     const valid = measurements.filter(item => item.accepted && Number.isFinite(item.remainingPercent));
     const trend = buildTrend(valid);
-    const confidence = buildConfidence(valid, latestCamera, nowMs);
+    const confidence = buildConfidence(valid, latestCamera, nowMs, config);
     const forecast = buildForecast(currentPercent, trend, confidence, nowMs);
     const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence);
+    const quantitativeCamera = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.apparentOuterRadius)));
+    const independentAccepted = quantitativeCamera.filter(item => item.accepted && item.referenceOnly !== true);
+    const tracking = quantitativeCamera.some(item => item.referenceOnly) && (quantitativeCamera.some(item => !item.accepted) || confidence.isStale)
+      ? { state:'needs-calibration', label:'Needs calibration' }
+      : confidence.isStale
+        ? { state:'stale', label:'Stale' }
+        : independentAccepted.length
+          ? { state:'tracking', label:'Tracking' }
+          : { state:'learning', label:'Learning' };
 
     return {
       version: VERSION,
@@ -493,7 +525,7 @@
       current: {
         percentRemaining: Number.isFinite(currentPercent) ? clamp(currentPercent, 0, 100) : null,
         diameterMm: Number.isFinite(currentDiameterMm) ? currentDiameterMm : null,
-        source: latest?.sourceType === 'camera' ? 'camera' : 'manual initialization',
+        source: latest?.sourceType === 'camera' ? (latest.referenceOnly ? 'manual with camera reference' : 'camera') : 'manual initialization',
         partialCycle: config.partialCycle !== false,
         partialCycleLabel: config.partialCycle === false ? 'Full cycle' : config.partialCycleLabel
       },
@@ -504,7 +536,8 @@
       trend,
       confidence,
       forecast,
-      warnings
+      warnings,
+      tracking
     };
   }
 
@@ -521,6 +554,7 @@
     buildTrend,
     buildConfidence,
     buildForecast,
+    nextExpectedMeasurementMs,
     buildStatus
   };
 });

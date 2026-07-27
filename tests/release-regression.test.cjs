@@ -10,15 +10,16 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const rootCss = fs.readFileSync('app.css', 'utf8');
 const rootChat = fs.readFileSync('chat.js', 'utf8');
 const apiChat = fs.readFileSync('api/chat.js', 'utf8');
+const filterRollUi = fs.readFileSync('filter-roll-status.js', 'utf8');
 
-assert(html.includes('css/app.css?v=20260724-maintenance-9c-outer-edge'));
+assert(html.includes('css/app.css?v=20260727-maintenance-9e-observer-simplification'));
 assert(html.includes('ai/evidence-engine.js?v=20260717-build-1b'));
 assert(html.includes('ai/decision-engine.js?v=20260718-build-1c'));
 assert(html.includes('ai/explainability.js?v=20260718-build-2c'));
 assert(html.includes('ai/trend-engine.js?v=20260718-build-2a'));
 assert(html.includes('ai/trend-chart.js?v=20260718-build-2b'));
-assert(html.includes('app.js?v=20260724-maintenance-9c-outer-edge'));
-assert(html.includes('observer.js?v=20260724-maintenance-9c-outer-edge'));
+assert(html.includes('app.js?v=20260727-maintenance-9e-observer-simplification'));
+assert(html.includes('observer.js?v=20260727-maintenance-9e-observer-simplification'));
 assert(app.includes('window.ReefKeeperDecisionEngine.evaluate(evidenceContext)'));
 assert(app.includes('window.ReefKeeperExplainability.build'));
 assert(app.includes('Evidence review'));
@@ -47,7 +48,7 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.52');
+assert.equal(pkg.version, '4.3.53');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
 assert(fs.existsSync('tests/index-js-cleanup.test.mjs'));
@@ -65,7 +66,7 @@ for (const file of ['MAINTENANCE_8D_RELEASE_MANIFEST.md', 'MAINTENANCE_8D_TEST_R
 assert(fs.existsSync('tests/ai-abuse-guard.test.mjs'));
 assert(fs.existsSync('tests/ai-access-control.test.mjs'));
 assert(html.includes('id="reef-ai-access-key"'));
-assert(html.includes('Reef Keeper v4.3.52 Maintenance 9D'));
+assert(html.includes('Reef Keeper v4.3.53 Maintenance 9E'));
 assert(app.includes("const REEF_AI_ACCESS_STORAGE_KEY = 'reef_ai_access_key_v1'"));
 assert(app.includes("headers['X-Reef-AI-Access-Key'] = key"));
 assert(app.includes('function testReefAiAccessKey()'));
@@ -124,8 +125,9 @@ assert(fs.existsSync('filter-roll-status.js'));
 assert(fs.existsSync('filter-roll-status.css'));
 assert(fs.existsSync('connector/observer-filter-roll-calibrate.py'));
 assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes('outer silhouette'));
-assert(html.includes('id="observer-filter-roll-current-diameter"'));
-assert(html.includes('initializeExistingFilterRollFromForm(event)'));
+assert(html.includes('id="observer-filter-roll-status-mount"'));
+assert(filterRollUi.includes('id="observer-filter-roll-current-diameter"'));
+assert(filterRollUi.includes('initializeExistingFilterRollFromForm(event)'));
 assert(html.includes('id="observer-camera-overview"'));
 assert(html.includes('id="observer-camera-return"'));
 assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBLISHER_VERSION = '2.7.3'"));
@@ -137,7 +139,7 @@ assert(fs.readFileSync('api/observer-image.js', 'utf8').includes("cameraId === '
 // Maintenance 9C Integration Core safeguards.
 assert(fs.existsSync('integration-core.js'));
 assert(fs.existsSync('tests/integration-core.test.mjs'));
-assert(html.includes('integration-core.js?v=20260724-maintenance-9c-outer-edge'));
+assert(html.includes('integration-core.js?v=20260727-maintenance-9e-observer-simplification'));
 assert(html.includes('id="action-equipment"'));
 assert(html.includes('id="action-code"'));
 assert(app.includes("'reef_tank_events_v1'"));
@@ -150,6 +152,9 @@ for (const file of ['MAINTENANCE_9C_2_RELEASE_MANIFEST.md', 'MAINTENANCE_9C_2_TE
 }
 for (const file of ['MAINTENANCE_9D_RELEASE_MANIFEST.md', 'MAINTENANCE_9D_TEST_REPORT.md', 'checksums/maintenance-9D.sha256']) {
   assert(fs.existsSync(file), `Maintenance 9D release file is missing: ${file}`);
+}
+for (const file of ['MAINTENANCE_9E_RELEASE_MANIFEST.md', 'MAINTENANCE_9E_TEST_REPORT.md', 'checksums/maintenance-9E.sha256']) {
+  assert(fs.existsSync(file), `Maintenance 9E release file is missing: ${file}`);
 }
 for (const file of ['MAINTENANCE_9C_3_RELEASE_MANIFEST.md', 'MAINTENANCE_9C_3_TEST_REPORT.md', 'checksums/maintenance-9C3.sha256']) {
   assert(fs.existsSync(file), `Maintenance 9C.3 release file is missing: ${file}`);

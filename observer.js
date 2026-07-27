@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 8D — dual-camera Aquarium Observer monitoring, alerts, summaries, and timelapses
+// Reef Keeper Maintenance 9E — compact Aquarium Observer dashboard and persistent alert lifecycle
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -9,6 +9,8 @@
   const ALERTS_ENDPOINT = '/api/observer-alerts';
   const TIMELAPSES_ENDPOINT = '/api/observer-status?resource=timelapses';
   const ALERT_REVIEWED_KEY = 'reef_observer_reviewed_alert_ids_v1';
+  const ALERT_HISTORY_KEY = 'reef_observer_reviewed_alert_history_v1';
+  const ALERT_ACTIVE_KEY = 'reef_observer_active_alert_keys_v1';
   const ALERT_SEEN_KEY = 'reef_observer_seen_alert_ids_v1';
   const REFRESH_INTERVAL_MS = 60_000;
   const CAPTURE_STALE_AFTER_MS = 15 * 60_000;
@@ -410,7 +412,65 @@
   }
 
   function saveAlertIds(key, ids) {
-    try { localStorage.setItem(key, JSON.stringify([...ids].slice(-100))); } catch (_) {}
+    try { localStorage.setItem(key, JSON.stringify([...ids].slice(-150))); } catch (_) {}
+  }
+
+  function readReviewedAlertHistory() {
+    try {
+      const value = JSON.parse(localStorage.getItem(ALERT_HISTORY_KEY) || '[]');
+      return Array.isArray(value) ? value.filter(item => item && item.reviewKey).slice(0, 80) : [];
+    } catch (_) { return []; }
+  }
+
+  function writeReviewedAlertHistory(items) {
+    try { localStorage.setItem(ALERT_HISTORY_KEY, JSON.stringify(items.slice(0, 80))); } catch (_) {}
+  }
+
+  function alertReviewKey(alert) {
+    if (!alert) return '';
+    if (alert.kind === 'system') {
+      const stableId = cleanText(alert.id);
+      if (stableId.startsWith('system:')) return stableId;
+      const cameraId = cleanText(alert.source?.cameraId, 'overview');
+      return `system:${cameraId}:${cleanText(alert.issueCode || alert.source?.issueCode, 'observer_issue')}:${alert.severity || 'watch'}`;
+    }
+    return `visual:${alert.id}`;
+  }
+
+  function isAlertReviewed(alert, reviewed = storedAlertIds(ALERT_REVIEWED_KEY)) {
+    return reviewed.has(alertReviewKey(alert)) || reviewed.has(String(alert?.id || ''));
+  }
+
+  function alertSnapshot(alert) {
+    return {
+      reviewKey: alertReviewKey(alert),
+      id: alert.id,
+      kind: alert.kind,
+      issueCode: alert.issueCode,
+      severity: alert.severity,
+      category: alert.category,
+      title: alert.title,
+      createdAt: alert.createdAt?.toISOString?.() || '',
+      reviewedAt: new Date().toISOString(),
+      source: { cameraId: alert.source?.cameraId || 'overview' }
+    };
+  }
+
+  function rememberReviewedAlerts(alerts) {
+    const history = readReviewedAlertHistory();
+    const map = new Map(history.map(item => [item.reviewKey, item]));
+    alerts.filter(Boolean).forEach(alert => {
+      const snapshot = alertSnapshot(alert);
+      const prior = map.get(snapshot.reviewKey);
+      map.set(snapshot.reviewKey, {
+        ...prior,
+        ...snapshot,
+        reviewedAt: prior?.reviewedAt || snapshot.reviewedAt,
+        firstReviewedAt: prior?.firstReviewedAt || snapshot.reviewedAt,
+        occurrences: Math.max(1, Number(prior?.occurrences || 1))
+      });
+    });
+    writeReviewedAlertHistory([...map.values()].sort((a, b) => Date.parse(b.reviewedAt || 0) - Date.parse(a.reviewedAt || 0)));
   }
 
   function normalizeObserverAlertFeed(payload) {
@@ -431,6 +491,7 @@
         source: {
           kind: ['visual', 'system'].includes(source.kind) ? source.kind : 'visual',
           issueCode: cleanText(source.issueCode),
+          cameraId: cleanText(source.cameraId, 'overview'),
           currentCapturedAt: parseDate(source.currentCapturedAt),
           previousCapturedAt: parseDate(source.previousCapturedAt)
         }
@@ -449,19 +510,9 @@
 
   function alertCategoryIcon(category) {
     return {
-      water_level: '🌊',
-      skimmer: '🫧',
-      leak_overflow: '🚨',
-      equipment_position: '🔧',
-      buildup: '🧽',
-      camera_quality: '📷',
-      camera_capture: '📷',
-      publisher: '☁️',
-      storage: '💾',
-      power: '⚡',
-      archive: '🗂️',
-      daily_summary: '📅',
-      other: '👁️'
+      water_level: '🌊', skimmer: '🫧', leak_overflow: '🚨', equipment_position: '🔧',
+      buildup: '🧽', camera_quality: '📷', camera_capture: '📷', publisher: '☁️',
+      storage: '💾', power: '⚡', archive: '🗂️', daily_summary: '📅', other: '👁️'
     }[category] || '👁️';
   }
 
@@ -470,18 +521,38 @@
   }
 
   function markObserverAlertReviewed(id) {
+    const alert = (observerAlerts?.alerts || []).find(item => item.id === id);
+    if (!alert) return;
     const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
-    reviewed.add(String(id || ''));
+    reviewed.add(alertReviewKey(alert));
     saveAlertIds(ALERT_REVIEWED_KEY, reviewed);
+    rememberReviewedAlerts([alert]);
     renderObserverAlerts(observerAlerts || normalizeObserverAlertFeed({}));
   }
 
   function markAllObserverAlertsReviewed() {
+    const feed = observerAlerts || normalizeObserverAlertFeed({});
+    const currentIds = new Set(feed.currentAlertIds || []);
     const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
-    (observerAlerts?.alerts || []).forEach(alert => reviewed.add(alert.id));
+    const active = feed.alerts.filter(alert => currentIds.has(alert.id) && !isAlertReviewed(alert, reviewed));
+    active.forEach(alert => reviewed.add(alertReviewKey(alert)));
     saveAlertIds(ALERT_REVIEWED_KEY, reviewed);
-    renderObserverAlerts(observerAlerts || normalizeObserverAlertFeed({}));
-    if (typeof showToast === 'function') showToast('Observer alerts marked reviewed');
+    rememberReviewedAlerts(active);
+    renderObserverAlerts(feed);
+    if (typeof showToast === 'function') showToast(active.length ? 'Observer alerts marked reviewed' : 'No active alerts to review');
+  }
+
+  function renderReviewedAlertHistory(feed, reviewed) {
+    const currentReviewed = feed.alerts.filter(alert => isAlertReviewed(alert, reviewed));
+    if (currentReviewed.length) rememberReviewedAlerts(currentReviewed);
+    const history = readReviewedAlertHistory();
+    setText('observer-alert-history-count', String(history.length));
+    const list = byId('observer-alert-history-list');
+    if (!list) return;
+    list.innerHTML = history.length ? history.map(item => `<div class="observer-reviewed-history-row">
+      <span>${alertCategoryIcon(item.category)}</span>
+      <div><strong>${cleanText(item.title)}</strong><small>${alertSeverityLabel(item.severity)} · reviewed ${formatCaptureTime(item.reviewedAt)}${item.occurrences > 1 ? ` · ${item.occurrences} occurrences` : ''}</small></div>
+    </div>`).join('') : '<div class="observer-alert-empty"><span>No reviewed alerts yet.</span></div>';
   }
 
   function renderObserverAlerts(feed) {
@@ -489,56 +560,67 @@
     const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
     const currentIds = new Set(feed.currentAlertIds || []);
     const currentAlerts = feed.alerts.filter(alert => currentIds.has(alert.id));
-    const unreviewed = currentAlerts.filter(alert => !reviewed.has(alert.id));
-    const urgent = unreviewed.some(alert => alert.severity === 'urgent');
+    const canReconcileLifecycle = Boolean(feed.updatedAt || feed.lastEvaluatedAt);
+    if (canReconcileLifecycle) {
+      const previousActive = storedAlertIds(ALERT_ACTIVE_KEY);
+      let reviewedChanged = false;
+      currentAlerts.filter(alert => alert.kind === 'system').forEach(alert => {
+        const key = alertReviewKey(alert);
+        if (!previousActive.has(key) && reviewed.has(key)) {
+          reviewed.delete(key);
+          reviewedChanged = true;
+        }
+      });
+      if (reviewedChanged) saveAlertIds(ALERT_REVIEWED_KEY, reviewed);
+      saveAlertIds(ALERT_ACTIVE_KEY, new Set(currentAlerts.map(alertReviewKey)));
+    }
+    const active = currentAlerts.filter(alert => !isAlertReviewed(alert, reviewed));
+    const urgent = active.some(alert => alert.severity === 'urgent');
     const badge = byId('observer-alert-badge');
     const card = byId('observer-alert-card');
     if (badge) {
-      const state = urgent ? 'urgent' : (unreviewed.length ? 'watch' : 'clear');
+      const state = urgent ? 'urgent' : (active.length ? 'watch' : 'clear');
       badge.className = `observer-alert-badge ${state}`;
-      badge.textContent = urgent ? 'Urgent' : (unreviewed.length ? `${unreviewed.length} new` : 'Clear');
+      badge.textContent = urgent ? 'Urgent' : (active.length ? `${active.length} new` : 'Clear');
     }
-    if (card) card.classList.toggle('has-urgent', urgent);
-    const currentSystem = currentAlerts.filter(alert => alert.kind === 'system');
-    const currentVisual = currentAlerts.filter(alert => alert.kind !== 'system');
+    if (card) {
+      card.classList.toggle('has-urgent', urgent);
+      card.classList.toggle('is-clear', active.length === 0);
+    }
+    const activeSystem = active.filter(alert => alert.kind === 'system');
+    const activeVisual = active.filter(alert => alert.kind !== 'system');
     const alertParts = [];
-    if (currentSystem.length) alertParts.push(`${currentSystem.length} system alert${currentSystem.length === 1 ? '' : 's'}`);
-    if (currentVisual.length) alertParts.push(`${currentVisual.length} visual alert${currentVisual.length === 1 ? '' : 's'}`);
+    if (activeSystem.length) alertParts.push(`${activeSystem.length} system alert${activeSystem.length === 1 ? '' : 's'}`);
+    if (activeVisual.length) alertParts.push(`${activeVisual.length} visual alert${activeVisual.length === 1 ? '' : 's'}`);
     setText('observer-alert-summary', alertParts.length
-      ? `${alertParts.join(' and ')} currently need review.`
-      : 'No current system or evidence-limited visual alert needs review.');
+      ? `${alertParts.join(' and ')} need review.`
+      : 'Nothing currently needs review.');
     setText('observer-alert-evaluated', feed.lastEvaluatedAt
       ? `Last evaluated ${formatCaptureTime(feed.lastEvaluatedAt.toISOString())}`
-      : 'Waiting for the next daily comparison');
+      : 'Waiting for the next evaluation');
     const list = byId('observer-alert-list');
     if (list) {
-      const visible = feed.alerts.slice(0, 8);
-      list.innerHTML = visible.length ? visible.map(alert => {
-        const isCurrent = currentIds.has(alert.id);
-        const isReviewed = reviewed.has(alert.id);
-        const classes = ['observer-alert-item', alert.severity, isReviewed ? 'reviewed' : '', isCurrent ? 'current' : 'history'].filter(Boolean).join(' ');
-        return `<article class="${classes}">
-          <div class="observer-alert-item-head"><span class="observer-alert-icon">${alertCategoryIcon(alert.category)}</span><div><strong>${cleanText(alert.title)}</strong><small>${alert.kind === 'system' ? 'System monitor' : 'Daily visual comparison'} · ${alertSeverityLabel(alert.severity)} · ${formatCaptureTime(alert.createdAt?.toISOString())}${isCurrent ? ' · current' : ''}</small></div><b>${alertSeverityLabel(alert.severity)}</b></div>
-          ${alert.evidence ? `<p><strong>Evidence:</strong> ${cleanText(alert.evidence)}</p>` : ''}
-          ${alert.recommendedCheck ? `<p><strong>Recommended check:</strong> ${cleanText(alert.recommendedCheck)}</p>` : ''}
-          ${alert.confidence ? `<p class="observer-alert-confidence">${cleanText(alert.confidence)}</p>` : ''}
-          <div class="observer-alert-item-actions">
-            ${isCurrent && alert.kind !== 'system' && dailySummary?.ok ? `<button type="button" onclick="openObserverAlertComparison('${alert.id}')">Open comparison</button>` : ''}
-            <button type="button" onclick="markObserverAlertReviewed('${alert.id}')">${isReviewed ? 'Reviewed' : 'Mark reviewed'}</button>
-          </div>
-        </article>`;
-      }).join('') : '<div class="observer-alert-empty"><strong>No Observer alerts.</strong><span>System checks run without AI; visual alerts are created only from the once-daily evidence-limited comparison.</span></div>';
+      list.innerHTML = active.length ? active.slice(0, 6).map(alert => `<article class="observer-alert-item ${alert.severity} current">
+        <div class="observer-alert-item-head"><span class="observer-alert-icon">${alertCategoryIcon(alert.category)}</span><div><strong>${cleanText(alert.title)}</strong><small>${alert.kind === 'system' ? 'System monitor' : 'Daily visual comparison'} · ${alertSeverityLabel(alert.severity)} · ${formatCaptureTime(alert.createdAt?.toISOString())}</small></div><b>${alertSeverityLabel(alert.severity)}</b></div>
+        ${alert.evidence ? `<p><strong>Evidence:</strong> ${cleanText(alert.evidence)}</p>` : ''}
+        ${alert.recommendedCheck ? `<p><strong>Recommended check:</strong> ${cleanText(alert.recommendedCheck)}</p>` : ''}
+        <div class="observer-alert-item-actions">
+          ${alert.kind !== 'system' && dailySummary?.ok ? `<button type="button" onclick="openObserverAlertComparison('${alert.id}')">Open comparison</button>` : ''}
+          <button type="button" onclick="markObserverAlertReviewed('${alert.id}')">Mark reviewed</button>
+        </div>
+      </article>`).join('') : '<div class="observer-alert-empty"><strong>All clear.</strong><span>Reviewed alerts are stored in the collapsed history below.</span></div>';
     }
     const reviewAll = byId('observer-alert-review-all');
-    if (reviewAll) reviewAll.disabled = feed.alerts.length === 0 || feed.alerts.every(alert => reviewed.has(alert.id));
+    if (reviewAll) reviewAll.disabled = active.length === 0;
+    renderReviewedAlertHistory(feed, reviewed);
   }
 
   function announceNewObserverAlerts(feed) {
     const seen = storedAlertIds(ALERT_SEEN_KEY);
     const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
     const current = feed.alerts.filter(alert => feed.currentAlertIds.includes(alert.id));
-    const fresh = current.filter(alert => !seen.has(alert.id) && !reviewed.has(alert.id));
-    current.forEach(alert => seen.add(alert.id));
+    const fresh = current.filter(alert => !seen.has(alertReviewKey(alert)) && !isAlertReviewed(alert, reviewed));
+    current.forEach(alert => seen.add(alertReviewKey(alert)));
     saveAlertIds(ALERT_SEEN_KEY, seen);
     if (!fresh.length || typeof showToast !== 'function') return;
     const urgent = fresh.some(alert => alert.severity === 'urgent');
@@ -563,6 +645,13 @@
       : `<p>${cleanText(emptyText)}</p>`}</div>`;
   }
 
+  function compactSummaryText(value) {
+    const clean = cleanText(value);
+    if (!clean) return '';
+    const sentence = clean.match(/^.*?[.!?](?:\s|$)/)?.[0] || clean;
+    return sentence.length > 220 ? `${sentence.slice(0, 217).trim()}…` : sentence.trim();
+  }
+
   function renderDailySummary(report) {
     dailySummary = report;
     const badge = byId('observer-daily-badge');
@@ -573,7 +662,7 @@
     }
     if (card) card.classList.toggle('is-ready', report.ok);
     setText('observer-daily-headline', report.headline);
-    setText('observer-daily-summary', report.summary);
+    setText('observer-daily-summary', compactSummaryText(report.summary));
     setText('observer-daily-source', report.ok
       ? `${formatCaptureTime(report.source.previousCaptured?.toISOString())} → ${formatCaptureTime(report.source.currentCaptured?.toISOString())}`
       : 'Waiting for today and the prior day representative frames.');
@@ -840,6 +929,8 @@
       ? `${source.waterLevel.message} Confidence: ${Math.round(source.waterLevel.confidence * 100)}%.`
       : source.waterLevel.message;
     setLocalMonitorItem('water', source.waterLevel.status, waterDetail, waterLabel);
+    const waterItem = byId('observer-local-water-item');
+    if (waterItem) waterItem.hidden = selectedCameraId !== 'return';
   }
 
   function renderObserverHealth(record) {
@@ -849,7 +940,15 @@
       badge.className = `observer-health-badge ${health.status}`;
       badge.textContent = healthLabel(health.status);
     }
-    setText('observer-health-summary', health.summary);
+    const healthStates = [health.capture.status, health.publisher.status, health.storage.status, health.power.status, health.dailySummary.status, health.localMonitoring.status, health.archive.status];
+    const attentionCount = healthStates.filter(state => state === 'attention' || state === 'offline').length;
+    const healthyCount = healthStates.filter(state => state === 'healthy').length;
+    const checkingCount = healthStates.filter(state => state === 'pending').length;
+    const summaryParts = [];
+    if (attentionCount) summaryParts.push(`${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`);
+    if (healthyCount) summaryParts.push(`${healthyCount} healthy`);
+    if (checkingCount) summaryParts.push(`${checkingCount} checking`);
+    setText('observer-health-summary', summaryParts.join(' · ') || health.summary);
     setHealthRow('capture', health.capture.status, health.capture.message);
     setHealthRow('publisher', health.publisher.status, health.publisher.message);
 
@@ -863,7 +962,6 @@
       ? `${health.dailySummary.message} Next attempt ${formatCaptureTime(health.dailySummary.nextAttemptAt.toISOString())}.`
       : health.dailySummary.message;
     setHealthRow('daily', health.dailySummary.status, dailyDetail);
-    setHealthRow('local', health.localMonitoring.status, health.localMonitoring.message);
     renderLocalMonitoring(health.localMonitoring);
 
     const servicesHealthy = health.services.captureTimerActive && health.services.publishTimerActive;
@@ -979,19 +1077,18 @@
 
     const note = byId('observer-connection-note');
     if (note) {
-      if (record.health.status === 'healthy') {
-        note.innerHTML = `<strong>${cleanText(record.cameraLabel)} is healthy.</strong><span>This camera, its capture timer, the storage drive, and remote publisher are reporting normally. The full archive remains on the Raspberry Pi drive.</span>`;
-      } else if (record.health.publisher.status === 'offline') {
-        note.innerHTML = '<strong>The remote publisher stopped reporting.</strong><span>The app cannot confirm what is happening on the Pi until a new health report arrives. Local captures may still be running.</span>';
-      } else if (record.health.capture.status !== 'healthy' && record.health.publisher.status === 'healthy') {
-        note.innerHTML = `<strong>The publisher is online, but camera capture needs attention.</strong><span>${cleanText(record.health.capture.message, 'The latest capture is not current.')}</span>`;
-      } else if (record.health.storage.status === 'offline') {
-        note.innerHTML = `<strong>The Observer drive needs attention.</strong><span>${cleanText(record.health.storage.message, 'The archive drive is unavailable or not writable.')}</span>`;
-      } else if (record.configured) {
-        const safeMessage = record.health.summary || record.message || 'One or more Observer checks need attention.';
-        note.innerHTML = `<strong>Observer is reporting with a warning.</strong><span>${cleanText(safeMessage)}</span>`;
-      } else {
-        note.innerHTML = '<strong>App-side setup is ready.</strong><span>Install the Build 2I Pi health publisher to report camera, storage, timer, and power diagnostics.</span>';
+      const shouldShow = !record.configured || record.health.status !== 'healthy';
+      note.hidden = !shouldShow;
+      if (shouldShow) {
+        if (record.health.capture.status === 'offline') {
+          note.innerHTML = `<strong>The camera capture needs attention.</strong><span>${cleanText(record.health.capture.message, 'The latest capture is not current.')}</span>`;
+        } else if (record.health.storage.status === 'offline') {
+          note.innerHTML = `<strong>The Observer drive needs attention.</strong><span>${cleanText(record.health.storage.message, 'The archive drive is unavailable or not writable.')}</span>`;
+        } else if (record.configured) {
+          note.innerHTML = `<strong>Observer is reporting with a warning.</strong><span>${cleanText(record.health.summary || record.message || 'Open Health and diagnostics for details.')}</span>`;
+        } else {
+          note.innerHTML = '<strong>Observer is not connected.</strong><span>Open Health and diagnostics after the Pi publisher is installed.</span>';
+        }
       }
     }
 
