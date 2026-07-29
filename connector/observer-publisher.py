@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.8.0'
+PUBLISHER_VERSION = '2.8.1'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -1044,34 +1044,43 @@ def evaluate_filter_roll(
     analysis = analyze_filter_roll_consensus(image_path, captured_at, roi, float(settings.get('probe_y') or 0.5), settings)
     confidence = round(float(analysis.get('confidence') or 0.0), 3)
     radius = analysis.get('apparentOuterRadius')
-    rejection_reason = safe_text(analysis.get('rejectionReason') or '', 300)
-    accepted_measurement = analysis.get('available') is True and confidence >= float(settings.get('minimum_confidence') or 0.65) and radius is not None
-    if analysis.get('available') is True and confidence < float(settings.get('minimum_confidence') or 0.65):
-        rejection_reason = f'Detector confidence {confidence:.0%} was below the {float(settings.get("minimum_confidence") or 0.65):.0%} acceptance threshold.'
+    rejection_reasons: list[str] = []
+    initial_rejection_reason = safe_text(analysis.get('rejectionReason') or '', 300)
+    if initial_rejection_reason:
+        rejection_reasons.append(initial_rejection_reason)
+    minimum_confidence = float(settings.get('minimum_confidence') or 0.65)
+    accepted_measurement = analysis.get('available') is True and confidence >= minimum_confidence and radius is not None
+    low_confidence = analysis.get('available') is True and confidence < minimum_confidence
+    if low_confidence:
+        rejection_reasons.append(f'Detector confidence {confidence:.0%} was below the {minimum_confidence:.0%} acceptance threshold.')
         accepted_measurement = False
 
     pending_candidate = state.get('pendingCandidate') if isinstance(state.get('pendingCandidate'), dict) else None
-    if accepted_measurement and accepted and accepted.get('apparentOuterRadius') is not None:
+    if radius is not None and accepted and accepted.get('apparentOuterRadius') is not None:
         prior_radius = float(accepted.get('apparentOuterRadius') or 0.0)
         elapsed_days = max(1 / 24, (captured_at - (parse_iso(accepted.get('measuredAt')) or captured_at)).total_seconds() / 86400)
         drop_fraction = max(0.0, (prior_radius - float(radius)) / max(1.0, prior_radius))
         allowed_drop = min(0.20, max(float(settings.get('minimum_large_change_fraction') or 0.06), float(settings.get('maximum_radius_drop_fraction_per_day') or 0.08) * elapsed_days))
         if drop_fraction > allowed_drop:
-            confirmations = int(pending_candidate.get('confirmations') or 0) + 1 if filter_roll_candidate_match(pending_candidate, float(radius)) else 1
-            pending_candidate = {
-                'apparentOuterRadius': round(float(radius), 3),
-                'firstSeenAt': pending_candidate.get('firstSeenAt') if confirmations > 1 else captured_at.isoformat(),
-                'lastSeenAt': captured_at.isoformat(),
-                'confirmations': confirmations,
-                'reason': f'Radius fell {drop_fraction:.0%}; allowed change for this interval is {allowed_drop:.0%}.',
-            }
-            if confirmations < int(settings.get('large_change_confirmations') or 2):
-                rejection_reason = f'Large radius decrease ({drop_fraction:.0%}) requires confirmation in a later scheduled window.'
-                accepted_measurement = False
+            if accepted_measurement:
+                confirmations = int(pending_candidate.get('confirmations') or 0) + 1 if filter_roll_candidate_match(pending_candidate, float(radius)) else 1
+                pending_candidate = {
+                    'apparentOuterRadius': round(float(radius), 3),
+                    'firstSeenAt': pending_candidate.get('firstSeenAt') if confirmations > 1 else captured_at.isoformat(),
+                    'lastSeenAt': captured_at.isoformat(),
+                    'confirmations': confirmations,
+                    'reason': f'Radius fell {drop_fraction:.0%}; allowed change for this interval is {allowed_drop:.0%}.',
+                }
+                if confirmations < int(settings.get('large_change_confirmations') or 2):
+                    rejection_reasons.append(f'Large radius decrease ({drop_fraction:.0%}) requires confirmation in a later scheduled window.')
+                    accepted_measurement = False
+                else:
+                    pending_candidate = None
             else:
-                pending_candidate = None
+                rejection_reasons.append(f'Large radius decrease ({drop_fraction:.0%}) would require confirmation before replacing the last accepted reading.')
         else:
             pending_candidate = None
+    rejection_reason = '; '.join(dict.fromkeys(reason for reason in rejection_reasons if reason))
 
     attempt = {
         'measurementId': f'filter-roll-attempt-{captured_at.isoformat()}',

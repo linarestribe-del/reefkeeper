@@ -2,7 +2,7 @@
 
 **Current application version:** `4.3.57`  
 **Current release family:** Maintenance 9F.2 — Filter-Roll Warning Wording  
-**Maintenance state:** Maintenance 9F.2 keeps Observer Publisher 2.8.0 active and clarifies the filter-roll warning so stale camera tracking does not sound like the estimate has reverted to the manual baseline.
+**Maintenance state:** Maintenance 9I keeps the Observer data-saver schedule active, upgrades the Raspberry Pi Observer Publisher to 2.8.1, and presents filter-roll tracking as “holding last good reading” after a rejected scheduled attempt rather than as an alarming stale estimate.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
@@ -131,4 +131,4 @@ The Observer page now displays the active roll percentage, partial/full-cycle la
 
 ## Maintenance 9F Observer Visual Reliability
 
-Publisher 2.8.0 compares fixed cabinet/plumbing anchor zones separately from the serviceable skimmer, GFO, hose, lid, and cord areas. Expected maintenance variation can settle and become part of the learned baseline without creating a persistent whole-scene alert, while actual camera movement, obstruction, or fixed-anchor changes still raise Attention. Filter-roll tracking now uses recent-frame consensus, a 65% default confidence threshold, schedule-aware validation, plausible-change guardrails, and preserved accepted/rejected attempt history. Both calibration helpers save private JSON files as `root:reefkeeper` with mode `0640`.
+Publisher 2.8.1 compares fixed cabinet/plumbing anchor zones separately from the serviceable skimmer, GFO, hose, lid, and cord areas. Expected maintenance variation can settle and become part of the learned baseline without creating a persistent whole-scene alert, while actual camera movement, obstruction, or fixed-anchor changes still raise Attention. Filter-roll tracking now uses recent-frame consensus, a 65% default confidence threshold, schedule-aware validation, plausible-change guardrails, and preserved accepted/rejected attempt history. Both calibration helpers save private JSON files as `root:reefkeeper` with mode `0640`.

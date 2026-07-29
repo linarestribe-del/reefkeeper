@@ -10,7 +10,7 @@ const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const observer = fs.readFileSync(path.join(root, 'observer.js'), 'utf8');
 const publisher = fs.readFileSync(path.join(root, 'connector', 'observer-publisher.py'), 'utf8');
 const calibrator = fs.readFileSync(path.join(root, 'connector', 'observer-water-level-calibrate.py'), 'utf8');
-const installer = fs.readFileSync(path.join(root, 'connector', 'install-observer-publisher-2.8.0.sh'), 'utf8');
+const installer = fs.readFileSync(path.join(root, 'connector', 'install-observer-publisher-2.8.1.sh'), 'utf8');
 const rollCalibrator = fs.readFileSync(path.join(root, 'connector', 'observer-filter-roll-calibrate.py'), 'utf8');
 
 const status = normalizeObserverStatus({
@@ -68,14 +68,14 @@ assert.match(observer, /function renderLocalMonitoring\(/);
 assert.doesNotMatch(observer, /setHealthRow\('local'/, 'Local monitoring must not be rendered twice.');
 assert.match(observer, /waterItem\.hidden = selectedCameraId !== 'return'/);
 assert.match(observer, /Local visual monitoring/);
-assert.match(publisher, /PUBLISHER_VERSION = '2\.8\.0'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.8\.1'/);
 assert.match(publisher, /def evaluate_local_monitor\(/);
 assert.match(publisher, /def detect_water_line\(/);
 assert.doesNotMatch(publisher, /openai|chatgpt/i, 'Per-frame publisher must not call AI');
 assert.match(calibrator, /monitoring\.json/);
 assert.match(calibrator, /baseline_y_percent/);
 assert.match(installer, /systemctl.*ExecStart|--property=ExecStart/);
-assert.match(installer, /PUBLISHER 2\.8\.0 ACTIVE/);
+assert.match(installer, /PUBLISHER 2\.8\.1 ACTIVE/);
 assert.match(rollCalibrator, /outer-edge-consensus-v2/);
 assert.doesNotMatch(installer, /TARGET="\/usr\/local\/bin\/observer-publisher\.py"/);
 

@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9H — Vercel usage saver Observer wording
+// Reef Keeper Maintenance 9I — Filter-roll reliability polish
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {

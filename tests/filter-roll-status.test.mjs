@@ -73,14 +73,29 @@ assert.equal(referenceScenario.current.source, 'manual with camera reference');
 const nextWindow = engine.nextExpectedMeasurementMs(Date.parse('2026-07-25T15:27:38Z'), { scheduleHoursLocal:[9,15,21], minSpacingMinutes:240 });
 assert.ok(nextWindow > Date.parse('2026-07-25T15:27:38Z'), 'The next expected measurement must be schedule-aware.');
 
+
+const holdingScenario = engine.buildStatus({
+  config: manualOnly.config,
+  measurements: [manual, ...cameraHistory.slice(0, 3), {
+    id:'rejected-newer', captureKey:'rejected-newer', measuredAt:'2026-08-01T12:00:00Z', measuredAtMs:Date.parse('2026-08-01T12:00:00Z'),
+    remainingPercent:null, diameterMm:null, apparentOuterRadius:65, confidence:0.64, accepted:false,
+    reason:'Detector confidence 64% was below the 65% acceptance threshold.', sourceType:'camera'
+  }],
+  nowMs: Date.parse('2026-08-01T19:00:00Z')
+});
+assert.equal(holdingScenario.tracking.label, 'Holding last good reading');
+assert.equal(holdingScenario.forecast.available, false);
+assert.equal(holdingScenario.forecast.label, 'Holding last good reading');
+assert.equal(holdingScenario.latestRejectedCameraMeasurement.captureKey, 'rejected-newer');
+
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
 const css = fs.readFileSync('filter-roll-status.css', 'utf8');
 const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.59'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.59'));
-assert.ok(html.includes('/filter-roll-status.css?v=4.3.59'));
-assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.59') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.60'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.60'));
+assert.ok(html.includes('/filter-roll-status.css?v=4.3.60'));
+assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.60') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
 assert.match(ui, /getFilterRollState/);
 assert.match(ui, /reef_observer_filter_roll_state_v1/);
 assert.match(ui, /latestCameraMeasurement/);
@@ -95,9 +110,10 @@ assert.equal(vercel.functions && Object.keys(vercel.functions).length, 3, 'Maint
 assert.match(ui, /Log fleece roll replacement/);
 assert.match(ui, /Radius only/);
 assert.match(ui, /hasQuantitativeValue/);
-console.log('Maintenance 9H filter-roll status tests passed.');
+console.log('Maintenance 9I filter-roll status tests passed.');
 
 const filterRollStatusUi = fs.readFileSync('filter-roll-status.js', 'utf8');
 assert.match(filterRollStatusUi, /estimateBasis = latest\?\.measuredAt \? 'that last accepted reading'/);
 assert.match(filterRollStatusUi, /current estimate remains based on/);
+assert.match(filterRollStatusUi, /Holding the last accepted filter-roll camera reading/);
 assert.doesNotMatch(filterRollStatusUi, /current estimate remains anchored to the manual baseline/);

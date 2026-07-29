@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9F — deterministic, schedule-aware filter-roll status engine.
+/* Reef Keeper Maintenance 9I — conservative filter-roll confidence and forecast handling.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9F';
+  const VERSION = '9I';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
@@ -453,7 +453,11 @@
     return `${formatter.format(new Date(startMs))} – ${formatter.format(new Date(endMs))}`;
   }
 
-  function buildForecast(currentPercent, trend, confidence, nowMs) {
+  function buildForecast(currentPercent, trend, confidence, nowMs, latestRejected = null, latestAcceptedCamera = null) {
+    const rejectedAfterAccepted = Boolean(latestRejected?.measuredAtMs && latestAcceptedCamera?.measuredAtMs && latestRejected.measuredAtMs > latestAcceptedCamera.measuredAtMs);
+    if (rejectedAfterAccepted && (!trend || trend.pointCount < 5 || confidence.label !== 'High')) {
+      return { available: false, label: 'Holding last good reading', detail: 'A newer scheduled attempt was rejected, so replacement timing is paused until another clean camera reading is accepted.' };
+    }
     if (!Number.isFinite(currentPercent) || !trend || trend.ratePerDay == null || trend.ratePerDay <= 0.05) {
       return { available: false, label: 'Still learning', detail: 'A reliable usage rate has not been established.' };
     }
@@ -488,12 +492,18 @@
       .sort((a, b) => (b.measuredAtMs || 0) - (a.measuredAtMs || 0))[0] || null;
   }
 
+  function latestRejectedCameraMeasurement(measurements) {
+    return measurements
+      .filter(item => item.sourceType !== 'manual' && !item.accepted && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm) || Number.isFinite(item.apparentOuterRadius)))
+      .sort((a, b) => (b.measuredAtMs || 0) - (a.measuredAtMs || 0))[0] || null;
+  }
+
   function buildWarnings(config, measurements, latestCamera, currentPercent, confidence) {
     const warnings = [];
     const cameraMeasurements = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = cameraMeasurements.filter(item => item.accepted && item.referenceOnly !== true);
     if (!cameraMeasurements.length) warnings.push('No usable filter-roll camera measurements are available yet.');
-    if (latestCamera && confidence.isStale) warnings.push('The latest filter-roll camera measurement is stale.');
+    if (latestCamera && confidence.isStale) warnings.push('Holding the last accepted filter-roll camera reading until a scheduled attempt is accepted.');
     const rejected = cameraMeasurements.filter(item => !item.accepted);
     if (rejected.length) warnings.push(`${rejected.length} recent camera measurement${rejected.length === 1 ? ' was' : 's were'} rejected or excluded from the trend.`);
     if (confidence.reasons.includes('measurements are not consistently decreasing')) warnings.push('Recent measurements are inconsistent; the usage trend may be unreliable.');
@@ -532,14 +542,15 @@
     const valid = measurements.filter(item => item.accepted && Number.isFinite(item.remainingPercent));
     const trend = buildTrend(valid);
     const confidence = buildConfidence(valid, latestCamera, nowMs, config);
-    const forecast = buildForecast(currentPercent, trend, confidence, nowMs);
+    const latestRejectedCamera = latestRejectedCameraMeasurement(measurements);
+    const forecast = buildForecast(currentPercent, trend, confidence, nowMs, latestRejectedCamera, latestCamera);
     const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence);
     const quantitativeCamera = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = quantitativeCamera.filter(item => item.accepted && item.referenceOnly !== true);
     const tracking = quantitativeCamera.some(item => item.referenceOnly) && (quantitativeCamera.some(item => !item.accepted) || confidence.isStale)
       ? { state:'needs-calibration', label:'Needs calibration' }
       : confidence.isStale
-        ? { state:'stale', label:'Stale' }
+        ? { state:'holding', label:'Holding last good reading' }
         : independentAccepted.length
           ? { state:'tracking', label:'Tracking' }
           : { state:'learning', label:'Learning' };
@@ -557,6 +568,7 @@
       },
       latestMeasurement: latest,
       latestCameraMeasurement: latestCamera,
+      latestRejectedCameraMeasurement: latestRejectedCamera,
       measurements,
       recentMeasurements: measurements.slice(0, 8),
       trend,
@@ -580,6 +592,7 @@
     buildTrend,
     buildConfidence,
     buildForecast,
+    latestRejectedCameraMeasurement,
     nextExpectedMeasurementMs,
     buildStatus
   };

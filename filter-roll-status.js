@@ -1,6 +1,6 @@
-/* Reef Keeper Maintenance 9F.2 — clearer Filter-Roll Status warning wording.
+/* Reef Keeper Maintenance 9I — filter-roll holding-state and reliability wording.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
- * Reads Publisher 2.8.0 consensus attempts and preserved rejection reasons.
+ * Reads Publisher 2.8.1 consensus attempts and preserved rejection reasons.
  */
 (function installFilterRollStatus() {
   'use strict';
@@ -287,6 +287,7 @@
   function trackingClass(state) {
     if (state === 'tracking') return 'good';
     if (state === 'needs-calibration' || state === 'stale') return 'warn';
+    if (state === 'holding') return 'watch';
     return 'learning';
   }
 
@@ -299,8 +300,10 @@
       const detail = rejected ? ` Latest rejected attempt: ${rejected.reason}` : '';
       return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains based on ${estimateBasis}.${detail}`;
     }
-    if (tracking.state === 'stale' && latest?.measuredAt) {
-      return `No accepted filter-roll camera reading has arrived since ${formatDate(latest.measuredAt)}. The current estimate may be outdated; wait for or troubleshoot the next scheduled measurement before planning replacement.`;
+    if ((tracking.state === 'stale' || tracking.state === 'holding') && latest?.measuredAt) {
+      const rejected = status?.latestRejectedCameraMeasurement || (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
+      const detail = rejected?.reason ? ` Latest rejected attempt: ${rejected.reason}` : '';
+      return `Holding the last accepted filter-roll camera reading from ${formatDate(latest.measuredAt)}. The current estimate remains based on that reading until another scheduled attempt is accepted.${detail}`;
     }
     return '';
   }
@@ -318,7 +321,7 @@
     const latestDetail = latest ? `${formatDate(latest.measuredAt)} · ${latest.measuredAt ? ageLabel(latest.measuredAt) : 'Undated'}` : 'No accepted camera reading yet.';
     const sourceLabel = current.source === 'manual with camera reference'
       ? 'Manual baseline with camera reference established'
-      : current.source === 'camera' ? 'Latest independent camera measurement' : 'Manual starting measurement';
+      : current.source === 'camera' ? 'Last accepted camera measurement' : 'Manual starting measurement';
     const primaryWarning = actionableTrackingWarning(status, latest) || [...(status.warnings || []), ...(meta.usingCache ? ['Showing cached Observer data.'] : []), ...(meta.failure && !meta.usingCache ? [`Observer refresh failed: ${meta.failure}`] : [])][0] || '';
     const forecastText = forecast.available ? forecast.dateRange : (forecast.label || 'Still learning');
     const confidenceReason = confidence.reasons?.join('; ') || 'More independent camera history is required.';

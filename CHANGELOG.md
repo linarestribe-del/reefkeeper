@@ -1,3 +1,11 @@
+## v4.3.60 — Maintenance 9I: Filter-Roll Reliability Polish
+
+- Changes filter-roll UI state from alarming stale wording to **Holding last good reading** when a scheduled camera attempt is rejected.
+- Suppresses replacement forecast when the newest scheduled attempt is rejected and the trend is still young.
+- Keeps the visible estimate based on the last accepted camera reading.
+- Adds Publisher 2.8.1 so a low-confidence large radius drop preserves both rejection reasons.
+- Keeps the v4.3.59 Vercel data-saver schedule intact.
+
 
 ## v4.3.59 — Maintenance 9H: Vercel Usage Saver
 
