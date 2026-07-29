@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and upload compact rolling weekly and monthly Aquarium Observer timelapses."""
+"""Build and upload compact rolling weekly and monthly dual-camera Aquarium Observer timelapses."""
 from __future__ import annotations
 
 import base64
@@ -20,11 +20,14 @@ CONFIG_PATH = Path('/etc/reefkeeper-observer/publisher.json')
 MOUNT_DIR = Path('/mnt/reef-ssd')
 BASE_DIR = MOUNT_DIR / 'aquarium-observer'
 CAPTURES_DIR = BASE_DIR / 'captures'
+RETURN_DIR = BASE_DIR / 'return-chamber'
+RETURN_CAPTURES_DIR = RETURN_DIR / 'captures'
 TIMELAPSE_DIR = BASE_DIR / 'timelapse'
+RETURN_TIMELAPSE_DIR = RETURN_DIR / 'timelapse'
 STATUS_PATH = TIMELAPSE_DIR / 'status.json'
 MAX_TIMELAPSE_BYTES = 2_800_000
 TIMELAPSE_FPS = 12
-BUILDER_VERSION = '1.0'
+BUILDER_VERSION = '1.2'
 CAPTURE_NAME_RE = re.compile(r'^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.jpg$', re.I)
 
 
@@ -72,16 +75,32 @@ def parse_capture_datetime(path: Path) -> datetime | None:
         return None
 
 
-def capture_catalog() -> list[tuple[datetime, Path]]:
+def capture_catalog(captures_dir: Path = CAPTURES_DIR) -> list[tuple[datetime, Path]]:
     catalog: list[tuple[datetime, Path]] = []
-    if not CAPTURES_DIR.exists():
+    if not captures_dir.exists():
         return catalog
-    for path in CAPTURES_DIR.rglob('*.jpg'):
+    for path in captures_dir.rglob('*.jpg'):
         captured = parse_capture_datetime(path)
         if captured:
             catalog.append((captured, path))
     catalog.sort(key=lambda item: item[0])
     return catalog
+
+
+def camera_paths(camera_id: str) -> dict[str, Path | str]:
+    if camera_id == 'return':
+        return {
+            'cameraId': 'return',
+            'label': 'Return chamber',
+            'capturesDir': RETURN_CAPTURES_DIR,
+            'timelapseDir': RETURN_TIMELAPSE_DIR,
+        }
+    return {
+        'cameraId': 'overview',
+        'label': 'Sump overview',
+        'capturesDir': CAPTURES_DIR,
+        'timelapseDir': TIMELAPSE_DIR,
+    }
 
 
 def archive_coverage_days(catalog: list[tuple[datetime, Path]]) -> float:
@@ -121,16 +140,16 @@ def timelapse_frames(catalog: list[tuple[datetime, Path]], slot: str, end: datet
     raise ValueError('Unknown timelapse slot')
 
 
-def generate_timelapse(slot: str, frames: list[tuple[datetime, Path]]) -> dict[str, Any]:
+def generate_timelapse(slot: str, frames: list[tuple[datetime, Path]], camera_id: str = 'overview', output_dir: Path = TIMELAPSE_DIR) -> dict[str, Any]:
     if len(frames) < 12:
         raise ValueError(f'Not enough selected frames for the {slot} timelapse')
     ffmpeg = shutil.which('ffmpeg')
     if not ffmpeg:
         raise RuntimeError('ffmpeg is not installed')
-    TIMELAPSE_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = TIMELAPSE_DIR / ('weekly-latest.mp4' if slot == 'week' else 'monthly-latest.mp4')
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / ('weekly-latest.mp4' if slot == 'week' else 'monthly-latest.mp4')
     attempts = [(640, 30), (640, 34), (540, 35), (480, 37), (426, 39)]
-    with tempfile.TemporaryDirectory(prefix=f'.{slot}-frames-', dir=TIMELAPSE_DIR) as temp_name:
+    with tempfile.TemporaryDirectory(prefix=f'.{camera_id}-{slot}-frames-', dir=output_dir) as temp_name:
         temp_dir = Path(temp_name)
         for index, (_, source) in enumerate(frames):
             os.symlink(source, temp_dir / f'frame-{index:05d}.jpg')
@@ -161,6 +180,7 @@ def generate_timelapse(slot: str, frames: list[tuple[datetime, Path]]) -> dict[s
         os.replace(temporary_output, output_path)
     return {
         'slot': slot,
+        'cameraId': camera_id,
         'path': output_path,
         'generatedAt': utc_now(),
         'startCapturedAt': frames[0][0].isoformat(),
@@ -174,9 +194,12 @@ def generate_timelapse(slot: str, frames: list[tuple[datetime, Path]]) -> dict[s
     }
 
 
-def derive_endpoint(publish_endpoint: str) -> str:
+def derive_endpoint(publish_endpoint: str, camera_id: str = 'overview') -> str:
     separator = '&' if '?' in publish_endpoint else '?'
-    return f'{publish_endpoint}{separator}resource=timelapse'
+    endpoint = f'{publish_endpoint}{separator}resource=timelapse'
+    if camera_id == 'return':
+        endpoint = f'{endpoint}&camera=return'
+    return endpoint
 
 
 def post_json(endpoint: str, token: str, payload: dict[str, Any], timeout: int = 90) -> dict[str, Any]:
@@ -207,7 +230,7 @@ def upload_timelapse(endpoint: str, token: str, record: dict[str, Any]) -> dict[
     return post_json(endpoint, token, payload)
 
 
-def process_slot(slot: str, catalog: list[tuple[datetime, Path]], endpoint: str, token: str, old: dict[str, Any], today_key: str) -> dict[str, Any]:
+def process_slot(slot: str, catalog: list[tuple[datetime, Path]], endpoint: str, token: str, old: dict[str, Any], today_key: str, camera_id: str = 'overview', output_dir: Path = TIMELAPSE_DIR) -> dict[str, Any]:
     coverage = archive_coverage_days(catalog)
     required_coverage = 6.5 if slot == 'week' else 27.0
     minimum_frames = 72 if slot == 'week' else 96
@@ -231,7 +254,7 @@ def process_slot(slot: str, catalog: list[tuple[datetime, Path]], endpoint: str,
         item['state'] = 'waiting_for_frames'
         item['frameCount'] = len(frames)
         return item
-    generated = generate_timelapse(slot, frames)
+    generated = generate_timelapse(slot, frames, camera_id, output_dir)
     remote = upload_timelapse(endpoint, token, generated)
     item.update({
         'state': 'generated',
@@ -258,37 +281,63 @@ def main() -> int:
             raise ValueError('Publisher endpoint must use HTTPS')
         if not token:
             raise ValueError('Publisher token is missing')
-        endpoint = derive_endpoint(publish_endpoint)
-        catalog = capture_catalog()
         TIMELAPSE_DIR.mkdir(parents=True, exist_ok=True)
+        RETURN_TIMELAPSE_DIR.mkdir(parents=True, exist_ok=True)
         try:
             previous = read_json(STATUS_PATH)
         except Exception:
             previous = {}
         today_key = datetime.now().astimezone().date().isoformat()
-        state: dict[str, Any] = {'builderVersion': BUILDER_VERSION, 'checkedAt': utc_now(), 'startedAt': started_at}
+        state: dict[str, Any] = {
+            'builderVersion': BUILDER_VERSION,
+            'checkedAt': utc_now(),
+            'startedAt': started_at,
+            'cameras': {},
+        }
         failed = False
-        for slot in ('week', 'month'):
-            old = previous.get(slot) if isinstance(previous.get(slot), dict) else {}
-            try:
-                state[slot] = process_slot(slot, catalog, endpoint, token, old, today_key)
-            except Exception as error:
-                failed = True
-                state[slot] = {
-                    'state': 'retrying',
-                    'coverageDays': round(archive_coverage_days(catalog), 2),
-                    'requiredDays': 7 if slot == 'week' else 30,
-                    'lastGeneratedAt': old.get('lastGeneratedAt'),
-                    'lastUploadedDate': old.get('lastUploadedDate'),
-                    'frameCount': old.get('frameCount') or 0,
-                    'sizeBytes': old.get('sizeBytes') or 0,
-                    'error': safe_text(error, 360),
-                }
-                print(f'TIMELAPSE_FAILED {slot}: {state[slot]["error"]}', file=sys.stderr)
+
+        for camera_id in ('overview', 'return'):
+            paths = camera_paths(camera_id)
+            captures_dir = paths['capturesDir']
+            output_dir = paths['timelapseDir']
+            endpoint = derive_endpoint(publish_endpoint, camera_id)
+            catalog = capture_catalog(captures_dir)
+            previous_camera = previous if camera_id == 'overview' else ((previous.get('cameras') or {}).get(camera_id) or {})
+            camera_state: dict[str, Any] = {
+                'cameraId': camera_id,
+                'label': paths['label'],
+                'capturePath': str(captures_dir),
+                'coverageDays': round(archive_coverage_days(catalog), 2),
+            }
+            for slot in ('week', 'month'):
+                old = previous_camera.get(slot) if isinstance(previous_camera.get(slot), dict) else {}
+                try:
+                    camera_state[slot] = process_slot(slot, catalog, endpoint, token, old, today_key, camera_id, output_dir)
+                except Exception as error:
+                    failed = True
+                    camera_state[slot] = {
+                        'state': 'retrying',
+                        'coverageDays': round(archive_coverage_days(catalog), 2),
+                        'requiredDays': 7 if slot == 'week' else 30,
+                        'lastGeneratedAt': old.get('lastGeneratedAt'),
+                        'lastUploadedDate': old.get('lastUploadedDate'),
+                        'frameCount': old.get('frameCount') or 0,
+                        'sizeBytes': old.get('sizeBytes') or 0,
+                        'error': safe_text(error, 360),
+                    }
+                    print(f'TIMELAPSE_FAILED {camera_id}:{slot}: {camera_state[slot]["error"]}', file=sys.stderr)
+            state['cameras'][camera_id] = camera_state
+            if camera_id == 'overview':
+                state['week'] = camera_state['week']
+                state['month'] = camera_state['month']
+
         state['completedAt'] = utc_now()
         write_json_atomic(STATUS_PATH, state)
-        summary = ','.join(f'{slot}:{state[slot]["state"]}' for slot in ('week', 'month'))
-        print(f'TIMELAPSE_OK {summary} coverage={archive_coverage_days(catalog):.2f}d')
+        summary_parts = []
+        for camera_id in ('overview', 'return'):
+            camera_state = state['cameras'][camera_id]
+            summary_parts.extend(f'{camera_id}:{slot}:{camera_state[slot]["state"]}' for slot in ('week', 'month'))
+        print(f'TIMELAPSE_OK {",".join(summary_parts)}')
         return 1 if failed else 0
     except urllib.error.HTTPError as error:
         body = error.read().decode('utf-8', errors='replace')[:400]

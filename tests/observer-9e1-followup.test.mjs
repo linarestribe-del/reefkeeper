@@ -9,8 +9,8 @@ const filterEngine = fs.readFileSync('filter-roll-engine.js', 'utf8');
 const css = fs.readFileSync('css/app.css', 'utf8');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
-assert.equal(pkg.version, '4.3.57');
-assert.match(html, /Reef Keeper v4\.3\.57 Maintenance 9F\.2/);
+assert.equal(pkg.version, '4.3.58');
+assert.match(html, /Reef Keeper v4\.3\.58 Maintenance 9G/);
 assert.match(html, /id="observer-health-guidance" hidden/);
 assert.match(html, /Reviewed removes an item from this inbox and stores it in history/);
 assert.match(html, /maintenance-9f1-observer-scoping/);
@@ -46,4 +46,4 @@ assert.match(observer, /observer-alert-detail/);
 assert.match(filterUi, /Log fleece roll replacement/);
 assert.match(filterUi, /logFilterRollReplacementFromObserver/);
 assert.match(fs.readFileSync('integration-core.js', 'utf8'), /function logFilterRollReplacementFromObserver/);
-console.log('Maintenance 9F.2 observer scoping and filter-roll action tests passed.');
+console.log('Maintenance 9G observer scoping and filter-roll action tests passed.');

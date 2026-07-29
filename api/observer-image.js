@@ -12,13 +12,15 @@ export default async function handler(req, res) {
 
   if (String(req.query?.media || '') === 'timelapse') {
     const timelapseSlot = normalizeObserverTimelapseSlot(req.query?.slot);
+    const timelapseCamera = normalizeObserverCameraId(req.query?.camera || 'overview');
     if (!timelapseSlot) return res.status(400).send('Unknown Observer timelapse slot');
+    if (!timelapseCamera) return res.status(400).send('Unknown Observer timelapse camera');
     try {
-      const result = await readObserverTimelapse(timelapseSlot);
+      const result = await readObserverTimelapse(timelapseSlot, timelapseCamera);
       if (!result || result.statusCode !== 200 || !result.stream) return res.status(404).send('Observer timelapse not found');
       const size = Number(result.blob?.size || 0);
       res.setHeader('Content-Type', result.blob?.contentType || 'video/mp4');
-      res.setHeader('Content-Disposition', `inline; filename="aquarium-observer-${timelapseSlot}.mp4"`);
+      res.setHeader('Content-Disposition', `inline; filename="aquarium-observer-${timelapseCamera}-${timelapseSlot}.mp4"`);
       res.setHeader('Cache-Control', 'private, no-store, max-age=0');
       res.setHeader('X-Content-Type-Options', 'nosniff');
       res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');

@@ -332,8 +332,7 @@
 
   function normalizeTimelapseFeed(payload) {
     const item = payload && typeof payload === 'object' ? payload : {};
-    const source = item.timelapses && typeof item.timelapses === 'object' ? item.timelapses : {};
-    const normalize = (slot, value) => {
+    const normalize = (slot, value, cameraId = 'overview') => {
       const record = value && typeof value === 'object' ? value : {};
       const generatedAt = parseDate(record.generatedAt);
       const startCapturedAt = parseDate(record.startCapturedAt);
@@ -341,6 +340,7 @@
       const videoUrl = String(record.videoUrl || '').trim();
       return {
         slot,
+        cameraId,
         available: record.available === true && Boolean(generatedAt && startCapturedAt && endCapturedAt && videoUrl),
         state: cleanText(record.state, 'waiting_for_history'),
         label: cleanText(record.label, slot === 'month' ? 'Rolling 30 days' : 'Rolling 7 days'),
@@ -358,12 +358,25 @@
         videoUrl
       };
     };
+    const source = item.timelapses && typeof item.timelapses === 'object' ? item.timelapses : {};
+    const returnSource = item.cameras?.return?.timelapses && typeof item.cameras.return.timelapses === 'object'
+      ? item.cameras.return.timelapses
+      : {};
+    const overviewTimelapses = {
+      week: normalize('week', source.week, 'overview'),
+      month: normalize('month', source.month, 'overview')
+    };
+    const returnTimelapses = {
+      week: normalize('week', returnSource.week, 'return'),
+      month: normalize('month', returnSource.month, 'return')
+    };
     return {
       ok: item.ok !== false,
       updatedAt: parseDate(item.updatedAt),
-      timelapses: {
-        week: normalize('week', source.week),
-        month: normalize('month', source.month)
+      timelapses: overviewTimelapses,
+      cameras: {
+        overview: { timelapses: overviewTimelapses },
+        return: { timelapses: returnTimelapses }
       }
     };
   }
@@ -375,18 +388,26 @@
     return Math.max(0, (newest.getTime() - oldest.getTime()) / 86_400_000);
   }
 
-  function timelapseWaitingText(slot, record = snapshot) {
+  function timelapseWaitingText(slot, record = snapshot, item = null) {
     const required = slot === 'month' ? 30 : 7;
-    const coverage = archiveCoverageDays(record);
+    const coverage = Number(item?.coverageDays || 0) || archiveCoverageDays(record);
     if (!coverage) return `Waiting for ${required} days of archived captures.`;
     if (coverage < required - 0.5) return `Archive covers ${coverage.toFixed(1)} of about ${required} days.`;
     return 'The Pi will generate this timelapse during its next scheduled daily build.';
   }
 
+  function selectedTimelapseCameraFeed(feed, cameraId = selectedCameraId) {
+    if (cameraId === 'return') return feed?.cameras?.return?.timelapses || {};
+    return feed?.cameras?.overview?.timelapses || feed?.timelapses || {};
+  }
+
   function renderObserverTimelapses(feed, record = snapshot) {
     observerTimelapses = feed;
-    const entries = ['week', 'month'].map(slot => feed.timelapses[slot]);
+    const cameraId = record?.cameraId === 'return' ? 'return' : 'overview';
+    const cameraFeed = selectedTimelapseCameraFeed(feed, cameraId);
+    const entries = ['week', 'month'].map(slot => cameraFeed[slot] || normalizeTimelapseFeed({}).cameras[cameraId].timelapses[slot]);
     const readyCount = entries.filter(item => item.available).length;
+    setText('observer-timelapse-title', cameraId === 'return' ? 'Return chamber timelapses' : 'Sump overview timelapses');
     const badge = byId('observer-timelapse-badge');
     if (badge) {
       badge.className = `observer-timelapse-badge ${readyCount ? 'ready' : 'waiting'}`;
@@ -394,7 +415,7 @@
     }
     setText('observer-timelapse-summary', readyCount
       ? `${readyCount} automatic timelapse${readyCount === 1 ? ' is' : 's are'} ready to play.`
-      : 'The Pi will build compressed videos automatically as the local archive reaches 7 and 30 days.');
+      : `${record?.cameraLabel || 'The selected camera'} timelapses will build automatically as the local archive reaches 7 and 30 days.`);
 
     for (const item of entries) {
       const prefix = `observer-timelapse-${item.slot}`;
@@ -421,7 +442,7 @@
         if (video) { video.hidden = true; video.removeAttribute('src'); video.dataset.source = ''; }
         if (placeholder) placeholder.hidden = false;
         if (button) { button.disabled = true; button.textContent = 'Not ready yet'; }
-        if (status) status.textContent = timelapseWaitingText(item.slot, record);
+        if (status) status.textContent = timelapseWaitingText(item.slot, record, item);
         if (meta) meta.textContent = item.slot === 'month' ? 'One frame about every 6 hours' : 'One frame about every hour';
       }
     }
@@ -435,7 +456,7 @@
   }
 
   async function playObserverTimelapse(slot) {
-    const item = observerTimelapses?.timelapses?.[slot];
+    const item = selectedTimelapseCameraFeed(observerTimelapses, selectedCameraId)?.[slot];
     const video = byId(`observer-timelapse-${slot}-video`);
     if (!item?.available || !video) {
       if (typeof showToast === 'function') showToast('Timelapse is not ready yet');
@@ -1188,7 +1209,7 @@
     renderObserverHealth(record);
     if (observerAlerts) renderObserverAlerts(observerAlerts);
     if (record.cameraId === 'overview') renderHistoryOptions(record);
-    if (observerTimelapses && record.cameraId === 'overview') renderObserverTimelapses(observerTimelapses, record);
+    if (observerTimelapses) renderObserverTimelapses(observerTimelapses, record);
 
     const note = byId('observer-connection-note');
     if (note) {
@@ -1245,7 +1266,7 @@
         renderObserver(record);
         renderDailySummary(report);
         renderObserverAlerts(alerts);
-        if (selectedCameraId === 'overview') renderObserverTimelapses(timelapses, observerFeed?.overview || record);
+        renderObserverTimelapses(timelapses, record);
         announceNewObserverAlerts(alerts);
         if (event && typeof showToast === 'function') {
           const message = record.health.status === 'healthy' ? '✅ Observer health refreshed' : '⚠️ Observer health needs attention';

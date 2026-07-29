@@ -1,3 +1,11 @@
+## 4.3.58 — Maintenance 9G Return Chamber Timelapses
+
+- Adds return-chamber weekly/monthly timelapse support using the existing Observer timelapse service and Vercel function budget.
+- Keeps sump overview timelapses backward-compatible while adding camera-scoped return video storage, upload, playback, and metadata.
+- Updates the Pi timelapse builder to version 1.2 so the daily build processes both `/captures` and `/return-chamber/captures`.
+- Displays Return chamber timelapses only when the return camera is selected and preserves sump overview timelapses under the overview camera.
+- No new Vercel function is added; function count remains 12/12.
+
 ## 4.3.57 — Maintenance 9F.2 Filter-Roll Warning Wording
 
 - Clarified the Filter-Roll warning when a new camera attempt is rejected.

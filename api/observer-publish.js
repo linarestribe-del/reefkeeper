@@ -52,12 +52,13 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: 'Timelapse metadata requires generatedAt, startCapturedAt, and endCapturedAt.' });
       }
       const video = decodeObserverMp4(body.videoBase64);
-      const blob = await writeObserverTimelapse(video, slot);
+      const blob = await writeObserverTimelapse(video, slot, cameraId);
       const existing = await readObserverTimelapseFeed().catch(() => null);
       const normalizedExisting = normalizeObserverTimelapseFeed(existing || {});
       const updatedAt = new Date().toISOString();
       const record = {
         slot,
+        cameraId,
         available: true,
         state: 'ready',
         label: slot === 'month' ? 'Rolling 30 days' : 'Rolling 7 days',
@@ -72,16 +73,27 @@ export default async function handler(req, res) {
         resolution: cleanObserverString(body.resolution || '640×360', 40),
         videoVersion: blob.etag || generatedAt
       };
+      const overviewTimelapses = {
+        week: normalizedExisting.timelapses.week,
+        month: normalizedExisting.timelapses.month
+      };
+      const returnTimelapses = {
+        week: normalizedExisting.cameras?.return?.timelapses?.week,
+        month: normalizedExisting.cameras?.return?.timelapses?.month
+      };
+      const targetTimelapses = cameraId === 'return' ? returnTimelapses : overviewTimelapses;
+      targetTimelapses[slot] = record;
       const feed = normalizeObserverTimelapseFeed({
         ok: true,
         updatedAt,
-        timelapses: {
-          week: slot === 'week' ? record : normalizedExisting.timelapses.week,
-          month: slot === 'month' ? record : normalizedExisting.timelapses.month
+        timelapses: overviewTimelapses,
+        cameras: {
+          overview: { timelapses: overviewTimelapses },
+          return: { timelapses: returnTimelapses }
         }
       });
       await writeObserverTimelapseFeed(feed);
-      return res.status(200).json({ ok: true, durable: true, slot, generatedAt, sizeBytes: video.length, updatedAt });
+      return res.status(200).json({ ok: true, durable: true, cameraId, slot, generatedAt, sizeBytes: video.length, updatedAt });
     }
 
     if (cameraId === 'return') {

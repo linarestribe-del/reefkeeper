@@ -15,11 +15,16 @@ import {
 import { readObserverStatus, writeObserverStatus, readObserverTimelapseFeed } from '../lib/observer-r2.js';
 
 function awaitingTimelapseFeed() {
+  const waiting = {
+    week: { available: false, state: 'waiting_for_history', label: 'Rolling 7 days' },
+    month: { available: false, state: 'waiting_for_history', label: 'Rolling 30 days' }
+  };
   return normalizeObserverTimelapseFeed({
     ok: true,
-    timelapses: {
-      week: { available: false, state: 'waiting_for_history', label: 'Rolling 7 days' },
-      month: { available: false, state: 'waiting_for_history', label: 'Rolling 30 days' }
+    timelapses: waiting,
+    cameras: {
+      overview: { timelapses: waiting },
+      return: { timelapses: waiting }
     }
   });
 }
