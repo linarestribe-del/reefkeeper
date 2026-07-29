@@ -1,3 +1,11 @@
+## 4.3.56 — Maintenance 9F.1 Observer Camera Scoping and Filter-Roll Actions
+
+- Added direct Filter-roll card action to log a fleece roll replacement.
+- Scoped active Observer alerts by selected camera so sump overview alerts do not appear on the return chamber view.
+- Added return chamber tools placeholder while return-camera timelapse support remains unavailable.
+- Compacted active alert evidence behind Details.
+- Hardened filter-roll measurement history against duplicate and scheduler-only rows.
+
 ## 4.3.55 — Maintenance 9F Observer Visual Reliability
 
 - Upgraded Raspberry Pi Observer Publisher to 2.8.0.

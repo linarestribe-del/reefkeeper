@@ -436,6 +436,35 @@
     return event;
   }
 
+
+  function logFilterRollReplacementFromObserver(options = {}) {
+    const confirmed = options.confirmed === true || typeof global.confirm !== 'function' || global.confirm('Log a fleece roll replacement now? This closes the current filter-roll cycle and starts a new 100% roll.');
+    if (!confirmed) return { ok:false, cancelled:true };
+    const occurredAt = validIso(options.occurredAt || nowIso());
+    const id = cleanText(options.id) || `filter-roll-replaced-${hashText(occurredAt)}`;
+    const action = {
+      id,
+      title: cleanText(options.title, 'Replaced filter roller fleece'),
+      category: 'equipment',
+      notes: cleanText(options.notes, 'Logged from Aquarium Observer filter-roll status.'),
+      equipmentId: 'filter-roller',
+      equipmentName: 'Filter Roller',
+      actionCode: 'filter_roller.fleece_replaced',
+      date: new Date(occurredAt).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }),
+      isoDate: occurredAt
+    };
+    const actions = safeParse('reef_actions', []);
+    const list = Array.isArray(actions) ? actions.filter(item => item && item.id !== id) : [];
+    safeWrite('reef_actions', [action, ...list].slice(0, 80));
+    const event = recordAction(action);
+    try { global.renderActionHistory?.(); } catch (_) {}
+    try { global.renderRecentChangesHome?.(); } catch (_) {}
+    try { global.renderLongTermSummary?.(); } catch (_) {}
+    try { global.ReefKeeperRefreshFilterRollStatus?.(); } catch (_) {}
+    try { if (typeof global.showToast === 'function') global.showToast('✅ Fleece replacement logged'); } catch (_) {}
+    return { ok:true, action, event, cycle:readFilterRollState().currentCycle };
+  }
+
   function recordCompletedTask(item, options = {}) {
     if (!item || typeof item !== 'object') return null;
     const recordId = canonicalLegacyId('reef_completed_history', item, options.index || 0);
@@ -991,6 +1020,7 @@
     initializeExistingFilterRollFromForm,
     recordFilterRollMeasurement,
     startFilterRollCycle,
+    logFilterRollReplacementFromObserver,
     reconcileFilterRollCyclesFromEvents,
     renderFilterRollIntegrationStatus,
     applyConnectedMaintenancePreset
@@ -999,6 +1029,7 @@
   global.ReefKeeperIntegration = api;
   global.applyConnectedMaintenancePreset = applyConnectedMaintenancePreset;
   global.initializeExistingFilterRollFromForm = initializeExistingFilterRollFromForm;
+  global.logFilterRollReplacementFromObserver = logFilterRollReplacementFromObserver;
 
   try {
     global.addEventListener?.('reefkeeper:event', renderFilterRollIntegrationStatus);

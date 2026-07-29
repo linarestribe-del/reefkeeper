@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9F — actionable Filter-Roll Status UI.
+/* Reef Keeper Maintenance 9F.1 — actionable Filter-Roll Status UI.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Reads Publisher 2.8.0 consensus attempts and preserved rejection reasons.
  */
@@ -266,9 +266,10 @@
       const radius = Number.isFinite(item.apparentOuterRadius) ? `${item.apparentOuterRadius.toFixed(1)} px apparent radius` : formatMm(item.diameterMm);
       const source = item.sourceType === 'manual' ? 'Manual baseline' : (item.referenceOnly ? 'Camera reference' : (item.accepted ? 'Camera · used' : 'Camera · excluded'));
       const confidence = item.sourceType === 'manual' ? 'Physical entry' : formatConfidenceNumber(item.confidence);
+      const valueLabel = Number.isFinite(item.remainingPercent) ? formatPercent(item.remainingPercent) : (item.referenceOnly ? 'Reference' : (item.accepted ? 'Radius only' : 'Excluded'));
       return `<div class="rk-fr-history-row ${item.accepted ? '' : 'rejected'} ${item.referenceOnly ? 'reference' : ''}">
         <div class="rk-fr-history-main"><strong>${escapeHtml(formatDate(item.measuredAt))}</strong><span>${escapeHtml(item.measuredAt ? ageLabel(item.measuredAt) : 'Undated')}</span></div>
-        <div class="rk-fr-history-value"><strong>${escapeHtml(formatPercent(item.remainingPercent, item.accepted ? 'Pending' : 'Excluded'))}</strong><span>${escapeHtml(radius)}</span></div>
+        <div class="rk-fr-history-value"><strong>${escapeHtml(valueLabel)}</strong><span>${escapeHtml(radius)}</span></div>
         <div class="rk-fr-history-confidence"><strong>${escapeHtml(confidence)}</strong><span>${escapeHtml(source)}</span></div>
         ${item.accepted ? '' : `<div class="rk-fr-reject-reason">${escapeHtml(item.reason || 'Rejected or inconsistent measurement')}</div>`}
       </div>`;
@@ -348,6 +349,7 @@
           <div class="rk-fr-metric"><div class="rk-fr-metric-label">Confidence</div><strong><span class="rk-fr-badge ${confidenceClass(confidence.label)}">${escapeHtml(confidence.label || 'Learning')}</span></strong><span>${escapeHtml(confidenceReason)}</span></div>
         </div>
         <div class="rk-fr-section"><div class="rk-fr-section-title"><strong>Recent measurements</strong><span>Only quantitative readings; excluded readings remain visible for diagnostics.</span></div>${measurementRows(status.recentMeasurements || [])}</div>
+        <div class="rk-fr-card-actions"><button class="observer-primary-btn" type="button" onclick="logFilterRollReplacementFromObserver()">Log fleece roll replacement</button><small>Use this after physically replacing the fleece roll. It closes this cycle and starts a new 100% cycle.</small></div>
         <details class="rk-fr-setup-disclosure"><summary>Edit roll setup</summary>
           <form class="observer-filter-roll-init rk-fr-setup-form" onsubmit="initializeExistingFilterRollFromForm(event)">
             <div class="observer-filter-roll-init-head"><strong>Existing roll already in use</strong><span>Enter the physical outside diameter.</span></div>

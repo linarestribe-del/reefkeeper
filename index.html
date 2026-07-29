@@ -12,7 +12,7 @@
 (function(){try{var t=localStorage.getItem('reef_theme_mode')||'system';var dark=t==='dark'||(t==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark)document.documentElement.classList.add('theme-dark');document.documentElement.dataset.themeMode=t;}catch(e){}})();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/app.css?v=20260728-maintenance-9f-observer-reliability">
+<link rel="stylesheet" href="css/app.css?v=20260729-maintenance-9f1-observer-scoping">
 
 <style id="reefkeeper-live-telemetry-compact-fix">
   .home-telemetry-grid {
@@ -788,7 +788,7 @@
   }
 </style>
 
-  <link rel="stylesheet" href="/filter-roll-status.css?v=4.3.55">
+  <link rel="stylesheet" href="/filter-roll-status.css?v=4.3.56">
 </head>
 <body>
 
@@ -1199,7 +1199,7 @@
         <div class="observer-tools-head">
           <div>
             <div class="observer-safety-title" id="observer-tools-title">Observer tools</div>
-            <div class="observer-tools-summary">Health, diagnostics, history comparisons, and timelapses.</div>
+            <div class="observer-tools-summary">Health, diagnostics, camera-specific history, and timelapses.</div>
           </div>
         </div>
 
@@ -1246,7 +1246,7 @@
         <details class="observer-disclosure observer-timelapse-disclosure" id="observer-timelapse-disclosure" data-observer-overview-only>
           <summary><span>Timelapses</span><span id="observer-timelapse-summary">Checking archive history…</span><b class="observer-timelapse-badge waiting" id="observer-timelapse-badge">Checking</b></summary>
           <section class="observer-timelapse-card observer-tools-inner" id="observer-timelapse-card" aria-labelledby="observer-timelapse-title">
-            <div class="observer-safety-title" id="observer-timelapse-title">Weekly and monthly timelapses</div>
+            <div class="observer-safety-title" id="observer-timelapse-title">Sump overview timelapses</div>
             <div class="observer-timelapse-grid">
               <article class="observer-timelapse-item">
                 <div class="observer-timelapse-item-head"><span>📅</span><div><strong>Weekly</strong><small>Rolling 7-day view</small></div></div>
@@ -1269,7 +1269,7 @@
         </details>
 
         <details class="observer-disclosure observer-history-disclosure" id="observer-history-disclosure" data-observer-overview-only>
-          <summary><span>Compare with history</span><span id="observer-history-summary">Checking for historical captures…</span></summary>
+          <summary><span>Sump overview history</span><span id="observer-history-summary">Checking for historical captures…</span></summary>
           <section class="observer-history-card observer-tools-inner">
             <div class="observer-history-actions">
               <button class="observer-history-row" id="observer-compare-previous" type="button" onclick="compareObserverHistory('previous')" disabled><span><strong>Latest vs previous</strong><small id="observer-compare-previous-time">Not available yet</small></span><b>Compare</b></button>
@@ -1277,6 +1277,14 @@
               <button class="observer-history-row" id="observer-compare-weekAgo" type="button" onclick="compareObserverHistory('weekAgo')" disabled><span><strong>Latest vs 7 days ago</strong><small id="observer-compare-weekAgo-time">Not available yet</small></span><b>Compare</b></button>
             </div>
             <p class="observer-history-note">Only selected comparison frames are sent to Reef Keeper; the complete archive remains on the Raspberry Pi.</p>
+          </section>
+        </details>
+
+        <details class="observer-disclosure observer-return-tools-disclosure" id="observer-return-tools-disclosure" data-observer-return-only hidden>
+          <summary><span>Return chamber tools</span><span>Water-level checks are scoped to this camera; timelapse support is not active yet.</span></summary>
+          <section class="observer-tools-inner observer-return-tools-card">
+            <div class="observer-safety-title">Return chamber camera</div>
+            <p class="observer-history-note">Return chamber status is tracked separately from sump overview skimmer and filter-roll alerts. Return timelapse videos will appear here after the Pi timelapse builder supports return-camera frames.</p>
           </section>
         </details>
       </section>
@@ -1673,7 +1681,7 @@
       <div class="settings-card">
         <div class="settings-section-title">App</div>
         <div class="settings-row">
-          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.55 Maintenance 9F</span></div>
+          <div class="settings-copy"><strong>Version</strong><span>Reef Keeper v4.3.56 Maintenance 9F.1</span></div>
         </div>
         <div class="settings-row">
           <div class="settings-copy"><strong>Diagnostics</strong><span>Run diagnostics from the Log tab if something looks off.</span></div>
@@ -3357,9 +3365,9 @@ function copySystemCheckResults() {
 <script src="ai/explainability.js?v=20260718-build-2c"></script>
 <script src="ai/trend-engine.js?v=20260718-build-2a"></script>
 <script src="ai/trend-chart.js?v=20260718-build-2b"></script>
-<script src="app.js?v=20260728-maintenance-9f-observer-reliability"></script>
-<script src="integration-core.js?v=20260728-maintenance-9f-observer-reliability"></script>
-<script src="observer.js?v=20260728-maintenance-9f-observer-reliability"></script>
+<script src="app.js?v=20260729-maintenance-9f1-observer-scoping"></script>
+<script src="integration-core.js?v=20260729-maintenance-9f1-observer-scoping"></script>
+<script src="observer.js?v=20260729-maintenance-9f1-observer-scoping"></script>
 <script src="apex-connect.js?v=20260702-v4-3-17-equipment-open-render"></script>
 <script src="apex-bridge.js?v=20260701-v4-3-11-cloud-poll-disabled"></script>
 <script>
@@ -4594,7 +4602,7 @@ function startVisionPrompt(prompt, preferCamera) {
 </script>
 
 
-  <script src="/filter-roll-engine.js?v=4.3.55"></script>
-  <script src="/filter-roll-status.js?v=4.3.55"></script>
+  <script src="/filter-roll-engine.js?v=4.3.56"></script>
+  <script src="/filter-roll-status.js?v=4.3.56"></script>
 </body>
 </html>

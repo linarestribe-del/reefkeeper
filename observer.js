@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9E.1 — reviewed-alert certainty and maintenance-tolerant health presentation
+// Reef Keeper Maintenance 9F.1 — camera-scoped Observer tools and compact alert inbox
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -223,15 +223,22 @@
       const measuredAt = parseDate(source.measuredAt || source.attemptedAt || source.captureAt);
       const radius = nullable(source.apparentOuterRadius);
       const remaining = nullable(source.remainingPct);
-      if (!measuredAt && radius == null && remaining == null) return null;
+      const diameter = nullable(source.diameterMm || source.outerDiameterMm);
+      const confidence = Math.max(0, Math.min(1, Number(source.confidence) || 0));
+      const statusText = String(source.status || source.state || '').toLowerCase();
+      const hasQuantitativeValue = radius != null || remaining != null || diameter != null;
+      const schedulerOnly = !hasQuantitativeValue && /pending|scheduled|idle/.test(statusText);
+      if (schedulerOnly || (!hasQuantitativeValue && confidence <= 0)) return null;
+      if (!measuredAt && !hasQuantitativeValue) return null;
       return {
         ...source,
         accepted: source.accepted === true || source.available === true,
         available: source.available === true,
         measuredAt,
         attemptedAt: parseDate(source.attemptedAt || source.measuredAt),
-        confidence: Math.max(0, Math.min(1, Number(source.confidence) || 0)),
+        confidence,
         remainingPct: remaining == null ? null : Math.max(0, Math.min(100, remaining)),
+        diameterMm: diameter == null ? null : Math.max(0, diameter),
         apparentOuterRadius: radius == null ? null : Math.max(0, radius),
         analysisMessage: cleanText(source.analysisMessage || source.message),
         rejectionReason: cleanText(source.rejectionReason),
@@ -603,6 +610,11 @@
     const reviewed = storedAlertIds(ALERT_REVIEWED_KEY);
     const currentIds = new Set(feed.currentAlertIds || []);
     const currentAlerts = feed.alerts.filter(alert => currentIds.has(alert.id));
+    const scopedCurrentAlerts = currentAlerts.filter(alert => {
+      const cameraId = cleanText(alert.source?.cameraId, 'overview');
+      if (selectedCameraId === 'return') return cameraId === 'return';
+      return cameraId !== 'return';
+    });
     const canReconcileLifecycle = Boolean(feed.updatedAt || feed.lastEvaluatedAt);
     if (canReconcileLifecycle) {
       const previousActive = storedAlertIds(ALERT_ACTIVE_KEY);
@@ -631,7 +643,7 @@
       if (clearedChanged) saveAlertIds(ALERT_CLEARED_KEY, cleared);
       saveAlertIds(ALERT_ACTIVE_KEY, currentKeys);
     }
-    const active = currentAlerts.filter(alert => !isAlertReviewed(alert, reviewed));
+    const active = scopedCurrentAlerts.filter(alert => !isAlertReviewed(alert, reviewed));
     const urgent = active.some(alert => alert.severity === 'urgent');
     const badge = byId('observer-alert-badge');
     const card = byId('observer-alert-card');
@@ -644,6 +656,7 @@
       card.classList.toggle('has-urgent', urgent);
       card.classList.toggle('is-clear', active.length === 0);
     }
+    setText('observer-alert-title', selectedCameraId === 'return' ? 'Return chamber needs attention' : 'Needs attention');
     const activeSystem = active.filter(alert => alert.kind === 'system');
     const activeVisual = active.filter(alert => alert.kind !== 'system');
     const alertParts = [];
@@ -657,15 +670,20 @@
       : 'Waiting for the next evaluation');
     const list = byId('observer-alert-list');
     if (list) {
-      list.innerHTML = active.length ? active.slice(0, 6).map(alert => `<article class="observer-alert-item ${alert.severity} current">
-        <div class="observer-alert-item-head"><span class="observer-alert-icon">${alertCategoryIcon(alert.category)}</span><div><strong>${cleanText(alert.title)}</strong><small>${alert.kind === 'system' ? 'System monitor' : 'Daily visual comparison'} · ${alertSeverityLabel(alert.severity)} · ${formatCaptureTime(alert.createdAt?.toISOString())}</small></div><b>${alertSeverityLabel(alert.severity)}</b></div>
-        ${alert.evidence ? `<p><strong>Evidence:</strong> ${cleanText(alert.evidence)}</p>` : ''}
-        ${alert.recommendedCheck ? `<p><strong>Recommended check:</strong> ${cleanText(alert.recommendedCheck)}</p>` : ''}
-        <div class="observer-alert-item-actions">
-          ${alert.kind !== 'system' && dailySummary?.ok ? `<button type="button" onclick="openObserverAlertComparison('${alert.id}')">Open comparison</button>` : ''}
-          <button type="button" onclick="markObserverAlertReviewed('${alert.id}')">Mark reviewed</button>
-        </div>
-      </article>`).join('') : '<div class="observer-alert-empty"><strong>All clear.</strong><span>Reviewed alerts are stored in the collapsed history below.</span></div>';
+      list.innerHTML = active.length ? active.slice(0, 6).map(alert => {
+        const cameraLabel = cleanText(alert.source?.cameraId, 'overview') === 'return' ? 'Return chamber' : 'Sump overview';
+        const detailHtml = alert.evidence || alert.recommendedCheck || alert.confidence
+          ? `<details class="observer-alert-detail"><summary>Details</summary>${alert.evidence ? `<p><strong>Evidence:</strong> ${cleanText(alert.evidence)}</p>` : ''}${alert.recommendedCheck ? `<p><strong>Recommended check:</strong> ${cleanText(alert.recommendedCheck)}</p>` : ''}${alert.confidence ? `<p><strong>Confidence:</strong> ${cleanText(alert.confidence)}</p>` : ''}</details>`
+          : '';
+        return `<article class="observer-alert-item ${alert.severity} current compact">
+          <div class="observer-alert-item-head"><span class="observer-alert-icon">${alertCategoryIcon(alert.category)}</span><div><strong>${cleanText(alert.title)}</strong><small>${cameraLabel} · ${alert.kind === 'system' ? 'System monitor' : 'Daily visual comparison'} · ${alertSeverityLabel(alert.severity)} · ${formatCaptureTime(alert.createdAt?.toISOString())}</small></div><b>${alertSeverityLabel(alert.severity)}</b></div>
+          ${detailHtml}
+          <div class="observer-alert-item-actions">
+            ${alert.kind !== 'system' && dailySummary?.ok && selectedCameraId === 'overview' ? `<button type="button" onclick="openObserverAlertComparison('${alert.id}')">Open comparison</button>` : ''}
+            <button type="button" onclick="markObserverAlertReviewed('${alert.id}')">Mark reviewed</button>
+          </div>
+        </article>`;
+      }).join('') : '<div class="observer-alert-empty"><strong>All clear.</strong><span>Reviewed alerts are stored in the collapsed history below.</span></div>';
     }
     const reviewAll = byId('observer-alert-review-all');
     if (reviewAll) reviewAll.disabled = active.length === 0;
@@ -896,6 +914,9 @@
     }
     document.querySelectorAll('[data-observer-overview-only]').forEach(element => {
       element.hidden = selectedCameraId !== 'overview';
+    });
+    document.querySelectorAll('[data-observer-return-only]').forEach(element => {
+      element.hidden = selectedCameraId !== 'return';
     });
   }
 
@@ -1152,7 +1173,7 @@
     setText('observer-preview-age', formatAge(overview.captured));
     setText('observer-preview-interval', `Every ${overview.intervalMinutes} min`);
     setText('observer-detail-eyebrow', record.cameraId === 'return' ? 'Dedicated water-level camera' : 'Sump overview camera');
-    setText('observer-detail-title', `${record.cameraLabel} · ${record.stream}`);
+    setText('observer-detail-title', record.cameraId === 'return' ? `${record.cameraLabel} camera` : `${record.cameraLabel} · ${record.stream}`);
     setText('observer-detail-status', record.label);
     setText('observer-detail-captured', capturedLabel);
     setText('observer-detail-age', ageLabel);
@@ -1165,6 +1186,7 @@
     setText('observer-detail-storage', record.storageLabel);
     setText('observer-detail-drive-space', record.storageAvailableBytes ? `${formatBytes(record.storageAvailableBytes)} free · ${Number(record.storageUsedPercent || 0).toFixed(1)}% used` : '—');
     renderObserverHealth(record);
+    if (observerAlerts) renderObserverAlerts(observerAlerts);
     if (record.cameraId === 'overview') renderHistoryOptions(record);
     if (observerTimelapses && record.cameraId === 'overview') renderObserverTimelapses(observerTimelapses, record);
 

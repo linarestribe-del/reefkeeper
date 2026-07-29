@@ -5234,3 +5234,11 @@ html.theme-dark .observer-connection-note.advisory {
   background: rgba(0, 119, 182, .14);
   color: rgba(224, 244, 251, .88);
 }
+
+/* Maintenance 9F.1: compact active Observer alerts and return-camera scoped tools. */
+.observer-alert-item.compact .observer-alert-detail{margin-top:9px;border-top:1px solid rgba(31,111,139,.12);padding-top:8px}
+.observer-alert-detail>summary{cursor:pointer;color:var(--ocean-deep);font-weight:900;font-size:11px;list-style:none}
+.observer-alert-detail>summary::-webkit-details-marker{display:none}
+.observer-alert-detail>summary::after{content:' ›';display:inline-block;transform:rotate(90deg);margin-left:3px}
+.observer-alert-detail[open]>summary::after{transform:rotate(-90deg)}
+.observer-return-tools-card p{margin:8px 0 0;color:var(--ocean-deep);font-size:13px;font-weight:750;line-height:1.45}

@@ -229,13 +229,39 @@
     return dedupeMeasurements(output).sort((a, b) => (b.measuredAtMs || 0) - (a.measuredAtMs || 0));
   }
 
+  function measurementDedupeKey(item) {
+    const captureKey = text(item?.captureKey || item?.sourceImageId || '');
+    if (captureKey) return `capture:${captureKey}`;
+    const ms = asDateMs(item?.measuredAt || item?.captureAt || item?.attemptedAt);
+    if (Number.isFinite(ms)) {
+      const minute = Math.round(ms / 60000);
+      const source = lower(item?.sourceType || item?.cameraId || 'camera');
+      return `time:${source}:${minute}`;
+    }
+    return `value:${[item?.id, item?.diameterMm, item?.remainingPercent, item?.apparentOuterRadius].join('|')}`;
+  }
+
+  function measurementQualityScore(item) {
+    if (!item) return -1;
+    let score = 0;
+    if (item.accepted) score += 100;
+    if (item.referenceOnly) score += 15;
+    if (Number.isFinite(item.remainingPercent)) score += 30;
+    if (Number.isFinite(item.diameterMm)) score += 12;
+    if (Number.isFinite(item.apparentOuterRadius)) score += 10;
+    if (Number.isFinite(item.confidence)) score += item.confidence * 10;
+    const reason = lower(item.reason || item.message || item.analysisMessage || '');
+    if (/waiting for the next scheduled/.test(reason) && !Number.isFinite(item.apparentOuterRadius) && !Number.isFinite(item.remainingPercent)) score -= 30;
+    return score;
+  }
+
   function dedupeMeasurements(measurements) {
     const map = new Map();
     (measurements || []).forEach(item => {
       if (!item) return;
-      const key = item.captureKey || item.id || [item.measuredAt, item.diameterMm, item.remainingPercent].join('|');
+      const key = measurementDedupeKey(item);
       const previous = map.get(key);
-      if (!previous || ((item.confidence || 0) > (previous.confidence || 0))) map.set(key, item);
+      if (!previous || measurementQualityScore(item) > measurementQualityScore(previous)) map.set(key, item);
     });
     return Array.from(map.values());
   }

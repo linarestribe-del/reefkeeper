@@ -24,7 +24,7 @@ assert.match(observer, /function isAlertReviewed\(/);
 assert.match(observer, /function rememberReviewedAlerts\(/);
 assert.match(observer, /ALERT_ACTIVE_KEY/);
 assert.match(observer, /canReconcileLifecycle/);
-assert.match(observer, /const active = currentAlerts\.filter/);
+assert.match(observer, /const active = scopedCurrentAlerts\.filter/);
 assert.doesNotMatch(observer, /feed\.alerts\.slice\(0, 8\)/, 'Historical alerts must not dominate the active inbox.');
 assert.match(observer, /reviewAll\.disabled = active\.length === 0/);
 assert.match(observer, /waterItem\.hidden = selectedCameraId !== 'return'/);
@@ -32,7 +32,7 @@ assert.match(observer, /compactSummaryText/);
 assert.match(alertsApi, /system:\$\{cameraId\}:\$\{issue\.code\}/, 'System alert identity must be stable across days.');
 
 assert.match(filterUi, /hasQuantitativeValue/);
-assert.match(filterUi, /if \(!hasQuantitativeValue\) return null/);
+assert.match(observer, /schedulerOnly/);
 assert.match(filterUi, /Physical entry/);
 assert.match(filterUi, /Camera reference/);
 assert.match(filterUi, /Manual baseline with camera reference established/);

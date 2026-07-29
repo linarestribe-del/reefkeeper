@@ -332,3 +332,9 @@
  .rk-fr-compact-head{padding:20px 20px 8px}.rk-fr-compact-body{padding:8px 20px 20px}.rk-fr-compact-percent strong{font-size:2.8rem}
  .rk-fr-compact-facts{grid-template-columns:1fr}.rk-fr-details-content{padding:0 16px 18px}.rk-fr-details>summary{padding:15px 20px}
 }
+
+/* Maintenance 9F.1: explicit replacement action inside the Observer filter-roll card. */
+.rk-fr-card-actions{display:grid;gap:8px;margin:18px 0;padding:14px;border:1px solid rgba(13,113,155,.16);border-radius:16px;background:rgba(255,255,255,.38)}
+.rk-fr-card-actions button{width:100%}
+.rk-fr-card-actions small{color:#65758d;font-size:11px;font-weight:700;line-height:1.4}
+html.theme-dark .rk-fr-card-actions{background:rgba(3,21,34,.45);border-color:rgba(155,216,240,.16)}
