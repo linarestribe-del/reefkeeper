@@ -77,10 +77,10 @@ const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
 const css = fs.readFileSync('filter-roll-status.css', 'utf8');
 const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.56'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.56'));
-assert.ok(html.includes('/filter-roll-status.css?v=4.3.56'));
-assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.56') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.57'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.57'));
+assert.ok(html.includes('/filter-roll-status.css?v=4.3.57'));
+assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.57') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
 assert.match(ui, /getFilterRollState/);
 assert.match(ui, /reef_observer_filter_roll_state_v1/);
 assert.match(ui, /latestCameraMeasurement/);
@@ -95,4 +95,9 @@ assert.equal(vercel.functions && Object.keys(vercel.functions).length, 3, 'Maint
 assert.match(ui, /Log fleece roll replacement/);
 assert.match(ui, /Radius only/);
 assert.match(ui, /hasQuantitativeValue/);
-console.log('Maintenance 9F.1 filter-roll status tests passed.');
+console.log('Maintenance 9F.2 filter-roll status tests passed.');
+
+const filterRollStatusUi = fs.readFileSync('filter-roll-status.js', 'utf8');
+assert.match(filterRollStatusUi, /estimateBasis = latest\?\.measuredAt \? 'that last accepted reading'/);
+assert.match(filterRollStatusUi, /current estimate remains based on/);
+assert.doesNotMatch(filterRollStatusUi, /current estimate remains anchored to the manual baseline/);

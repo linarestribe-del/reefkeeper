@@ -1,3 +1,9 @@
+## 4.3.57 — Maintenance 9F.2 Filter-Roll Warning Wording
+
+- Clarified the Filter-Roll warning when a new camera attempt is rejected.
+- The warning now says the current estimate remains based on the last accepted camera reading when one exists, rather than saying it is anchored to the manual baseline.
+- No Raspberry Pi or Publisher change is required.
+
 ## 4.3.56 — Maintenance 9F.1 Observer Camera Scoping and Filter-Roll Actions
 
 - Added direct Filter-roll card action to log a fleece roll replacement.

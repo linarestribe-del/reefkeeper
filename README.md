@@ -1,12 +1,12 @@
 # Reef Keeper
 
-**Current application version:** `4.3.56`  
-**Current release family:** Maintenance 9F.1 — Observer Camera Scoping and Filter-Roll Actions  
-**Maintenance state:** Maintenance 9F.1 keeps Observer Publisher 2.8.0 active and tightens the app UI: camera-scoped alerts, compact active alert details, direct fleece-roll replacement logging, and cleaner filter-roll history.
+**Current application version:** `4.3.57`  
+**Current release family:** Maintenance 9F.2 — Filter-Roll Warning Wording  
+**Maintenance state:** Maintenance 9F.2 keeps Observer Publisher 2.8.0 active and clarifies the filter-roll warning so stale camera tracking does not sound like the estimate has reverted to the manual baseline.
 
 Reef Keeper is a browser-based reef aquarium management application with local tank records, Apex telemetry, AI-assisted analysis, and a Raspberry Pi Aquarium Observer pipeline.
 
-Maintenance 9F.1 is documented in `MAINTENANCE_9F_1_RELEASE_MANIFEST.md` and `MAINTENANCE_9F_1_TEST_REPORT.md`. It is an app-only update over 9F; no Raspberry Pi reinstall is required.
+Maintenance 9F.2 is documented in `MAINTENANCE_9F_2_RELEASE_MANIFEST.md` and `MAINTENANCE_9F_2_TEST_REPORT.md`. It is an app-only wording update over 9F.1; no Raspberry Pi reinstall is required.
 
 ## Current major capabilities
 

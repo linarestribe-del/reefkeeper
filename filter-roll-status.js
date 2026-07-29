@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9F.1 — actionable Filter-Roll Status UI.
+/* Reef Keeper Maintenance 9F.2 — clearer Filter-Roll Status warning wording.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Reads Publisher 2.8.0 consensus attempts and preserved rejection reasons.
  */
@@ -294,9 +294,10 @@
     const tracking = status?.tracking || {};
     if (tracking.state === 'needs-calibration') {
       const since = latest?.measuredAt ? formatDate(latest.measuredAt) : 'the initial camera reference';
+      const estimateBasis = latest?.measuredAt ? 'that last accepted reading' : 'the saved manual starting measurement';
       const rejected = (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
       const detail = rejected ? ` Latest rejected attempt: ${rejected.reason}` : '';
-      return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains anchored to the manual baseline.${detail}`;
+      return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains based on ${estimateBasis}.${detail}`;
     }
     if (tracking.state === 'stale' && latest?.measuredAt) {
       return `No accepted filter-roll camera reading has arrived since ${formatDate(latest.measuredAt)}. The current estimate may be outdated; wait for or troubleshoot the next scheduled measurement before planning replacement.`;
