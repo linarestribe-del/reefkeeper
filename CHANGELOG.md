@@ -1,3 +1,11 @@
+
+## v4.3.59 — Maintenance 9H: Vercel Usage Saver
+
+- Updates Observer wording for the 15-minute cloud publish schedule.
+- Keeps local camera capture described separately from Vercel publishing.
+- Extends app-side stale thresholds so normal data-saver publish spacing does not look like an Observer failure.
+- Adds data-saver schedule text to Observer diagnostics and camera cards.
+
 ## 4.3.58 — Maintenance 9G Return Chamber Timelapses
 
 - Adds return-chamber weekly/monthly timelapse support using the existing Observer timelapse service and Vercel function budget.

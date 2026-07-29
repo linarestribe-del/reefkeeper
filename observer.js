@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9F.1 — camera-scoped Observer tools and compact alert inbox
+// Reef Keeper Maintenance 9H — Vercel usage saver Observer wording
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {
@@ -14,10 +14,11 @@
   const ALERT_CLEARED_KEY = 'reef_observer_cleared_alert_keys_v1';
   const ALERT_SEEN_KEY = 'reef_observer_seen_alert_ids_v1';
   const REFRESH_INTERVAL_MS = 60_000;
-  const CAPTURE_STALE_AFTER_MS = 15 * 60_000;
-  const CAPTURE_OFFLINE_AFTER_MS = 60 * 60_000;
-  const PUBLISH_STALE_AFTER_MS = 15 * 60_000;
-  const PUBLISH_OFFLINE_AFTER_MS = 60 * 60_000;
+  const CLOUD_PUBLISH_INTERVAL_MINUTES = 15;
+  const CAPTURE_STALE_AFTER_MS = 25 * 60_000;
+  const CAPTURE_OFFLINE_AFTER_MS = 90 * 60_000;
+  const PUBLISH_STALE_AFTER_MS = 25 * 60_000;
+  const PUBLISH_OFFLINE_AFTER_MS = 90 * 60_000;
   const HISTORY_LABELS = {
     previous: 'Previous capture',
     dayAgo: 'About 24 hours ago',
@@ -94,6 +95,16 @@
     if (hours < 24) return `${hours} hr${hours === 1 ? '' : 's'} ago`;
     const days = Math.floor(hours / 24);
     return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
+
+  function dataSaverScheduleLabel(captureMinutes = 5) {
+    const localMinutes = Number(captureMinutes) || 5;
+    return `Local capture every ${localMinutes} min · cloud publish every ${CLOUD_PUBLISH_INTERVAL_MINUTES} min`;
+  }
+
+  function dataSaverDetailLabel(captureMinutes = 5) {
+    const localMinutes = Number(captureMinutes) || 5;
+    return `Local archive keeps ${localMinutes}-minute captures. Reef Keeper publishes the latest view to Vercel about every ${CLOUD_PUBLISH_INTERVAL_MINUTES} minutes to reduce transfer usage.`;
   }
 
   function healthState(value, fallback = 'pending') {
@@ -792,19 +803,19 @@
 
     if (publishAgeMs > PUBLISH_OFFLINE_AFTER_MS) {
       health.publisher.status = 'offline';
-      health.publisher.message = `No remote update has arrived for ${formatAge(publishedAt).toLowerCase()}.`;
+      health.publisher.message = `No cloud update has arrived for ${formatAge(publishedAt).toLowerCase()}; local capture may still be running on the Pi.`;
       if (!issues.some(item => item.code === 'publisher_stale')) {
         issues.unshift({ code: 'publisher_stale', severity: 'critical', message: health.publisher.message });
       }
     } else if (publishAgeMs > PUBLISH_STALE_AFTER_MS) {
       health.publisher.status = 'attention';
-      health.publisher.message = `Last remote update arrived ${formatAge(publishedAt).toLowerCase()}.`;
+      health.publisher.message = `Last cloud publish arrived ${formatAge(publishedAt).toLowerCase()}; data saver expects roughly ${CLOUD_PUBLISH_INTERVAL_MINUTES}-minute cloud updates.`;
       if (!issues.some(item => item.code === 'publisher_delayed')) {
         issues.unshift({ code: 'publisher_delayed', severity: 'warning', message: health.publisher.message });
       }
     } else if (publishedAt && health.publisher.status === 'pending') {
       health.publisher.status = 'healthy';
-      health.publisher.message = `Last remote update arrived ${formatAge(publishedAt).toLowerCase()}.`;
+      health.publisher.message = `Last cloud publish arrived ${formatAge(publishedAt).toLowerCase()}.`;
     }
 
     if (captureAgeMs > CAPTURE_OFFLINE_AFTER_MS && health.capture.status !== 'offline') {
@@ -1097,7 +1108,7 @@
 
     const servicesHealthy = health.services.captureTimerActive && health.services.publishTimerActive;
     const servicesState = servicesHealthy ? 'healthy' : 'attention';
-    const servicesDetail = `Capture timer: ${health.services.captureTimerState}; publisher timer: ${health.services.publishTimerState}.`;
+    const servicesDetail = `${dataSaverScheduleLabel(record.intervalMinutes)}. Capture timer: ${health.services.captureTimerState}; publisher timer: ${health.services.publishTimerState}.`;
     setHealthRow('services', servicesState, servicesDetail);
 
     const readyLabels = (health.archive.historySlotsReady || []).map(slot => HISTORY_LABELS[slot] || slot);
@@ -1135,6 +1146,8 @@
       diagnosticLine('Summary', health.summary),
       diagnosticLine('Last capture', record.captured?.toISOString()),
       diagnosticLine('Capture age', formatAge(record.captured)),
+      diagnosticLine('Data saver schedule', dataSaverScheduleLabel(record.intervalMinutes)),
+      diagnosticLine('Data saver detail', dataSaverDetailLabel(record.intervalMinutes)),
       diagnosticLine('Last publish', record.publishedAt?.toISOString()),
       diagnosticLine('Publish age', formatAge(record.publishedAt)),
       diagnosticLine('Publisher version', record.publisherVersion),
@@ -1183,7 +1196,7 @@
     const captureIso = record.captured?.toISOString() || '';
     const capturedLabel = formatCaptureTime(captureIso);
     const ageLabel = formatAge(record.captured);
-    const intervalLabel = `Every ${record.intervalMinutes} min`;
+    const intervalLabel = dataSaverScheduleLabel(record.intervalMinutes);
 
     setBadge('observer-preview-badge', overview);
     setBadge('observer-detail-badge', record);
@@ -1192,17 +1205,17 @@
 
     setText('observer-preview-captured', formatCaptureTime(overview.captured?.toISOString()));
     setText('observer-preview-age', formatAge(overview.captured));
-    setText('observer-preview-interval', `Every ${overview.intervalMinutes} min`);
+    setText('observer-preview-interval', dataSaverScheduleLabel(overview.intervalMinutes));
     setText('observer-detail-eyebrow', record.cameraId === 'return' ? 'Dedicated water-level camera' : 'Sump overview camera');
     setText('observer-detail-title', record.cameraId === 'return' ? `${record.cameraLabel} camera` : `${record.cameraLabel} · ${record.stream}`);
     setText('observer-detail-status', record.label);
     setText('observer-detail-captured', capturedLabel);
     setText('observer-detail-age', ageLabel);
-    setText('observer-detail-interval', `${record.intervalMinutes} minutes`);
+    setText('observer-detail-interval', dataSaverScheduleLabel(record.intervalMinutes));
     setText('observer-detail-camera', record.cameraLabel);
     setText('observer-detail-stream', `${record.stream} · ${record.resolution}`);
     setText('observer-detail-size', formatBytes(record.sizeBytes));
-    setText('observer-detail-published', `${formatCaptureTime(record.publishedAt?.toISOString())} · ${formatAge(record.publishedAt)}`);
+    setText('observer-detail-published', `${formatCaptureTime(record.publishedAt?.toISOString())} · ${formatAge(record.publishedAt)} · data saver`);
     setText('observer-detail-publisher', record.publisherVersion === '—' ? 'Waiting for version' : `v${record.publisherVersion}`);
     setText('observer-detail-storage', record.storageLabel);
     setText('observer-detail-drive-space', record.storageAvailableBytes ? `${formatBytes(record.storageAvailableBytes)} free · ${Number(record.storageUsedPercent || 0).toFixed(1)}% used` : '—');
