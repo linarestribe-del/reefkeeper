@@ -61,7 +61,8 @@ assert.equal(status.measurements.filter(item => item.captureKey === 'capture-5')
 assert.equal(status.latestCameraMeasurement.captureKey, 'capture-5');
 assert.ok(status.trend.pointCount >= 5, 'Accepted measurements must feed the usage trend.');
 assert.equal(status.forecast.available, true, 'A multi-day reliable history should produce a provisional forecast.');
-assert.ok(status.warnings.some(item => item.includes('rejected')), 'Excluded camera readings must remain disclosed.');
+assert.ok(!status.warnings.some(item => item.includes('rejected')), 'Older rejected readings must not keep an active warning after a newer accepted reading.');
+assert.equal(status.tracking.label, 'Tracking', 'A newer accepted reading must clear the active holding/calibration state.');
 const referenceScenario = engine.buildStatus({
   config: { ...manualOnly.config, scheduleHoursLocal:[9,15,21], minSpacingMinutes:240 },
   measurements: [manual, { ...cameraHistory[0], measuredAt:'2026-07-25T15:27:38Z', measuredAtMs:Date.parse('2026-07-25T15:27:38Z'), referenceOnly:true }, rejected],
@@ -103,14 +104,45 @@ assert.equal(blockedScenario.tracking.label, 'View blocked');
 assert.equal(blockedScenario.trend.label, 'Paused — view blocked');
 assert.equal(blockedScenario.confidence.label, 'Limited');
 
+
+
+const duplicateTimestampStatus = engine.buildStatus({
+  config: manualOnly.config,
+  measurements: [
+    manual,
+    {
+      id: 'radius-only-a', captureKey: 'measurement-id-a', measuredAt: '2026-08-02T16:10:00Z', measuredAtMs: Date.parse('2026-08-02T16:10:00Z'),
+      remainingPercent: null, diameterMm: null, apparentOuterRadius: 73, confidence: 0.94, accepted: true, sourceType: 'camera'
+    },
+    {
+      id: 'radius-only-b', captureKey: 'source-image-b', measuredAt: '2026-08-02T16:10:20Z', measuredAtMs: Date.parse('2026-08-02T16:10:20Z'),
+      remainingPercent: null, diameterMm: null, apparentOuterRadius: 73, confidence: 0.94, accepted: true, sourceType: 'camera'
+    },
+    {
+      id: 'converted-percent', captureKey: 'observer-root', measuredAt: '2026-08-02T16:10:35Z', measuredAtMs: Date.parse('2026-08-02T16:10:35Z'),
+      remainingPercent: 52.4, diameterMm: null, apparentOuterRadius: 73, confidence: 0.94, accepted: true, sourceType: 'camera'
+    },
+    {
+      id: 'older-rejected', captureKey: 'older-rejected', measuredAt: '2026-08-01T22:06:00Z', measuredAtMs: Date.parse('2026-08-01T22:06:00Z'),
+      remainingPercent: null, diameterMm: null, apparentOuterRadius: 61, confidence: 0.30, accepted: false,
+      reason: 'Detector confidence 30% was below the 65% acceptance threshold.', sourceType: 'camera'
+    }
+  ],
+  nowMs: Date.parse('2026-08-02T16:30:00Z')
+});
+assert.equal(duplicateTimestampStatus.recentMeasurements.filter(item => item.measuredAt?.startsWith('2026-08-02T16:10')).length, 1, 'Same-window radius-only and percent records must collapse into one row.');
+assert.equal(duplicateTimestampStatus.latestCameraMeasurement.remainingPercent, 52.4, 'The converted percent record must win over radius-only duplicates.');
+assert.equal(duplicateTimestampStatus.tracking.label, 'Tracking', 'A newer accepted reading must clear older rejected diagnostics.');
+assert.ok(!duplicateTimestampStatus.warnings.some(item => /rejected|calibration/i.test(item)), 'Old rejected attempts remain history, not active warnings.');
+
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
 const css = fs.readFileSync('filter-roll-status.css', 'utf8');
 const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.61'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.61'));
-assert.ok(html.includes('/filter-roll-status.css?v=4.3.61'));
-assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.61') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.62'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.62'));
+assert.ok(html.includes('/filter-roll-status.css?v=4.3.62'));
+assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.62') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
 assert.match(ui, /getFilterRollState/);
 assert.match(ui, /reef_observer_filter_roll_state_v1/);
 assert.match(ui, /latestCameraMeasurement/);
@@ -125,11 +157,12 @@ assert.equal(vercel.functions && Object.keys(vercel.functions).length, 3, 'Maint
 assert.match(ui, /Log fleece roll replacement/);
 assert.match(ui, /Radius only/);
 assert.match(ui, /hasQuantitativeValue/);
-console.log('Maintenance 9I.1 filter-roll status tests passed.');
+console.log('Maintenance 9I.2 filter-roll status tests passed.');
 
 const filterRollStatusUi = fs.readFileSync('filter-roll-status.js', 'utf8');
 assert.match(filterRollStatusUi, /estimateBasis = latest\?\.measuredAt \? 'that last accepted reading'/);
 assert.match(filterRollStatusUi, /current estimate remains based on/);
 assert.match(filterRollStatusUi, /Holding the last accepted filter-roll camera reading/);
 assert.match(filterRollStatusUi, /Filter-roll view appears blocked or unreliable/);
+assert.match(filterRollStatusUi, /rejectedIsNewer/);
 assert.doesNotMatch(filterRollStatusUi, /current estimate remains anchored to the manual baseline/);

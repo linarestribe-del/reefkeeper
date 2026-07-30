@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9I.1 — clearer blocked-view and paused-trend wording.
+/* Reef Keeper Maintenance 9I.2 — clear old rejection warnings after accepted readings.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Reads Publisher 2.8.1 consensus attempts and preserved rejection reasons.
  */
@@ -295,7 +295,8 @@
   function actionableTrackingWarning(status, latest) {
     const tracking = status?.tracking || {};
     const rejected = status?.latestRejectedCameraMeasurement || (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
-    const detail = rejected?.reason ? ` Latest rejected attempt: ${rejected.reason}` : '';
+    const rejectedIsNewer = Boolean(rejected?.measuredAtMs && latest?.measuredAtMs && rejected.measuredAtMs > latest.measuredAtMs);
+    const detail = rejectedIsNewer && rejected?.reason ? ` Latest rejected attempt: ${rejected.reason}` : '';
     if (tracking.state === 'view-blocked' && latest?.measuredAt) {
       return `Filter-roll view appears blocked or unreliable, so Reef Keeper is holding the last accepted camera reading from ${formatDate(latest.measuredAt)}. The current estimate remains based on that reading until the roll edge is visible again.${detail}`;
     }

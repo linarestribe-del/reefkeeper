@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9I.1 — view-blocked filter-roll holding states.
+/* Reef Keeper Maintenance 9I.2 — accepted-reading cleanup and filter-roll dedupe.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9I.1';
+  const VERSION = '9I.2';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
@@ -230,14 +230,14 @@
   }
 
   function measurementDedupeKey(item) {
-    const captureKey = text(item?.captureKey || item?.sourceImageId || '');
-    if (captureKey) return `capture:${captureKey}`;
     const ms = asDateMs(item?.measuredAt || item?.captureAt || item?.attemptedAt);
     if (Number.isFinite(ms)) {
-      const minute = Math.round(ms / 60000);
+      const minute = Math.floor(ms / 60000);
       const source = lower(item?.sourceType || item?.cameraId || 'camera');
       return `time:${source}:${minute}`;
     }
+    const captureKey = text(item?.captureKey || item?.sourceImageId || '');
+    if (captureKey) return `capture:${captureKey}`;
     return `value:${[item?.id, item?.diameterMm, item?.remainingPercent, item?.apparentOuterRadius].join('|')}`;
   }
 
@@ -538,20 +538,20 @@
     };
   }
 
-  function buildWarnings(config, measurements, latestCamera, currentPercent, confidence) {
+  function buildWarnings(config, measurements, latestCamera, currentPercent, confidence, latestRejectedCamera = null) {
     const warnings = [];
     const cameraMeasurements = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = cameraMeasurements.filter(item => item.accepted && item.referenceOnly !== true);
+    const activeRejected = rejectedAfterAccepted(latestRejectedCamera, latestCamera);
     if (!cameraMeasurements.length) warnings.push('No usable filter-roll camera measurements are available yet.');
     if (latestCamera && confidence.isStale) warnings.push('Holding the last accepted filter-roll camera reading until a scheduled attempt is accepted.');
-    const rejected = cameraMeasurements.filter(item => !item.accepted);
-    if (rejected.length) warnings.push(`${rejected.length} recent camera measurement${rejected.length === 1 ? ' was' : 's were'} rejected or excluded from the trend.`);
+    if (activeRejected) warnings.push('The latest scheduled camera attempt was rejected and is shown in diagnostics.');
     if (confidence.reasons.includes('measurements are not consistently decreasing')) warnings.push('Recent measurements are inconsistent; the usage trend may be unreliable.');
     const initializedPercent = calculateRemainingPercent(config.currentDiameterMm, config.newRollDiameterMm, config.coreDiameterMm);
     if (latestCamera && Number.isFinite(initializedPercent) && Number.isFinite(currentPercent) && Math.abs(currentPercent - initializedPercent) > 18 && independentAccepted.length < 3) {
       warnings.push('The camera estimate differs substantially from the manual starting measurement.');
     }
-    if (cameraMeasurements.some(item => item.referenceOnly) && (rejected.length >= 1 || confidence.isStale)) {
+    if (cameraMeasurements.some(item => item.referenceOnly) && (activeRejected || confidence.isStale)) {
       warnings.push('Camera tracking needs calibration before it can support a dependable usage trend.');
     }
     return warnings;
@@ -587,12 +587,12 @@
     const trend = pauseTrendForRejectedAttempt(baseTrend, latestRejectedCamera, latestCamera);
     const confidence = limitConfidenceForRejectedAttempt(baseConfidence, latestRejectedCamera, latestCamera);
     const forecast = buildForecast(currentPercent, baseTrend, baseConfidence, nowMs, latestRejectedCamera, latestCamera);
-    const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence);
+    const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence, latestRejectedCamera);
     const quantitativeCamera = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = quantitativeCamera.filter(item => item.accepted && item.referenceOnly !== true);
     const tracking = rejectedIsNewer && rejectionSuggestsBlockedView(latestRejectedCamera) && independentAccepted.length >= 2
       ? { state:'view-blocked', label:'View blocked' }
-      : quantitativeCamera.some(item => item.referenceOnly) && (quantitativeCamera.some(item => !item.accepted) || confidence.isStale)
+      : quantitativeCamera.some(item => item.referenceOnly) && (rejectedIsNewer || confidence.isStale)
         ? { state:'needs-calibration', label:'Needs calibration' }
         : rejectedIsNewer
           ? { state:'holding', label:'Holding last good reading' }
