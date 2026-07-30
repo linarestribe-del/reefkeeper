@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9I — Filter-roll reliability polish
+// Reef Keeper Maintenance 9I.1 — Filter-roll blocked-view polish
 // Full archives remain local. Only current/selected images and non-secret diagnostics are published remotely.
 
 (function installAquariumObserver() {

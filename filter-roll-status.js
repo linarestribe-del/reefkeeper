@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9I — filter-roll holding-state and reliability wording.
+/* Reef Keeper Maintenance 9I.1 — clearer blocked-view and paused-trend wording.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Reads Publisher 2.8.1 consensus attempts and preserved rejection reasons.
  */
@@ -250,12 +250,13 @@
     if (normalized === 'high') return 'good';
     if (normalized === 'medium') return 'watch';
     if (normalized === 'low') return 'warn';
+    if (normalized === 'limited') return 'watch';
     return 'learning';
   }
 
   function trendClass(state) {
     if (state === 'normal' || state === 'slower') return 'good';
-    if (state === 'faster') return 'watch';
+    if (state === 'faster' || state === 'paused') return 'watch';
     return 'learning';
   }
 
@@ -287,22 +288,23 @@
   function trackingClass(state) {
     if (state === 'tracking') return 'good';
     if (state === 'needs-calibration' || state === 'stale') return 'warn';
-    if (state === 'holding') return 'watch';
+    if (state === 'holding' || state === 'view-blocked') return 'watch';
     return 'learning';
   }
 
   function actionableTrackingWarning(status, latest) {
     const tracking = status?.tracking || {};
+    const rejected = status?.latestRejectedCameraMeasurement || (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
+    const detail = rejected?.reason ? ` Latest rejected attempt: ${rejected.reason}` : '';
+    if (tracking.state === 'view-blocked' && latest?.measuredAt) {
+      return `Filter-roll view appears blocked or unreliable, so Reef Keeper is holding the last accepted camera reading from ${formatDate(latest.measuredAt)}. The current estimate remains based on that reading until the roll edge is visible again.${detail}`;
+    }
     if (tracking.state === 'needs-calibration') {
       const since = latest?.measuredAt ? formatDate(latest.measuredAt) : 'the initial camera reference';
       const estimateBasis = latest?.measuredAt ? 'that last accepted reading' : 'the saved manual starting measurement';
-      const rejected = (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
-      const detail = rejected ? ` Latest rejected attempt: ${rejected.reason}` : '';
       return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains based on ${estimateBasis}.${detail}`;
     }
     if ((tracking.state === 'stale' || tracking.state === 'holding') && latest?.measuredAt) {
-      const rejected = status?.latestRejectedCameraMeasurement || (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
-      const detail = rejected?.reason ? ` Latest rejected attempt: ${rejected.reason}` : '';
       return `Holding the last accepted filter-roll camera reading from ${formatDate(latest.measuredAt)}. The current estimate remains based on that reading until another scheduled attempt is accepted.${detail}`;
     }
     return '';
@@ -325,6 +327,7 @@
     const primaryWarning = actionableTrackingWarning(status, latest) || [...(status.warnings || []), ...(meta.usingCache ? ['Showing cached Observer data.'] : []), ...(meta.failure && !meta.usingCache ? [`Observer refresh failed: ${meta.failure}`] : [])][0] || '';
     const forecastText = forecast.available ? forecast.dateRange : (forecast.label || 'Still learning');
     const confidenceReason = confidence.reasons?.join('; ') || 'More independent camera history is required.';
+    const trendDetail = trend.paused ? (trend.pauseReason || 'Usage trend is paused until another clean camera reading is accepted.') : (Number.isFinite(trend.ratePerDay) ? `${trend.ratePerDay.toFixed(2)} percentage points/day` : 'Still learning the usage rate');
 
     card.innerHTML = `<div class="rk-fr-compact-head">
       <div><div class="rk-fr-kicker">FILTER ROLL</div><h3>Filter-roll status</h3></div>
@@ -349,7 +352,7 @@
           <div><span>Roll geometry</span><strong>${escapeHtml(`${status.config.newRollDiameterMm} mm new · ${status.config.coreDiameterMm} mm core`)}</strong></div>
         </div>
         <div class="rk-fr-metric-grid">
-          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Usage trend</div><strong><span class="rk-fr-badge ${trendClass(trend.state)}">${escapeHtml(trend.label || 'Insufficient data')}</span></strong><span>${escapeHtml(Number.isFinite(trend.ratePerDay) ? `${trend.ratePerDay.toFixed(2)} percentage points/day` : 'Still learning the usage rate')}</span></div>
+          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Usage trend</div><strong><span class="rk-fr-badge ${trendClass(trend.state)}">${escapeHtml(trend.label || 'Insufficient data')}</span></strong><span>${escapeHtml(trendDetail)}</span></div>
           <div class="rk-fr-metric"><div class="rk-fr-metric-label">Confidence</div><strong><span class="rk-fr-badge ${confidenceClass(confidence.label)}">${escapeHtml(confidence.label || 'Learning')}</span></strong><span>${escapeHtml(confidenceReason)}</span></div>
         </div>
         <div class="rk-fr-section"><div class="rk-fr-section-title"><strong>Recent measurements</strong><span>Only quantitative readings; excluded readings remain visible for diagnostics.</span></div>${measurementRows(status.recentMeasurements || [])}</div>

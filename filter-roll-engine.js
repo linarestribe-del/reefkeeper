@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9I — conservative filter-roll confidence and forecast handling.
+/* Reef Keeper Maintenance 9I.1 — view-blocked filter-roll holding states.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9I';
+  const VERSION = '9I.1';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
@@ -498,6 +498,46 @@
       .sort((a, b) => (b.measuredAtMs || 0) - (a.measuredAtMs || 0))[0] || null;
   }
 
+  function rejectedAfterAccepted(latestRejected, latestAcceptedCamera) {
+    return Boolean(latestRejected?.measuredAtMs && latestAcceptedCamera?.measuredAtMs && latestRejected.measuredAtMs > latestAcceptedCamera.measuredAtMs);
+  }
+
+  function rejectionSuggestsBlockedView(latestRejected) {
+    if (!latestRejected) return false;
+    const reason = lower(latestRejected.reason || latestRejected.message || latestRejected.analysisMessage || '');
+    const confidence = confidenceNumber(latestRejected.confidence);
+    return /obstruct|blocked|foam|glare|large radius decrease|silhouette|edge/.test(reason) || (confidence != null && confidence < 0.5);
+  }
+
+  function pauseTrendForRejectedAttempt(trend, latestRejected, latestAcceptedCamera) {
+    if (!rejectedAfterAccepted(latestRejected, latestAcceptedCamera)) return trend;
+    return {
+      ...(trend || {}),
+      state: 'paused',
+      label: rejectionSuggestsBlockedView(latestRejected) ? 'Paused — view blocked' : 'Paused',
+      ratePerDay: null,
+      paused: true,
+      pauseReason: 'Latest scheduled filter-roll attempt was rejected; usage trend is paused until another clean camera reading is accepted.',
+      rejectedReason: latestRejected.reason || latestRejected.message || ''
+    };
+  }
+
+  function limitConfidenceForRejectedAttempt(confidence, latestRejected, latestAcceptedCamera) {
+    if (!rejectedAfterAccepted(latestRejected, latestAcceptedCamera)) return confidence;
+    const reasons = Array.isArray(confidence?.reasons) ? confidence.reasons.slice() : [];
+    const primary = rejectionSuggestsBlockedView(latestRejected)
+      ? 'latest scheduled attempt was rejected; possible view obstruction from foam, glare, or equipment overlap'
+      : 'latest scheduled attempt was rejected; holding the last good camera reading';
+    if (!reasons.includes(primary)) reasons.unshift(primary);
+    return {
+      ...(confidence || {}),
+      label: 'Limited',
+      score: Math.min(Number.isFinite(confidence?.score) ? confidence.score : 0.45, 0.56),
+      reasons,
+      latestRejectedAfterAccepted: true
+    };
+  }
+
   function buildWarnings(config, measurements, latestCamera, currentPercent, confidence) {
     const warnings = [];
     const cameraMeasurements = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm) || Number.isFinite(item.apparentOuterRadius)));
@@ -540,20 +580,27 @@
         ? calculateDiameterFromRemainingPercent(currentPercent, config.newRollDiameterMm, config.coreDiameterMm)
         : config.currentDiameterMm;
     const valid = measurements.filter(item => item.accepted && Number.isFinite(item.remainingPercent));
-    const trend = buildTrend(valid);
-    const confidence = buildConfidence(valid, latestCamera, nowMs, config);
+    const baseTrend = buildTrend(valid);
+    const baseConfidence = buildConfidence(valid, latestCamera, nowMs, config);
     const latestRejectedCamera = latestRejectedCameraMeasurement(measurements);
-    const forecast = buildForecast(currentPercent, trend, confidence, nowMs, latestRejectedCamera, latestCamera);
+    const rejectedIsNewer = rejectedAfterAccepted(latestRejectedCamera, latestCamera);
+    const trend = pauseTrendForRejectedAttempt(baseTrend, latestRejectedCamera, latestCamera);
+    const confidence = limitConfidenceForRejectedAttempt(baseConfidence, latestRejectedCamera, latestCamera);
+    const forecast = buildForecast(currentPercent, baseTrend, baseConfidence, nowMs, latestRejectedCamera, latestCamera);
     const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence);
     const quantitativeCamera = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = quantitativeCamera.filter(item => item.accepted && item.referenceOnly !== true);
-    const tracking = quantitativeCamera.some(item => item.referenceOnly) && (quantitativeCamera.some(item => !item.accepted) || confidence.isStale)
-      ? { state:'needs-calibration', label:'Needs calibration' }
-      : confidence.isStale
-        ? { state:'holding', label:'Holding last good reading' }
-        : independentAccepted.length
-          ? { state:'tracking', label:'Tracking' }
-          : { state:'learning', label:'Learning' };
+    const tracking = rejectedIsNewer && rejectionSuggestsBlockedView(latestRejectedCamera) && independentAccepted.length >= 2
+      ? { state:'view-blocked', label:'View blocked' }
+      : quantitativeCamera.some(item => item.referenceOnly) && (quantitativeCamera.some(item => !item.accepted) || confidence.isStale)
+        ? { state:'needs-calibration', label:'Needs calibration' }
+        : rejectedIsNewer
+          ? { state:'holding', label:'Holding last good reading' }
+          : confidence.isStale
+            ? { state:'holding', label:'Holding last good reading' }
+            : independentAccepted.length
+              ? { state:'tracking', label:'Tracking' }
+              : { state:'learning', label:'Learning' };
 
     return {
       version: VERSION,
@@ -593,6 +640,8 @@
     buildConfidence,
     buildForecast,
     latestRejectedCameraMeasurement,
+    rejectedAfterAccepted,
+    rejectionSuggestsBlockedView,
     nextExpectedMeasurementMs,
     buildStatus
   };

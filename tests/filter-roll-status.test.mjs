@@ -87,15 +87,30 @@ assert.equal(holdingScenario.tracking.label, 'Holding last good reading');
 assert.equal(holdingScenario.forecast.available, false);
 assert.equal(holdingScenario.forecast.label, 'Holding last good reading');
 assert.equal(holdingScenario.latestRejectedCameraMeasurement.captureKey, 'rejected-newer');
+assert.equal(holdingScenario.trend.state, 'paused');
+assert.equal(holdingScenario.confidence.label, 'Limited');
+
+const blockedScenario = engine.buildStatus({
+  config: manualOnly.config,
+  measurements: [manual, ...cameraHistory.slice(0, 3), {
+    id:'blocked-newer', captureKey:'blocked-newer', measuredAt:'2026-08-01T12:00:00Z', measuredAtMs:Date.parse('2026-08-01T12:00:00Z'),
+    remainingPercent:null, diameterMm:null, apparentOuterRadius:61, confidence:0.30, accepted:false,
+    reason:'Detector confidence 30% was below the 65% acceptance threshold.; Large radius decrease (16%) would require confirmation before replacing the last accepted reading.', sourceType:'camera'
+  }],
+  nowMs: Date.parse('2026-08-01T19:00:00Z')
+});
+assert.equal(blockedScenario.tracking.label, 'View blocked');
+assert.equal(blockedScenario.trend.label, 'Paused — view blocked');
+assert.equal(blockedScenario.confidence.label, 'Limited');
 
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
 const css = fs.readFileSync('filter-roll-status.css', 'utf8');
 const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.60'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.60'));
-assert.ok(html.includes('/filter-roll-status.css?v=4.3.60'));
-assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.60') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.61'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.61'));
+assert.ok(html.includes('/filter-roll-status.css?v=4.3.61'));
+assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.61') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
 assert.match(ui, /getFilterRollState/);
 assert.match(ui, /reef_observer_filter_roll_state_v1/);
 assert.match(ui, /latestCameraMeasurement/);
@@ -110,10 +125,11 @@ assert.equal(vercel.functions && Object.keys(vercel.functions).length, 3, 'Maint
 assert.match(ui, /Log fleece roll replacement/);
 assert.match(ui, /Radius only/);
 assert.match(ui, /hasQuantitativeValue/);
-console.log('Maintenance 9I filter-roll status tests passed.');
+console.log('Maintenance 9I.1 filter-roll status tests passed.');
 
 const filterRollStatusUi = fs.readFileSync('filter-roll-status.js', 'utf8');
 assert.match(filterRollStatusUi, /estimateBasis = latest\?\.measuredAt \? 'that last accepted reading'/);
 assert.match(filterRollStatusUi, /current estimate remains based on/);
 assert.match(filterRollStatusUi, /Holding the last accepted filter-roll camera reading/);
+assert.match(filterRollStatusUi, /Filter-roll view appears blocked or unreliable/);
 assert.doesNotMatch(filterRollStatusUi, /current estimate remains anchored to the manual baseline/);
