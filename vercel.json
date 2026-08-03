@@ -52,6 +52,10 @@
       "dest": "/connector/$1"
     },
     {
+      "src": "/cloudflare/(.*)",
+      "dest": "/cloudflare/$1"
+    },
+    {
       "src": "/reef-background.png",
       "dest": "/reef-background.png"
     },

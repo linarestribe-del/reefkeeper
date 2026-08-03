@@ -5,7 +5,7 @@ const observer = fs.readFileSync(new URL('../observer.js', import.meta.url), 'ut
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const pkg = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 
-assert.equal(pkg.version, '4.3.63');
+assert.equal(pkg.version, '4.3.64');
 assert.match(observer, /CLOUD_PUBLISH_INTERVAL_MINUTES = 15/);
 assert.match(observer, /PUBLISH_STALE_AFTER_MS = 25 \* 60_000/);
 assert.match(observer, /CAPTURE_STALE_AFTER_MS = 25 \* 60_000/);
