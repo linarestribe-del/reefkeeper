@@ -132,3 +132,21 @@ The Observer page now displays the active roll percentage, partial/full-cycle la
 ## Maintenance 9F Observer Visual Reliability
 
 Publisher 2.8.1 compares fixed cabinet/plumbing anchor zones separately from the serviceable skimmer, GFO, hose, lid, and cord areas. Expected maintenance variation can settle and become part of the learned baseline without creating a persistent whole-scene alert, while actual camera movement, obstruction, or fixed-anchor changes still raise Attention. Filter-roll tracking now uses recent-frame consensus, a 65% default confidence threshold, schedule-aware validation, plausible-change guardrails, and preserved accepted/rejected attempt history. Both calibration helpers save private JSON files as `root:reefkeeper` with mode `0640`.
+
+## Maintenance 9J — Observer cost architecture
+
+Maintenance 9J keeps Observer cloud publishing paused-safe after Vercel free-tier limits were exceeded and prepares the lowest-cost media path. The existing Observer R2 storage remains active, but the app can now serve large Observer media directly from a Cloudflare R2 public/custom domain when `REEF_OBSERVER_PUBLIC_MEDIA_BASE_URL` is configured in Vercel.
+
+Recommended next architecture:
+
+1. Keep the static Reef Keeper app on Vercel.
+2. Keep local Pi camera capture at five-minute intervals.
+3. Keep Vercel cloud publishing paused or sparse while free-tier resources are exceeded.
+4. Configure direct R2 media delivery for images and timelapses so browser playback no longer has to stream through `/api/observer-image`.
+5. In a later migration, move Observer writes/status to a Cloudflare Worker or direct Pi-to-R2 path so camera uploads no longer pass through Vercel compute.
+
+Optional Vercel Production variable for direct media delivery:
+
+- `REEF_OBSERVER_PUBLIC_MEDIA_BASE_URL` — HTTPS base URL for the R2 bucket or custom domain, for example `https://observer-media.example.com`. Do not include credentials.
+
+If the variable is absent or not HTTPS, Reef Keeper safely falls back to the existing same-origin Vercel media proxy.
