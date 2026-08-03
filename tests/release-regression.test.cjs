@@ -48,7 +48,7 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.64');
+assert.equal(pkg.version, '4.3.65');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
 assert(fs.existsSync('tests/index-js-cleanup.test.mjs'));
@@ -66,7 +66,7 @@ for (const file of ['MAINTENANCE_8D_RELEASE_MANIFEST.md', 'MAINTENANCE_8D_TEST_R
 assert(fs.existsSync('tests/ai-abuse-guard.test.mjs'));
 assert(fs.existsSync('tests/ai-access-control.test.mjs'));
 assert(html.includes('id="reef-ai-access-key"'));
-assert(html.includes('Reef Keeper v4.3.64 Maintenance 9K'));
+assert(html.includes('Reef Keeper v4.3.65 Maintenance 9K.1'));
 assert(app.includes("const REEF_AI_ACCESS_STORAGE_KEY = 'reef_ai_access_key_v1'"));
 assert(app.includes("headers['X-Reef-AI-Access-Key'] = key"));
 assert(app.includes('function testReefAiAccessKey()'));
@@ -172,7 +172,7 @@ assert(html.includes("rkDirectGo('log')") || html.includes('rkDirectGo("log")'))
 assert(!/function\s+showPage\s*\([^)]*\)\s*\{\s*showPage\s*\(/.test(html));
 
 
-// Maintenance 9K Cloudflare Worker Observer backend safeguards.
+// Maintenance 9K.1 Cloudflare Worker Observer backend safeguards.
 assert(fs.existsSync('cloudflare/observer-worker.js'));
 assert(fs.existsSync('cloudflare/wrangler.toml.example'));
 assert(fs.existsSync('docs/OBSERVER_CLOUDFLARE_WORKER_9K.md'));

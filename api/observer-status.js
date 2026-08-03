@@ -101,7 +101,18 @@ export default async function handler(req, res) {
         return res.status(200).json(stored ? normalizeObserverTimelapseFeed(stored) : awaitingTimelapseFeed());
       }
       const record = await readObserverStatus();
-      return res.status(200).json(record || awaitingObserverStatus());
+      if (!record) return res.status(200).json(awaitingObserverStatus());
+      const overview = record?.cameras?.overview && typeof record.cameras.overview === 'object' ? record.cameras.overview : {};
+      return res.status(200).json(normalizeObserverStatus(record, {
+        ok: record.ok ?? overview.ok,
+        capturedAt: record.capturedAt || overview.capturedAt,
+        publishedAt: record.publishedAt || overview.publishedAt,
+        imageAvailable: record.imageAvailable === true || overview.imageAvailable === true,
+        imageVersion: record.imageVersion || overview.imageVersion,
+        sizeBytes: record.sizeBytes || overview.sizeBytes,
+        comparisons: record.comparisons || overview.comparisons,
+        health: record.health || overview.health
+      }));
     }
 
     return res.status(405).json({ ok: false, error: 'Method not allowed' });

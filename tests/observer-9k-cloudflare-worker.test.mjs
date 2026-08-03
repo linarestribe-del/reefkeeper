@@ -73,7 +73,23 @@ assert.equal(env.OBSERVER_BUCKET.objects.has('aquarium-observer/return-chamber/l
 response = await worker.fetch(request('/api/observer-status', { token: '' }), env);
 assert.equal(response.status, 200);
 const status = await response.json();
+assert.equal(status.thumbnailUrl, 'https://observer.example.com/aquarium-observer/latest.jpg');
+assert.equal(status.comparisons.previous.imageUrl, 'https://observer.example.com/aquarium-observer/previous.jpg');
 assert.equal(status.cameras.return.imageAvailable, true);
+assert.equal(status.cameras.return.thumbnailUrl, 'https://observer.example.com/aquarium-observer/return-chamber/latest.jpg');
+
+response = await worker.fetch(request('/api/observer-image', { method: 'HEAD', token: '' }), env);
+assert.equal(response.status, 200);
+assert.equal(response.headers.get('Content-Type'), 'image/jpeg');
+
+response = await worker.fetch(request('/api/observer-daily-summary', {
+  method: 'POST',
+  body: { dailyImages: [] }
+}), env);
+assert.equal(response.status, 200);
+const daily = await response.json();
+assert.equal(daily.ok, true);
+assert.equal(daily.reused, true);
 
 const mp4 = Uint8Array.from([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 0, 0]);
 response = await worker.fetch(request('/api/observer-publish?resource=timelapse&camera=return', {
@@ -94,6 +110,11 @@ assert.equal(env.OBSERVER_BUCKET.objects.has('aquarium-observer/return-chamber/t
 response = await worker.fetch(request('/aquarium-observer/return-chamber/timelapse-week.mp4', { token: '' }), env);
 assert.equal(response.status, 200);
 assert.equal(response.headers.get('Content-Type'), 'video/mp4');
+
+response = await worker.fetch(request('/api/observer-status?resource=timelapses', { token: '' }), env);
+assert.equal(response.status, 200);
+const timelapses = await response.json();
+assert.equal(timelapses.cameras.return.timelapses.week.videoUrl, 'https://observer.example.com/aquarium-observer/return-chamber/timelapse-week.mp4');
 
 response = await worker.fetch(request('/api/observer-publish', {
   method: 'POST',

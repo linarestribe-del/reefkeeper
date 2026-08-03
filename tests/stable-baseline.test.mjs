@@ -5,8 +5,8 @@ const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const html = fs.readFileSync('index.html', 'utf8');
 const testCommand = pkg.scripts?.test || '';
 
-assert.equal(pkg.version, '4.3.64');
-assert.ok(html.includes('Reef Keeper v4.3.64 Maintenance 9K'));
+assert.equal(pkg.version, '4.3.65');
+assert.ok(html.includes('Reef Keeper v4.3.65 Maintenance 9K.1'));
 
 for (const requiredTest of [
   'javascript-syntax.test.mjs',
@@ -53,4 +53,4 @@ for (const requiredFile of [
   assert.ok(fs.existsSync(requiredFile), `Stable checkpoint file is missing: ${requiredFile}`);
 }
 
-console.log('Stable safeguards remain active in v4.3.64.');
+console.log('Stable safeguards remain active in v4.3.65');

@@ -66,3 +66,13 @@ https://YOUR-WORKER.YOUR-SUBDOMAIN.workers.dev/api/observer-publish
 ```
 
 Keep cloud publishing paused until the Worker health check and endpoint configuration pass.
+
+
+## Maintenance 9K.1 media-routing note
+
+9K.1 keeps the same Cloudflare Worker/R2 architecture, but fixes the first live cutover issue found during deployment:
+
+- Worker `/api/observer-status` now returns direct public media URLs for current images, history slots, return-chamber images, and timelapses.
+- Vercel `/api/observer-status` now re-normalizes the stored R2 status before returning it, so `REEF_OBSERVER_PUBLIC_MEDIA_BASE_URL` is applied to stored records that still contain legacy `/api/observer-image` paths.
+- Worker `/api/observer-image` accepts `HEAD` as well as `GET` for quick checks.
+- Worker daily-summary POST returns `ok: true` while daily AI summaries remain storage-only/paused on the Worker backend, preventing the Pi publisher from marking a successful Cloudflare response as a retryable error.

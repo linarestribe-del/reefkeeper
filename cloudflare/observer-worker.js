@@ -185,6 +185,84 @@ function timelapseKey(cameraId, slot) {
   return slots[normalizedSlot];
 }
 
+function publicObjectUrl(request, key) {
+  if (!key) return '';
+  const url = new URL(request.url);
+  return `${url.origin}/${String(key).split('/').map(encodeURIComponent).join('/')}`;
+}
+
+function imageUrlFor(request, cameraId, slot = 'latest') {
+  return publicObjectUrl(request, imageKey(cameraId, slot));
+}
+
+function timelapseUrlFor(request, cameraId, slot) {
+  return publicObjectUrl(request, timelapseKey(cameraId, slot));
+}
+
+function withPublicMediaUrls(status, request) {
+  const source = status && typeof status === 'object' ? status : {};
+  const output = { ...source };
+  if (output.imageAvailable === true) output.thumbnailUrl = imageUrlFor(request, 'overview', 'latest');
+
+  const comparisons = output.comparisons && typeof output.comparisons === 'object' ? { ...output.comparisons } : {};
+  for (const slot of ['previous', 'dayAgo', 'weekAgo']) {
+    if (comparisons[slot]?.available === true) {
+      comparisons[slot] = { ...comparisons[slot], imageUrl: imageUrlFor(request, 'overview', slot) };
+    }
+  }
+  output.comparisons = comparisons;
+
+  const cameras = output.cameras && typeof output.cameras === 'object' ? { ...output.cameras } : {};
+  const overview = cameras.overview && typeof cameras.overview === 'object' ? { ...cameras.overview } : null;
+  if (overview) {
+    if (overview.imageAvailable === true) overview.thumbnailUrl = imageUrlFor(request, 'overview', 'latest');
+    const overviewComparisons = overview.comparisons && typeof overview.comparisons === 'object' ? { ...overview.comparisons } : comparisons;
+    for (const slot of ['previous', 'dayAgo', 'weekAgo']) {
+      if (overviewComparisons[slot]?.available === true) {
+        overviewComparisons[slot] = { ...overviewComparisons[slot], imageUrl: imageUrlFor(request, 'overview', slot) };
+      }
+    }
+    overview.comparisons = overviewComparisons;
+    cameras.overview = overview;
+  }
+
+  const returnCamera = cameras.return && typeof cameras.return === 'object' ? { ...cameras.return } : null;
+  if (returnCamera) {
+    if (returnCamera.imageAvailable === true) returnCamera.thumbnailUrl = imageUrlFor(request, 'return', 'latest');
+    cameras.return = returnCamera;
+  }
+  output.cameras = cameras;
+  return output;
+}
+
+function withPublicTimelapseUrls(feed, request) {
+  const source = feed && typeof feed === 'object' ? feed : {};
+  const output = { ...source };
+  const rootTimelapses = output.timelapses && typeof output.timelapses === 'object' ? { ...output.timelapses } : {};
+  for (const slot of ['week', 'month']) {
+    if (rootTimelapses[slot]?.available === true) {
+      rootTimelapses[slot] = { ...rootTimelapses[slot], videoUrl: timelapseUrlFor(request, 'overview', slot) };
+    }
+  }
+  output.timelapses = rootTimelapses;
+
+  const cameras = output.cameras && typeof output.cameras === 'object' ? { ...output.cameras } : {};
+  for (const cameraId of ['overview', 'return']) {
+    const camera = cameras[cameraId] && typeof cameras[cameraId] === 'object' ? { ...cameras[cameraId] } : {};
+    const timelapses = camera.timelapses && typeof camera.timelapses === 'object' ? { ...camera.timelapses } : {};
+    for (const slot of ['week', 'month']) {
+      if (timelapses[slot]?.available === true) {
+        timelapses[slot] = { ...timelapses[slot], videoUrl: timelapseUrlFor(request, cameraId, slot) };
+      }
+    }
+    camera.cameraId = cameraId;
+    camera.timelapses = timelapses;
+    cameras[cameraId] = camera;
+  }
+  output.cameras = cameras;
+  return output;
+}
+
 async function writeObject(bucket, key, bytes, contentType) {
   await bucket.put(key, bytes, { httpMetadata: { contentType } });
   const head = await bucket.head(key).catch(() => null);
@@ -344,12 +422,12 @@ async function handleStatus(request, env, cameraId) {
   const url = new URL(request.url);
   if (url.searchParams.get('resource') === 'timelapses') {
     const feed = await readJson(bucket, OBSERVER_TIMELAPSES_PATH).catch(() => null);
-    return jsonResponse(feed || {
+    return jsonResponse(withPublicTimelapseUrls(feed || {
       ok: true,
       updatedAt: null,
       timelapses: { week: { available: false, state: 'waiting_for_history' }, month: { available: false, state: 'waiting_for_history' } },
       cameras: { overview: { timelapses: {} }, return: { timelapses: {} } }
-    });
+    }, request));
   }
   if (request.method === 'POST') {
     const auth = requireAuth(request, env);
@@ -366,7 +444,7 @@ async function handleStatus(request, env, cameraId) {
     return jsonResponse({ ok: true, durable: true, cameraId: camera, receivedAt: record.receivedAt });
   }
   const status = await readJson(bucket, OBSERVER_STATUS_PATH).catch(() => null);
-  return jsonResponse(status || { ok: false, configured: true, message: 'Observer Worker is connected, but no status has been published yet.' });
+  return jsonResponse(withPublicMediaUrls(status || { ok: false, configured: true, message: 'Observer Worker is connected, but no status has been published yet.' }, request));
 }
 
 async function handleImage(request, env, cameraId) {
@@ -403,7 +481,7 @@ async function handleDailySummary(request, env) {
   const auth = requireAuth(request, env);
   if (!auth.ok) return auth.response;
   const record = {
-    ok: false,
+    ok: true,
     state: 'worker_storage_only',
     generatedAt: new Date().toISOString(),
     message: 'Daily AI summaries are paused on the direct Cloudflare Worker backend to reduce Vercel usage.',
@@ -441,7 +519,7 @@ export default {
       if (path === '/' || path === '/health') return jsonResponse({ ok: true, backend: 'cloudflare-worker-r2', checkedAt: new Date().toISOString() }, 200, 'GET,OPTIONS');
       if (path === '/observer-publish' && request.method === 'POST') return handlePublish(request, env, camera, url.searchParams.get('resource'));
       if (path === '/observer-status' && ['GET', 'POST'].includes(request.method)) return handleStatus(request, env, camera);
-      if (path === '/observer-image' && request.method === 'GET') return handleImage(request, env, camera);
+      if (path === '/observer-image' && ['GET', 'HEAD'].includes(request.method)) return handleImage(request, env, camera);
       if (path === '/observer-daily-summary' && ['GET', 'POST'].includes(request.method)) return handleDailySummary(request, env);
       if (path === '/observer-alerts' && ['GET', 'POST'].includes(request.method)) return handleAlerts(request, env);
       if (request.method === 'GET' && path.startsWith('/aquarium-observer/')) return serveObject(requireBucket(env), path.slice(1));
