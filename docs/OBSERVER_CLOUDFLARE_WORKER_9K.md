@@ -76,3 +76,10 @@ Keep cloud publishing paused until the Worker health check and endpoint configur
 - Vercel `/api/observer-status` now re-normalizes the stored R2 status before returning it, so `REEF_OBSERVER_PUBLIC_MEDIA_BASE_URL` is applied to stored records that still contain legacy `/api/observer-image` paths.
 - Worker `/api/observer-image` accepts `HEAD` as well as `GET` for quick checks.
 - Worker daily-summary POST returns `ok: true` while daily AI summaries remain storage-only/paused on the Worker backend, preventing the Pi publisher from marking a successful Cloudflare response as a retryable error.
+
+
+## Maintenance 9K.2 notes
+
+Maintenance 9K.2 keeps the 9K/9K.1 Cloudflare Worker and R2 design, and adds Pi Publisher 2.8.2. The only publisher behavior change is daily-summary compatibility with the storage-only Cloudflare Worker backend. The publisher now treats the Worker daily-summary acknowledgement as a reused/storage-only success instead of repeatedly recording `Publish returned HTTP 200` and scheduling retries.
+
+Regular overview and return-camera publishing remain unchanged. The publisher timer should remain on its 15-minute schedule. The timelapse timer should remain off until the dedicated Cloudflare timelapse verification step is run.

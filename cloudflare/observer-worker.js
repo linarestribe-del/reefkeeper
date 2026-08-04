@@ -1,4 +1,4 @@
-// Reef Keeper Maintenance 9K — Cloudflare Worker Observer backend
+// Reef Keeper Maintenance 9K.2 — Cloudflare Worker Observer backend
 // Deploy this Worker with an R2 bucket binding named OBSERVER_BUCKET and a
 // secret named REEF_OBSERVER_WRITE_TOKEN. It accepts the same Pi publisher
 // routes as the Vercel Observer API, but large image/video uploads and direct
@@ -473,22 +473,33 @@ async function handleDailySummary(request, env) {
   const bucket = requireBucket(env);
   if (request.method === 'GET') {
     return jsonResponse(await readJson(bucket, OBSERVER_DAILY_SUMMARY_PATH).catch(() => null) || {
-      ok: false,
+      ok: true,
       state: 'worker_storage_only',
+      reused: true,
+      generatedAt: null,
       message: 'Daily AI summaries are paused on the direct Cloudflare Worker backend to reduce Vercel usage.'
     });
   }
   const auth = requireAuth(request, env);
   if (!auth.ok) return auth.response;
+  let body = {};
+  try { body = await request.json(); } catch (_) { body = {}; }
+  const dailyImages = Array.isArray(body.dailyImages) ? body.dailyImages : [];
+  const current = dailyImages.find((item) => item && item.slot === 'dailyCurrent') || {};
+  const previous = dailyImages.find((item) => item && item.slot === 'dailyPrevious') || {};
+  const generatedAt = new Date().toISOString();
   const record = {
     ok: true,
     state: 'worker_storage_only',
-    generatedAt: new Date().toISOString(),
+    reused: true,
+    generatedAt,
+    currentCapturedAt: observerIso(current.capturedAt || current.captured_at),
+    previousCapturedAt: observerIso(previous.capturedAt || previous.captured_at),
     message: 'Daily AI summaries are paused on the direct Cloudflare Worker backend to reduce Vercel usage.',
-    source: {}
+    source: { dailyImageCount: dailyImages.length }
   };
   await writeJson(bucket, OBSERVER_DAILY_SUMMARY_PATH, record);
-  return jsonResponse({ ...record, reused: true });
+  return jsonResponse(record);
 }
 
 async function handleAlerts(request, env) {

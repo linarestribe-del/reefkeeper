@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.8.1'
+PUBLISHER_VERSION = '2.8.2'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -1713,6 +1713,52 @@ def post_json(endpoint: str, token: str, payload: dict[str, Any], timeout: int =
         return result
 
 
+def post_daily_summary_json(endpoint: str, token: str, payload: dict[str, Any], timeout: int = 55) -> dict[str, Any]:
+    """Post the daily summary frame pair.
+
+    Cloudflare Worker/R2 is intentionally storage-only for daily summaries during
+    the Vercel cost-reduction phase. Older Worker responses may acknowledge the
+    request with HTTP 200 but omit the exact {ok: true} contract expected by the
+    main image publisher. Treat that storage-only acknowledgement as a successful
+    reused summary so the Pi does not keep scheduling false retries.
+    """
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload, separators=(',', ':')).encode('utf-8'),
+        headers={
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'User-Agent': f'ReefKeeperObserverPublisher/{PUBLISHER_VERSION}',
+        },
+        method='POST',
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        raw_body = response.read().decode('utf-8', errors='replace')
+        try:
+            result = json.loads(raw_body) if raw_body else {}
+        except json.JSONDecodeError:
+            result = {}
+        if response.status != 200:
+            detail = safe_text(result.get('error') if isinstance(result, dict) else raw_body, 160)
+            raise RuntimeError(f'Daily summary returned HTTP {response.status}' + (f': {detail}' if detail else ''))
+        if isinstance(result, dict) and result.get('ok') is True:
+            return result
+        if endpoint.rstrip('/').endswith('/observer-daily-summary'):
+            state = safe_text(result.get('state') if isinstance(result, dict) else '', 80)
+            message = safe_text(result.get('message') if isinstance(result, dict) else raw_body, 180)
+            if state in {'worker_storage_only', 'storage_only', 'paused', 'disabled'} or message:
+                output = dict(result) if isinstance(result, dict) else {}
+                output.update({
+                    'ok': True,
+                    'reused': True,
+                    'state': state or 'worker_storage_only',
+                    'generatedAt': safe_text(output.get('generatedAt') or utc_now(), 80),
+                    'message': message or 'Daily summary acknowledged by storage-only Observer backend.',
+                })
+                return output
+        raise RuntimeError('Daily summary publish returned an unexpected HTTP 200 response.')
+
+
 def publish_return_camera(
     config: dict[str, Any],
     endpoint: str,
@@ -1857,9 +1903,17 @@ def main() -> int:
             daily_attempt_current = safe_text(previous_publish_status.get('dailySummaryAttemptCurrentCapturedAt') or '', 80)
             daily_attempt_count = max(0, int(previous_publish_status.get('dailySummaryAttemptCount') or 0))
             daily_next_attempt = safe_text(previous_publish_status.get('dailySummaryNextAttemptAt') or '', 80)
+            daily_previous_for_decision = dict(previous_publish_status)
+            if daily_error == 'Publish returned HTTP 200':
+                daily_error = ''
+                daily_next_attempt = ''
+                daily_attempt_count = 0
+                daily_previous_for_decision['dailySummaryError'] = ''
+                daily_previous_for_decision['dailySummaryNextAttemptAt'] = ''
+                daily_previous_for_decision['dailySummaryAttemptCount'] = 0
             if len(daily_images) == 2:
                 current_daily = next(item for item in daily_images if item['slot'] == 'dailyCurrent')
-                decision = daily_summary_attempt_decision(config, previous_publish_status, current_daily['capturedAt'], now)
+                decision = daily_summary_attempt_decision(config, daily_previous_for_decision, current_daily['capturedAt'], now)
                 if decision['action'] == 'attempt':
                     if daily_attempt_current != current_daily['capturedAt']:
                         daily_error = ''
@@ -1868,7 +1922,7 @@ def main() -> int:
                     daily_attempted_at = utc_now()
                     daily_next_attempt = ''
                     try:
-                        daily_result = post_json(derive_daily_summary_endpoint(endpoint), token, {'dailyImages': daily_images}, timeout=55)
+                        daily_result = post_daily_summary_json(derive_daily_summary_endpoint(endpoint), token, {'dailyImages': daily_images}, timeout=55)
                         daily_status = 'reused' if daily_result.get('reused') else 'generated'
                         daily_error = ''
                         daily_current = current_daily['capturedAt']
