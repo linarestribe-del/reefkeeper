@@ -11,7 +11,7 @@ spec = importlib.util.spec_from_file_location('observer_publisher', ROOT / 'conn
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
 
-assert publisher.PUBLISHER_VERSION == '2.8.3'
+assert publisher.PUBLISHER_VERSION == '2.8.4'
 
 with tempfile.TemporaryDirectory() as temporary:
     base = Path(temporary)

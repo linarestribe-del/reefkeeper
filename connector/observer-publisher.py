@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.8.3'
+PUBLISHER_VERSION = '2.8.4'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -427,6 +427,37 @@ def clamp_number(value: Any, minimum: float, maximum: float, fallback: float) ->
     except (TypeError, ValueError):
         return fallback
     return max(minimum, min(maximum, number))
+
+
+def compact_float(value: Any, digits: int = 2) -> float | None:
+    try:
+        return round(float(value), digits)
+    except (TypeError, ValueError):
+        return None
+
+
+def water_level_learning_summary(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    allowed_numbers = [
+        'sampleCount', 'acceptedCount', 'rejectedCount', 'confidenceMedian', 'confidenceMinimum',
+        'baselineYPercent', 'medianYPercent', 'normalBandPercent', 'p90AbsDeltaPercent',
+        'p95AbsDeltaPercent', 'maxAbsDeltaPercent', 'maxFrameJumpPercent',
+        'recommendedWarningPercent', 'recommendedUrgentPercent', 'recommendedMaxLineJumpPercent',
+    ]
+    summary: dict[str, Any] = {}
+    for key in allowed_numbers:
+        if key not in value:
+            continue
+        number = compact_float(value.get(key), 3 if 'confidence' in key.lower() else 2)
+        if number is not None:
+            summary[key] = number
+    for key in ['learnedAt', 'camera', 'roi']:
+        if key in value:
+            summary[key] = value.get(key)
+    if not summary:
+        return None
+    return summary
 
 
 def decode_monitor_frame(path: Path, width: int = MONITOR_WIDTH, height: int = MONITOR_HEIGHT) -> list[int]:
@@ -1303,13 +1334,17 @@ def evaluate_local_monitor(
     if water_enabled and roi:
         detected = detect_water_line(pixels, roi)
         minimum_confidence = clamp_number(water_settings.get('minimum_confidence'), 0.2, 0.9, 0.45)
+        learned_normal = water_level_learning_summary(water_settings.get('learned_normal'))
         water_result.update({
             'enabled': True,
             'confidence': detected.get('confidence', 0.0),
             'currentYPercent': detected.get('yPercent'),
             'edgeScore': detected.get('edgeScore'),
             'roi': [round(value, 4) for value in roi],
+            'minimumConfidence': round(minimum_confidence, 2),
         })
+        if learned_normal:
+            water_result['learnedNormal'] = learned_normal
         if baseline_y_value is None:
             water_result['message'] = 'Water-level region is configured but needs a baseline calibration.'
         elif not detected.get('available') or float(detected.get('confidence') or 0) < minimum_confidence:
@@ -1323,6 +1358,11 @@ def evaluate_local_monitor(
             warning_delta = clamp_number(water_settings.get('warning_delta_percent'), 1.0, 30.0, 5.0)
             urgent_delta = max(warning_delta + 1.0, clamp_number(water_settings.get('urgent_delta_percent'), 2.0, 45.0, 10.0))
             max_line_jump = clamp_number(water_settings.get('max_line_jump_percent'), 4.0, 45.0, 12.0)
+            water_result.update({
+                'warningDeltaPercent': round(warning_delta, 2),
+                'urgentDeltaPercent': round(urgent_delta, 2),
+                'maxLineJumpPercent': round(max_line_jump, 2),
+            })
             allow_offline = water_settings.get('allow_offline') is True
             previous = state.get('lastWaterLevel') if isinstance(state.get('lastWaterLevel'), dict) else {}
             previous_y_value = previous.get('currentYPercent')
