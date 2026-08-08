@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.8.4'
+PUBLISHER_VERSION = '2.8.5'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -403,6 +403,11 @@ def monitor_config(primary: dict[str, Any], config_path: Path | None = None, sou
             'minimum_confidence': 0.45,
             'allow_offline': False,
             'max_line_jump_percent': 12.0,
+            'selector': 'baseline_nearest',
+            'baseline_lock_window_percent': 28.0,
+            'baseline_lock_min_score_ratio': 0.35,
+            'feed_mode_high_tolerance': True,
+            'feed_mode_high_streak': 3,
         },
     }
     source = primary.get(source_key) if isinstance(primary.get(source_key), dict) else {}
@@ -638,7 +643,16 @@ def parse_roi(value: Any) -> tuple[float, float, float, float] | None:
     return x, y, width, height
 
 
-def detect_water_line(pixels: list[int], roi: tuple[float, float, float, float], width: int = MONITOR_WIDTH, height: int = MONITOR_HEIGHT) -> dict[str, Any]:
+def detect_water_line(
+    pixels: list[int],
+    roi: tuple[float, float, float, float],
+    width: int = MONITOR_WIDTH,
+    height: int = MONITOR_HEIGHT,
+    expected_y_percent: float | None = None,
+    selector: str = 'strongest',
+    lock_window_percent: float = 28.0,
+    lock_min_score_ratio: float = 0.35,
+) -> dict[str, Any]:
     x, y, roi_width, roi_height = roi
     left = max(1, int(round(x * width)))
     right = min(width - 1, int(round((x + roi_width) * width)))
@@ -658,22 +672,52 @@ def detect_water_line(pixels: list[int], roi: tuple[float, float, float, float],
         scores.append((row, mean_gradient * (0.35 + 0.65 * coverage), coverage))
     if not scores:
         return {'available': False, 'confidence': 0.0, 'message': 'No water-level edge could be evaluated.'}
+
     scores.sort(key=lambda item: item[1], reverse=True)
-    best_row, best_score, coverage = scores[0]
+    strongest_row, strongest_score, strongest_coverage = scores[0]
+    selected_row, selected_score, selected_coverage = strongest_row, strongest_score, strongest_coverage
+    selected_by = 'strongest_edge'
+    nearest_delta: float | None = None
+    if expected_y_percent is not None and selector != 'strongest':
+        best_allowed: tuple[float, int, float, float, float] | None = None
+        for row, score, coverage in scores:
+            y_percent_candidate = ((row - top) / max(1, bottom - top)) * 100.0
+            delta_from_baseline = abs(y_percent_candidate - expected_y_percent)
+            score_ratio = score / max(1.0, strongest_score)
+            if delta_from_baseline <= lock_window_percent and score_ratio >= lock_min_score_ratio:
+                candidate = (delta_from_baseline, row, score, coverage, score_ratio)
+                if best_allowed is None or candidate < best_allowed:
+                    best_allowed = candidate
+        if best_allowed is not None:
+            nearest_delta, selected_row, selected_score, selected_coverage, _ = best_allowed
+            selected_by = 'baseline_nearest_edge'
+
     median_score = sorted(item[1] for item in scores)[len(scores) // 2]
-    prominence = best_score / max(1.0, median_score)
-    absolute_strength = min(1.0, best_score / 35.0)
+    prominence = selected_score / max(1.0, median_score)
+    absolute_strength = min(1.0, selected_score / 35.0)
     confidence = max(0.0, min(1.0, (prominence - 1.0) / 2.5 * 0.55 + absolute_strength * 0.45))
-    y_percent = ((best_row - top) / max(1, bottom - top)) * 100.0
+    y_percent = ((selected_row - top) / max(1, bottom - top)) * 100.0
+    strongest_y_percent = ((strongest_row - top) / max(1, bottom - top)) * 100.0
+    candidate_edges = []
+    for row, score, coverage in scores[:6]:
+        candidate_edges.append({
+            'yPercent': round(((row - top) / max(1, bottom - top)) * 100.0, 2),
+            'edgeScore': round(score, 3),
+            'coverage': round(coverage, 3),
+        })
     return {
         'available': True,
         'confidence': round(confidence, 3),
         'yPercent': round(y_percent, 2),
-        'edgeScore': round(best_score, 3),
-        'coverage': round(coverage, 3),
+        'edgeScore': round(selected_score, 3),
+        'coverage': round(selected_coverage, 3),
+        'selectedBy': selected_by,
+        'strongestYPercent': round(strongest_y_percent, 2),
+        'strongestEdgeScore': round(strongest_score, 3),
+        'nearestBaselineDeltaPercent': round(nearest_delta, 2) if nearest_delta is not None else None,
+        'candidateEdges': candidate_edges,
         'message': 'Water-surface edge detected.' if confidence >= 0.45 else 'Possible water-surface edge detected with low confidence.',
     }
-
 
 
 def filter_roll_default() -> dict[str, Any]:
@@ -1332,7 +1376,14 @@ def evaluate_local_monitor(
         'streak': 0,
     }
     if water_enabled and roi:
-        detected = detect_water_line(pixels, roi)
+        detected = detect_water_line(
+            pixels,
+            roi,
+            expected_y_percent=baseline_y_value,
+            selector=str(water_settings.get('selector') or 'baseline_nearest'),
+            lock_window_percent=clamp_number(water_settings.get('baseline_lock_window_percent'), 8.0, 45.0, 28.0),
+            lock_min_score_ratio=clamp_number(water_settings.get('baseline_lock_min_score_ratio'), 0.15, 0.9, 0.35),
+        )
         minimum_confidence = clamp_number(water_settings.get('minimum_confidence'), 0.2, 0.9, 0.45)
         learned_normal = water_level_learning_summary(water_settings.get('learned_normal'))
         water_result.update({
@@ -1340,6 +1391,12 @@ def evaluate_local_monitor(
             'confidence': detected.get('confidence', 0.0),
             'currentYPercent': detected.get('yPercent'),
             'edgeScore': detected.get('edgeScore'),
+            'coverage': detected.get('coverage'),
+            'selectedBy': detected.get('selectedBy'),
+            'strongestYPercent': detected.get('strongestYPercent'),
+            'strongestEdgeScore': detected.get('strongestEdgeScore'),
+            'nearestBaselineDeltaPercent': detected.get('nearestBaselineDeltaPercent'),
+            'candidateEdges': detected.get('candidateEdges'),
             'roi': [round(value, 4) for value in roi],
             'minimumConfidence': round(minimum_confidence, 2),
         })
@@ -1371,10 +1428,13 @@ def evaluate_local_monitor(
             except (TypeError, ValueError):
                 previous_y = None
             line_jump = abs(current_y - previous_y) if previous_y is not None else 0.0
-            line_jump_candidate = previous_y is not None and line_jump >= max_line_jump
             candidate = abs(delta) >= warning_delta
+            line_jump_candidate = previous_y is not None and line_jump >= max_line_jump and candidate
             previous_water_streak = int(state.get('waterLevelStreak') or 0)
             water_limit = int(clamp_number(water_settings.get('alert_streak'), 1, 6, 2))
+            high_feed_tolerant = water_settings.get('feed_mode_high_tolerance') is not False
+            high_feed_limit = int(clamp_number(water_settings.get('feed_mode_high_streak'), water_limit, 10, max(3, water_limit)))
+            high_candidate = delta > 0 and candidate
             if line_jump_candidate and is_new_capture:
                 water_streak = 0
                 water_result.update({
@@ -1401,7 +1461,13 @@ def evaluate_local_monitor(
                     'streak': water_streak,
                     'lineJumpPercent': round(line_jump, 2) if previous_y is not None else 0.0,
                 })
-                if water_streak >= water_limit and abs(delta) >= urgent_delta:
+                if high_feed_tolerant and high_candidate and water_streak < high_feed_limit:
+                    water_result['status'] = 'pending'
+                    water_result['state'] = 'feed_mode_high_confirming'
+                    water_result['feedModeTolerant'] = True
+                    water_result['feedModeHighStreakLimit'] = high_feed_limit
+                    water_result['message'] = 'Possible return-pump-off/feed-mode high level is being tolerated briefly; it must persist before alerting.'
+                elif water_streak >= water_limit and abs(delta) >= urgent_delta:
                     water_result['status'] = 'offline' if allow_offline else 'attention'
                     water_result['state'] = 'urgent_confirmed'
                     water_result['message'] = f"Water level appears {abs(delta):.1f}% of the monitored region {'higher' if delta > 0 else 'lower'} than baseline. Check the return chamber and ATO."

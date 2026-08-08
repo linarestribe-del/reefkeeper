@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-TRAINER_VERSION = '1.0.0'
+TRAINER_VERSION = '1.0.1'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 MOUNT_DIR = Path('/mnt/reef-ssd')
@@ -176,6 +176,7 @@ def detect_water_line(
     roi: tuple[float, float, float, float],
     width: int = MONITOR_WIDTH,
     height: int = MONITOR_HEIGHT,
+    expected_y_percent: float | None = None,
 ) -> dict[str, Any]:
     x, y, roi_width, roi_height = roi
     left = max(1, int(round(x * width)))
@@ -197,21 +198,32 @@ def detect_water_line(
     if not scores:
         return {'available': False, 'confidence': 0.0, 'message': 'No water-level edge could be evaluated.'}
     scores.sort(key=lambda item: item[1], reverse=True)
-    best_row, best_score, coverage = scores[0]
+    strongest_row, strongest_score, strongest_coverage = scores[0]
+    selected_row, selected_score, coverage = strongest_row, strongest_score, strongest_coverage
+    selected_by = 'strongest_edge'
+    if expected_y_percent is not None:
+        allowed = []
+        for row, score, item_coverage in scores:
+            y_percent_candidate = ((row - top) / max(1, bottom - top)) * 100.0
+            if abs(y_percent_candidate - expected_y_percent) <= 28.0 and score / max(1.0, strongest_score) >= 0.35:
+                allowed.append((abs(y_percent_candidate - expected_y_percent), row, score, item_coverage))
+        if allowed:
+            _, selected_row, selected_score, coverage = sorted(allowed)[0]
+            selected_by = 'baseline_nearest_edge'
     median_score = sorted(item[1] for item in scores)[len(scores) // 2]
-    prominence = best_score / max(1.0, median_score)
-    absolute_strength = min(1.0, best_score / 35.0)
+    prominence = selected_score / max(1.0, median_score)
+    absolute_strength = min(1.0, selected_score / 35.0)
     confidence = max(0.0, min(1.0, (prominence - 1.0) / 2.5 * 0.55 + absolute_strength * 0.45))
-    y_percent = ((best_row - top) / max(1, bottom - top)) * 100.0
+    y_percent = ((selected_row - top) / max(1, bottom - top)) * 100.0
     return {
         'available': True,
         'confidence': round(confidence, 3),
         'yPercent': round(y_percent, 2),
-        'edgeScore': round(best_score, 3),
+        'edgeScore': round(selected_score, 3),
         'coverage': round(coverage, 3),
+        'selectedBy': selected_by,
         'message': 'Water-surface edge detected.' if confidence >= 0.45 else 'Possible water-surface edge detected with low confidence.',
     }
-
 
 def median(values: list[float]) -> float:
     if not values:
@@ -269,7 +281,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     for captured, path in samples:
         try:
             pixels = decode_monitor_frame(path)
-            detected = detect_water_line(pixels, roi)
+            detected = detect_water_line(pixels, roi, expected_y_percent=baseline)
         except Exception as error:
             rejected.append({'capturedAt': captured.isoformat(), 'path': str(path), 'reason': str(error)[:180]})
             continue
@@ -281,6 +293,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
             'yPercent': detected.get('yPercent'),
             'edgeScore': detected.get('edgeScore'),
             'coverage': detected.get('coverage'),
+            'selectedBy': detected.get('selectedBy'),
         }
         if not detected.get('available') or confidence < minimum_confidence or detected.get('yPercent') is None:
             item['reason'] = 'low_confidence_or_unavailable'
@@ -311,22 +324,30 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
 
     accepted_y = [float(item['yPercent']) for item in accepted]
     accepted_conf = [float(item['confidence']) for item in accepted]
-    deltas = [baseline - value for value in accepted_y]
-    abs_deltas = [abs(value) for value in deltas]
+    for item in accepted:
+        item['deltaPercent'] = rounded(baseline - float(item['yPercent']))
+    likely_feed_high_readings = [item for item in accepted if float(item.get('deltaPercent') or 0.0) > current_warning]
+    operating_readings = [item for item in accepted if item not in likely_feed_high_readings] or accepted
+    operating_y = [float(item['yPercent']) for item in operating_readings]
+    operating_deltas = [baseline - value for value in operating_y]
+    abs_deltas = [abs(value) for value in operating_deltas]
+    all_abs_deltas = [abs(float(item.get('deltaPercent') or 0.0)) for item in accepted]
     frame_jumps: list[float] = []
     previous_y: float | None = None
-    for item in accepted:
+    for item in operating_readings:
         y_value = float(item['yPercent'])
         if previous_y is not None:
             frame_jumps.append(abs(y_value - previous_y))
         previous_y = y_value
 
+    operating_median_y = median(operating_y)
+    operating_deviations = [abs(value - operating_median_y) for value in operating_y]
     p95_abs = percentile(abs_deltas, 95)
     p90_abs = percentile(abs_deltas, 90)
-    max_abs = max(abs_deltas) if abs_deltas else 0.0
+    max_abs = max(all_abs_deltas) if all_abs_deltas else 0.0
     p95_jump = percentile(frame_jumps, 95) if frame_jumps else 0.0
     max_jump = max(frame_jumps) if frame_jumps else 0.0
-    normal_band = max(p95_abs, percentile(deviations_from_median, 95), 0.5)
+    normal_band = max(p95_abs, percentile(operating_deviations, 95), 0.5)
 
     recommended_warning = math.ceil(max(current_warning, normal_band * 2.0 + 1.0, 4.0))
     recommended_warning = min(24, max(4, recommended_warning))
@@ -352,10 +373,13 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         'rejectedCount': len(rejected) + len(outliers),
         'baselineYPercent': rounded(baseline),
         'medianYPercent': rounded(median(accepted_y)),
+        'operatingMedianYPercent': rounded(operating_median_y),
         'minYPercent': rounded(min(accepted_y)),
         'maxYPercent': rounded(max(accepted_y)),
         'confidenceMinimum': rounded(min(accepted_conf), 3),
         'confidenceMedian': rounded(median(accepted_conf), 3),
+        'operatingSampleCount': len(operating_readings),
+        'likelyFeedHighSampleCount': len(likely_feed_high_readings),
         'confidenceP10': rounded(percentile(accepted_conf, 10), 3),
         'normalBandPercent': rounded(normal_band),
         'p90AbsDeltaPercent': rounded(p90_abs),
@@ -370,6 +394,7 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         'recommendedUrgentPercent': rounded(recommended_urgent),
         'recommendedMaxLineJumpPercent': rounded(recommended_jump),
         'recommendation': 'apply' if recommended_warning > current_warning or recommended_urgent > current_urgent or recommended_jump > current_jump else 'keep_current_thresholds',
+        'learningNote': 'Recommended thresholds are based on the operating band after excluding likely return-pump-off/feed-mode high-water samples.',
         'acceptedReadingsPreview': accepted[-12:],
         'rejectedPreview': (rejected + outliers)[-12:],
     }
@@ -389,6 +414,7 @@ def apply_report(config_path: Path, report: dict[str, Any]) -> None:
         for key in [
             'learnedAt', 'camera', 'roi', 'sampleCount', 'acceptedCount', 'rejectedCount',
             'confidenceMedian', 'confidenceMinimum', 'baselineYPercent', 'medianYPercent',
+            'operatingMedianYPercent', 'operatingSampleCount', 'likelyFeedHighSampleCount',
             'normalBandPercent', 'p90AbsDeltaPercent', 'p95AbsDeltaPercent', 'maxAbsDeltaPercent',
             'p95FrameJumpPercent', 'maxFrameJumpPercent', 'recommendedWarningPercent',
             'recommendedUrgentPercent', 'recommendedMaxLineJumpPercent',
@@ -409,6 +435,8 @@ def print_summary(report: dict[str, Any], applied: bool) -> None:
     print(f"Rejected/outlier readings: {report.get('rejectedCount')}")
     print(f"Baseline Y: {report.get('baselineYPercent')}%")
     print(f"Median Y: {report.get('medianYPercent')}%")
+    print(f"Operating median Y: {report.get('operatingMedianYPercent')}%")
+    print(f"Operating samples: {report.get('operatingSampleCount')} accepted, {report.get('likelyFeedHighSampleCount')} likely feed-mode high samples excluded")
     print(f"Normal band: +/- {report.get('normalBandPercent')}% of ROI height")
     print(f"95th percentile movement: {report.get('p95AbsDeltaPercent')}%")
     print(f"Max observed movement: {report.get('maxAbsDeltaPercent')}%")
@@ -418,6 +446,8 @@ def print_summary(report: dict[str, Any], applied: bool) -> None:
     print(f"Recommended warning/urgent: {report.get('recommendedWarningPercent')}% / {report.get('recommendedUrgentPercent')}%")
     print(f"Recommended max line jump: {report.get('recommendedMaxLineJumpPercent')}%")
     print(f"Recommendation: {report.get('recommendation')}")
+    if report.get('learningNote'):
+        print(f"Learning note: {report.get('learningNote')}")
     print(f"Report saved: {RETURN_LEARNING_REPORT_PATH}")
     print(f"Applied to config: {'yes' if applied else 'no'}")
 
