@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9L — physical filter-roll diameter calibration.
+/* Reef Keeper Maintenance 9L.1 — physical filter-roll estimate priority cleanup.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Adds physical diameter measurements that can drive current remaining percent and replacement forecast.
  */
@@ -340,7 +340,7 @@
   }
 
   function trackingClass(state) {
-    if (state === 'tracking') return 'good';
+    if (state === 'tracking' || state === 'physical') return 'good';
     if (state === 'needs-calibration' || state === 'stale') return 'warn';
     if (state === 'holding' || state === 'view-blocked') return 'watch';
     return 'learning';
@@ -348,9 +348,13 @@
 
   function actionableTrackingWarning(status, latest) {
     const tracking = status?.tracking || {};
+    const current = status?.current || {};
     const rejected = status?.latestRejectedCameraMeasurement || (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
     const rejectedIsNewer = Boolean(rejected?.measuredAtMs && latest?.measuredAtMs && rejected.measuredAtMs > latest.measuredAtMs);
     const detail = rejectedIsNewer && rejected?.reason ? ` Latest rejected attempt: ${rejected.reason}` : '';
+    if (current.source === 'physical diameter' && rejectedIsNewer) {
+      return `Camera tracking is paused because recent visual readings did not agree closely enough to update the camera estimate. Reef Keeper is using the latest physical diameter measurement for the current roll percentage and forecast.${detail}`;
+    }
     if (tracking.state === 'view-blocked' && latest?.measuredAt) {
       return `Filter-roll view appears blocked or unreliable, so Reef Keeper is holding the last accepted camera reading from ${formatDate(latest.measuredAt)}. The current estimate remains based on that reading until the roll edge is visible again.${detail}`;
     }

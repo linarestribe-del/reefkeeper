@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9L — physical filter-roll calibration and forecast.
+/* Reef Keeper Maintenance 9L.1 — physical filter-roll estimate priority cleanup.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9L';
+  const VERSION = '9L.1';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
@@ -585,7 +585,7 @@
     if (!latestRejected) return false;
     const reason = lower(latestRejected.reason || latestRejected.message || latestRejected.analysisMessage || '');
     const confidence = confidenceNumber(latestRejected.confidence);
-    return /obstruct|blocked|foam|glare|large radius decrease|silhouette|edge/.test(reason) || (confidence != null && confidence < 0.5);
+    return /obstruct|blocked|foam|glare|silhouette/.test(reason) || (confidence != null && confidence < 0.5);
   }
 
   function pauseTrendForRejectedAttempt(trend, latestRejected, latestAcceptedCamera) {
@@ -593,7 +593,7 @@
     return {
       ...(trend || {}),
       state: 'paused',
-      label: rejectionSuggestsBlockedView(latestRejected) ? 'Paused — view blocked' : 'Paused',
+      label: rejectionSuggestsBlockedView(latestRejected) ? 'Paused — view blocked' : 'Paused — camera unconfirmed',
       ratePerDay: null,
       paused: true,
       pauseReason: 'Latest scheduled filter-roll attempt was rejected; usage trend is paused until another clean camera reading is accepted.',
@@ -606,7 +606,7 @@
     const reasons = Array.isArray(confidence?.reasons) ? confidence.reasons.slice() : [];
     const primary = rejectionSuggestsBlockedView(latestRejected)
       ? 'latest scheduled attempt was rejected; possible view obstruction from foam, glare, or equipment overlap'
-      : 'latest scheduled attempt was rejected; holding the last good camera reading';
+      : 'latest scheduled attempt was rejected; camera reading is unconfirmed';
     if (!reasons.includes(primary)) reasons.unshift(primary);
     return {
       ...(confidence || {}),
@@ -671,17 +671,20 @@
     const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence, latestRejectedCamera);
     const quantitativeCamera = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = quantitativeCamera.filter(item => item.accepted && item.referenceOnly !== true);
-    const tracking = rejectedIsNewer && rejectionSuggestsBlockedView(latestRejectedCamera) && independentAccepted.length >= 2
-      ? { state:'view-blocked', label:'View blocked' }
-      : quantitativeCamera.some(item => item.referenceOnly) && (rejectedIsNewer || confidence.isStale)
-        ? { state:'needs-calibration', label:'Needs calibration' }
-        : rejectedIsNewer
-          ? { state:'holding', label:'Holding last good reading' }
-          : confidence.isStale
+    const usingPhysicalEstimate = latest && isPhysicalMeasurement(latest);
+    const tracking = usingPhysicalEstimate
+      ? { state:'physical', label:'Physical estimate' }
+      : rejectedIsNewer && rejectionSuggestsBlockedView(latestRejectedCamera) && independentAccepted.length >= 2
+        ? { state:'view-blocked', label:'View blocked' }
+        : quantitativeCamera.some(item => item.referenceOnly) && (rejectedIsNewer || confidence.isStale)
+          ? { state:'needs-calibration', label:'Needs calibration' }
+          : rejectedIsNewer
             ? { state:'holding', label:'Holding last good reading' }
-            : independentAccepted.length
-              ? { state:'tracking', label:'Tracking' }
-              : { state:'learning', label:'Learning' };
+            : confidence.isStale
+              ? { state:'holding', label:'Holding last good reading' }
+              : independentAccepted.length
+                ? { state:'tracking', label:'Tracking' }
+                : { state:'learning', label:'Learning' };
 
     return {
       version: VERSION,
