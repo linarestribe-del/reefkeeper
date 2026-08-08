@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9I.2 — accepted-reading cleanup and filter-roll dedupe.
+/* Reef Keeper Maintenance 9L — physical filter-roll calibration and forecast.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9I.2';
+  const VERSION = '9L';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
@@ -394,6 +394,61 @@
     };
   }
 
+
+  function isPhysicalMeasurement(item) {
+    if (!item || item.accepted !== true || item.referenceOnly === true) return false;
+    if (!Number.isFinite(item.remainingPercent) || !Number.isFinite(item.measuredAtMs)) return false;
+    const source = lower(item.sourceType || item.cameraId || '');
+    const notes = lower(item.reason || item.notes || item.message || '');
+    return source === 'manual' || source === 'physical' || /physical roll diameter|physical diameter|outside diameter/.test(notes);
+  }
+
+  function buildPhysicalTrend(validMeasurements) {
+    const points = validMeasurements
+      .filter(isPhysicalMeasurement)
+      .sort((a, b) => a.measuredAtMs - b.measuredAtMs);
+    const days = spanDays(points);
+    if (points.length < 2 || days < 0.25) {
+      return {
+        available: false,
+        state: 'learning',
+        label: 'Physical trend learning',
+        ratePerDay: null,
+        spanDays: days,
+        pointCount: points.length
+      };
+    }
+    const first = points[0];
+    const last = points[points.length - 1];
+    const used = first.remainingPercent - last.remainingPercent;
+    const rate = days > 0 ? used / days : null;
+    if (!Number.isFinite(rate) || rate <= 0.01) {
+      return {
+        available: false,
+        state: 'learning',
+        label: 'Physical trend flat',
+        ratePerDay: rate,
+        spanDays: days,
+        pointCount: points.length,
+        first,
+        last
+      };
+    }
+    return {
+      available: true,
+      state: 'physical',
+      label: 'Physical recent',
+      ratePerDay: rate,
+      longRatePerDay: rate,
+      recentRatePerDay: rate,
+      spanDays: days,
+      pointCount: points.length,
+      first,
+      last,
+      detail: 'Usage rate is based on physical outside-diameter measurements.'
+    };
+  }
+
   function nextExpectedMeasurementMs(latestMs, config = {}) {
     if (!Number.isFinite(latestMs)) return null;
     const hours = (Array.isArray(config.scheduleHoursLocal) ? config.scheduleHoursLocal : [9, 15, 21])
@@ -483,6 +538,30 @@
       latestDays,
       ratePerDay: rate,
       detail: 'Forecast is based on the current observed usage rate and will narrow as more unique captures accumulate.'
+    };
+  }
+
+
+  function buildPhysicalForecast(currentPercent, physicalTrend, nowMs) {
+    if (!Number.isFinite(currentPercent) || !physicalTrend?.available || !Number.isFinite(physicalTrend.ratePerDay) || physicalTrend.ratePerDay <= 0.05) {
+      return null;
+    }
+    const rate = physicalTrend.ratePerDay;
+    const daysToTen = Math.max(0, (currentPercent - 10) / rate);
+    const daysToFive = Math.max(0, (currentPercent - 5) / rate);
+    const nominalDays = currentPercent / rate;
+    const startMs = nowMs + daysToTen * 86400000;
+    const endMs = nowMs + daysToFive * 86400000;
+    return {
+      available: true,
+      label: 'Physical estimate',
+      source: 'physical',
+      dateRange: formatDateRange(startMs, endMs),
+      nominalDays,
+      earliestDays: daysToTen,
+      latestDays: daysToFive,
+      ratePerDay: rate,
+      detail: 'Forecast is based on recent physical diameter measurements. Replace near the beginning of this window if the roll is advancing frequently.'
     };
   }
 
@@ -581,12 +660,14 @@
         : config.currentDiameterMm;
     const valid = measurements.filter(item => item.accepted && Number.isFinite(item.remainingPercent));
     const baseTrend = buildTrend(valid);
+    const physicalTrend = buildPhysicalTrend(valid);
     const baseConfidence = buildConfidence(valid, latestCamera, nowMs, config);
     const latestRejectedCamera = latestRejectedCameraMeasurement(measurements);
     const rejectedIsNewer = rejectedAfterAccepted(latestRejectedCamera, latestCamera);
-    const trend = pauseTrendForRejectedAttempt(baseTrend, latestRejectedCamera, latestCamera);
+    const cameraTrend = pauseTrendForRejectedAttempt(baseTrend, latestRejectedCamera, latestCamera);
+    const trend = physicalTrend.available ? physicalTrend : cameraTrend;
     const confidence = limitConfidenceForRejectedAttempt(baseConfidence, latestRejectedCamera, latestCamera);
-    const forecast = buildForecast(currentPercent, baseTrend, baseConfidence, nowMs, latestRejectedCamera, latestCamera);
+    const forecast = buildPhysicalForecast(currentPercent, physicalTrend, nowMs) || buildForecast(currentPercent, baseTrend, baseConfidence, nowMs, latestRejectedCamera, latestCamera);
     const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence, latestRejectedCamera);
     const quantitativeCamera = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = quantitativeCamera.filter(item => item.accepted && item.referenceOnly !== true);
@@ -609,7 +690,9 @@
       current: {
         percentRemaining: Number.isFinite(currentPercent) ? clamp(currentPercent, 0, 100) : null,
         diameterMm: Number.isFinite(currentDiameterMm) ? currentDiameterMm : null,
-        source: latest?.sourceType === 'camera' ? (latest.referenceOnly ? 'manual with camera reference' : 'camera') : 'manual initialization',
+        source: latest?.sourceType === 'camera'
+          ? (latest.referenceOnly ? 'manual with camera reference' : 'camera')
+          : isPhysicalMeasurement(latest) ? 'physical diameter' : 'manual initialization',
         partialCycle: config.partialCycle !== false,
         partialCycleLabel: config.partialCycle === false ? 'Full cycle' : config.partialCycleLabel
       },
@@ -619,6 +702,8 @@
       measurements,
       recentMeasurements: measurements.slice(0, 8),
       trend,
+      physicalTrend,
+      cameraTrend,
       confidence,
       forecast,
       warnings,
@@ -637,8 +722,10 @@
     extractMeasurements,
     dedupeMeasurements,
     buildTrend,
+    buildPhysicalTrend,
     buildConfidence,
     buildForecast,
+    buildPhysicalForecast,
     latestRejectedCameraMeasurement,
     rejectedAfterAccepted,
     rejectionSuggestsBlockedView,

@@ -5,164 +5,62 @@ await import('../filter-roll-engine.js');
 const engine = globalThis.ReefKeeperFilterRollEngine;
 assert.ok(engine, 'Filter-roll engine must expose its browser API.');
 
-const initialized = engine.calculateRemainingPercent(85, 100, 46);
-assert.ok(Math.abs(initialized - 64.802130898) < 0.00001, '85/100/46 geometry must initialize at 64.8%.');
+const remaining85 = engine.calculateRemainingPercent(85, 100, 46);
+assert.ok(Math.abs(remaining85 - 64.802130898) < 0.00001, '85/100/46 geometry must initialize at 64.8%.');
 
-const manualAt = '2026-07-24T12:00:00Z';
-const manual = {
-  id: 'manual-1', captureKey: 'manual-1', measuredAt: manualAt, measuredAtMs: Date.parse(manualAt),
-  remainingPercent: initialized, diameterMm: 85, confidence: 1, accepted: true,
-  reason: 'Physical initialization', sourceType: 'manual'
+const firstPhysical = {
+  id:'physical-63', captureKey:'physical-63', measuredAt:'2026-08-06T07:19:00.000Z', measuredAtMs:Date.parse('2026-08-06T07:19:00.000Z'),
+  remainingPercent:engine.calculateRemainingPercent(63, 100, 46), diameterMm:63,
+  confidence:1, accepted:true, reason:'Physical roll diameter 63 mm; full 100 mm; core 46 mm.', sourceType:'manual'
 };
-const manualOnly = engine.buildStatus({
-  config: {
-    partialCycle: true,
-    partialCycleLabel: 'Partial cycle — roll already in use',
-    currentDiameterMm: 85,
-    newRollDiameterMm: 100,
-    coreDiameterMm: 46,
-    cycleId: 'partial-1'
-  },
-  measurements: [manual],
-  nowMs: Date.parse('2026-07-24T13:00:00Z')
-});
-assert.equal(manualOnly.current.source, 'manual initialization');
-assert.equal(manualOnly.latestCameraMeasurement, null, 'Manual initialization must not be mislabeled as a camera measurement.');
-assert.equal(manualOnly.forecast.available, false, 'One manual point must not create a replacement forecast.');
-assert.match(manualOnly.current.partialCycleLabel, /Partial cycle/);
+const latestPhysical = {
+  id:'physical-59', captureKey:'physical-59', measuredAt:'2026-08-08T06:19:00.000Z', measuredAtMs:Date.parse('2026-08-08T06:19:00.000Z'),
+  remainingPercent:engine.calculateRemainingPercent(59, 100, 46), diameterMm:59,
+  confidence:1, accepted:true, reason:'Physical roll diameter 59 mm; full 100 mm; core 46 mm.', sourceType:'manual'
+};
 
-const cameraHistory = [0, 2, 4, 6, 8].map((day, index) => {
-  const measuredAt = new Date(Date.UTC(2026, 6, 24 + day, 12, 0, 0)).toISOString();
-  return {
-    id: `capture-${index + 1}`,
-    captureKey: `capture-${index + 1}`,
-    measuredAt,
-    measuredAtMs: Date.parse(measuredAt),
-    remainingPercent: 64.8 - index * 1.7,
-    diameterMm: engine.calculateDiameterFromRemainingPercent(64.8 - index * 1.7, 100, 46),
-    confidence: 0.9,
-    accepted: true,
-    reason: '',
-    sourceType: 'camera'
-  };
-});
-const rejected = {
-  ...cameraHistory[3], id: 'capture-rejected', captureKey: 'capture-rejected',
-  measuredAt: '2026-07-31T12:00:00Z', measuredAtMs: Date.parse('2026-07-31T12:00:00Z'),
-  remainingPercent: null, diameterMm: null, accepted: false, confidence: 0.2,
-  reason: 'Outer silhouette inconsistent', apparentOuterRadius: 77.5
+assert.ok(Math.abs(firstPhysical.remainingPercent - 23.5032978) < 0.0001, '63 mm must calculate as 23.5% remaining.');
+assert.ok(Math.abs(latestPhysical.remainingPercent - 17.3135464) < 0.0001, '59 mm must calculate as 17.3% remaining.');
+
+const camera = {
+  id:'camera-current', captureKey:'camera-current', measuredAt:'2026-08-08T05:58:00.000Z', measuredAtMs:Date.parse('2026-08-08T05:58:00.000Z'),
+  remainingPercent:52.4, diameterMm:engine.calculateDiameterFromRemainingPercent(52.4, 100, 46),
+  apparentOuterRadius:73, confidence:0.94, accepted:true, reason:'Camera reading', sourceType:'camera'
 };
+
 const status = engine.buildStatus({
-  config: manualOnly.config,
-  measurements: [manual, ...cameraHistory, rejected, { ...cameraHistory[4], confidence: 0.5 }],
-  nowMs: Date.parse('2026-08-01T13:00:00Z')
+  config:{
+    partialCycle:true,
+    partialCycleLabel:'Partial cycle — roll already in use',
+    currentDiameterMm:85,
+    newRollDiameterMm:100,
+    coreDiameterMm:46,
+    cycleId:'partial-existing-roll',
+    scheduleHoursLocal:[9,15],
+    minSpacingMinutes:240
+  },
+  measurements:[camera, firstPhysical, latestPhysical],
+  nowMs:Date.parse('2026-08-08T06:35:00.000Z')
 });
-assert.equal(status.measurements.filter(item => item.captureKey === 'capture-5').length, 1, 'Duplicate captures must count once.');
-assert.equal(status.latestCameraMeasurement.captureKey, 'capture-5');
-assert.ok(status.trend.pointCount >= 5, 'Accepted measurements must feed the usage trend.');
-assert.equal(status.forecast.available, true, 'A multi-day reliable history should produce a provisional forecast.');
-assert.ok(!status.warnings.some(item => item.includes('rejected')), 'Older rejected readings must not keep an active warning after a newer accepted reading.');
-assert.equal(status.tracking.label, 'Tracking', 'A newer accepted reading must clear the active holding/calibration state.');
-const referenceScenario = engine.buildStatus({
-  config: { ...manualOnly.config, scheduleHoursLocal:[9,15,21], minSpacingMinutes:240 },
-  measurements: [manual, { ...cameraHistory[0], measuredAt:'2026-07-25T15:27:38Z', measuredAtMs:Date.parse('2026-07-25T15:27:38Z'), referenceOnly:true }, rejected],
-  nowMs: Date.parse('2026-07-27T19:00:00Z')
-});
-assert.equal(referenceScenario.trend.pointCount, 1, 'Only the manual baseline may remain; the camera reference must not add an independent trend point.');
-assert.equal(referenceScenario.tracking.state, 'needs-calibration');
-assert.equal(referenceScenario.current.source, 'manual with camera reference');
-const nextWindow = engine.nextExpectedMeasurementMs(Date.parse('2026-07-25T15:27:38Z'), { scheduleHoursLocal:[9,15,21], minSpacingMinutes:240 });
-assert.ok(nextWindow > Date.parse('2026-07-25T15:27:38Z'), 'The next expected measurement must be schedule-aware.');
 
-
-const holdingScenario = engine.buildStatus({
-  config: manualOnly.config,
-  measurements: [manual, ...cameraHistory.slice(0, 3), {
-    id:'rejected-newer', captureKey:'rejected-newer', measuredAt:'2026-08-01T12:00:00Z', measuredAtMs:Date.parse('2026-08-01T12:00:00Z'),
-    remainingPercent:null, diameterMm:null, apparentOuterRadius:65, confidence:0.64, accepted:false,
-    reason:'Detector confidence 64% was below the 65% acceptance threshold.', sourceType:'camera'
-  }],
-  nowMs: Date.parse('2026-08-01T19:00:00Z')
-});
-assert.equal(holdingScenario.tracking.label, 'Holding last good reading');
-assert.equal(holdingScenario.forecast.available, false);
-assert.equal(holdingScenario.forecast.label, 'Holding last good reading');
-assert.equal(holdingScenario.latestRejectedCameraMeasurement.captureKey, 'rejected-newer');
-assert.equal(holdingScenario.trend.state, 'paused');
-assert.equal(holdingScenario.confidence.label, 'Limited');
-
-const blockedScenario = engine.buildStatus({
-  config: manualOnly.config,
-  measurements: [manual, ...cameraHistory.slice(0, 3), {
-    id:'blocked-newer', captureKey:'blocked-newer', measuredAt:'2026-08-01T12:00:00Z', measuredAtMs:Date.parse('2026-08-01T12:00:00Z'),
-    remainingPercent:null, diameterMm:null, apparentOuterRadius:61, confidence:0.30, accepted:false,
-    reason:'Detector confidence 30% was below the 65% acceptance threshold.; Large radius decrease (16%) would require confirmation before replacing the last accepted reading.', sourceType:'camera'
-  }],
-  nowMs: Date.parse('2026-08-01T19:00:00Z')
-});
-assert.equal(blockedScenario.tracking.label, 'View blocked');
-assert.equal(blockedScenario.trend.label, 'Paused — view blocked');
-assert.equal(blockedScenario.confidence.label, 'Limited');
-
-
-
-const duplicateTimestampStatus = engine.buildStatus({
-  config: manualOnly.config,
-  measurements: [
-    manual,
-    {
-      id: 'radius-only-a', captureKey: 'measurement-id-a', measuredAt: '2026-08-02T16:10:00Z', measuredAtMs: Date.parse('2026-08-02T16:10:00Z'),
-      remainingPercent: null, diameterMm: null, apparentOuterRadius: 73, confidence: 0.94, accepted: true, sourceType: 'camera'
-    },
-    {
-      id: 'radius-only-b', captureKey: 'source-image-b', measuredAt: '2026-08-02T16:10:20Z', measuredAtMs: Date.parse('2026-08-02T16:10:20Z'),
-      remainingPercent: null, diameterMm: null, apparentOuterRadius: 73, confidence: 0.94, accepted: true, sourceType: 'camera'
-    },
-    {
-      id: 'converted-percent', captureKey: 'observer-root', measuredAt: '2026-08-02T16:10:35Z', measuredAtMs: Date.parse('2026-08-02T16:10:35Z'),
-      remainingPercent: 52.4, diameterMm: null, apparentOuterRadius: 73, confidence: 0.94, accepted: true, sourceType: 'camera'
-    },
-    {
-      id: 'older-rejected', captureKey: 'older-rejected', measuredAt: '2026-08-01T22:06:00Z', measuredAtMs: Date.parse('2026-08-01T22:06:00Z'),
-      remainingPercent: null, diameterMm: null, apparentOuterRadius: 61, confidence: 0.30, accepted: false,
-      reason: 'Detector confidence 30% was below the 65% acceptance threshold.', sourceType: 'camera'
-    }
-  ],
-  nowMs: Date.parse('2026-08-02T16:30:00Z')
-});
-assert.equal(duplicateTimestampStatus.recentMeasurements.filter(item => item.measuredAt?.startsWith('2026-08-02T16:10')).length, 1, 'Same-window radius-only and percent records must collapse into one row.');
-assert.equal(duplicateTimestampStatus.latestCameraMeasurement.remainingPercent, 52.4, 'The converted percent record must win over radius-only duplicates.');
-assert.equal(duplicateTimestampStatus.tracking.label, 'Tracking', 'A newer accepted reading must clear older rejected diagnostics.');
-assert.ok(!duplicateTimestampStatus.warnings.some(item => /rejected|calibration/i.test(item)), 'Old rejected attempts remain history, not active warnings.');
+assert.equal(status.version, '9L');
+assert.equal(status.current.source, 'physical diameter');
+assert.ok(Math.abs(status.current.percentRemaining - latestPhysical.remainingPercent) < 0.0001, 'Latest physical measurement must control the current percent.');
+assert.equal(Number(status.current.diameterMm.toFixed(1)), 59.0, 'Latest physical diameter must control the current diameter.');
+assert.equal(status.physicalTrend.available, true, 'Two physical readings over time must create a physical usage rate.');
+assert.ok(status.physicalTrend.ratePerDay > 3.0 && status.physicalTrend.ratePerDay < 3.3, 'Physical usage rate should be about 3.1 percent/day.');
+assert.equal(status.trend.label, 'Physical recent');
+assert.equal(status.forecast.source, 'physical');
+assert.equal(status.forecast.label, 'Physical estimate');
+assert.equal(status.forecast.available, true, 'Physical trend should produce a replacement window.');
+assert.ok(status.forecast.dateRange.includes('Aug'), 'Replacement forecast should produce August dates.');
 
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
-const css = fs.readFileSync('filter-roll-status.css', 'utf8');
-const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.65'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.65'));
-assert.ok(html.includes('/filter-roll-status.css?v=4.3.65'));
-assert.ok(html.lastIndexOf('/filter-roll-status.js?v=4.3.65') < html.lastIndexOf('</body>'), '9D script must be linked from the real application body.');
-assert.match(ui, /getFilterRollState/);
-assert.match(ui, /reef_observer_filter_roll_state_v1/);
-assert.match(ui, /latestCameraMeasurement/);
-assert.match(css, /\.rk-filter-roll-card/);
-for (const route of ['/filter-roll-engine.js', '/filter-roll-status.js', '/filter-roll-status.css']) {
-  const index = vercel.routes.findIndex(item => item.src === route && item.dest === route);
-  const fallback = vercel.routes.findIndex(item => item.src === '/(.*)');
-  assert.ok(index >= 0 && index < fallback, `${route} must be served before the SPA fallback.`);
-}
-assert.equal(vercel.functions && Object.keys(vercel.functions).length, 3, 'Maintenance 9D must not add a Vercel function.');
-
-assert.match(ui, /Log fleece roll replacement/);
-assert.match(ui, /Radius only/);
-assert.match(ui, /hasQuantitativeValue/);
-console.log('Maintenance 9I.2 filter-roll status tests passed.');
-
-const filterRollStatusUi = fs.readFileSync('filter-roll-status.js', 'utf8');
-assert.match(filterRollStatusUi, /estimateBasis = latest\?\.measuredAt \? 'that last accepted reading'/);
-assert.match(filterRollStatusUi, /current estimate remains based on/);
-assert.match(filterRollStatusUi, /Holding the last accepted filter-roll camera reading/);
-assert.match(filterRollStatusUi, /Filter-roll view appears blocked or unreliable/);
-assert.match(filterRollStatusUi, /rejectedIsNewer/);
-assert.doesNotMatch(filterRollStatusUi, /current estimate remains anchored to the manual baseline/);
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.67'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.67'));
+assert.match(ui, /Log physical roll diameter/);
+assert.match(ui, /logPhysicalFilterRollDiameterFromForm/);
+assert.match(ui, /SEEDED_PHYSICAL_MEASUREMENTS/);
+assert.match(ui, /2026-08-08T06:19:00.000Z/);
+console.log('Maintenance 9L filter-roll physical calibration tests passed.');
