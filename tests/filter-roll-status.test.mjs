@@ -57,8 +57,8 @@ assert.ok(status.forecast.dateRange.includes('Aug'), 'Replacement forecast shoul
 
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.68'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.68'));
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.69'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.69'));
 assert.match(ui, /Log physical roll diameter/);
 assert.match(ui, /logPhysicalFilterRollDiameterFromForm/);
 assert.match(ui, /SEEDED_PHYSICAL_MEASUREMENTS/);

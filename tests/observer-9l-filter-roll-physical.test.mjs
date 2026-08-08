@@ -17,6 +17,6 @@ assert.match(ui, /Physical calibration/);
 assert.match(ui, /This overrides the current percent and narrows the forecast/);
 
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-assert.equal(pkg.version, '4.3.68');
+assert.equal(pkg.version, '4.3.69');
 assert.match(pkg.scripts.test, /observer-9l-filter-roll-physical\.test\.mjs/);
 console.log('Maintenance 9L.1 physical roll measurement UI test passed.');

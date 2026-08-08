@@ -9,8 +9,8 @@ const filterEngine = fs.readFileSync('filter-roll-engine.js', 'utf8');
 const css = fs.readFileSync('css/app.css', 'utf8');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
-assert.equal(pkg.version, '4.3.65');
-assert.match(html, /Reef Keeper v4\.3\.65 Maintenance 9K\.1/);
+assert.equal(pkg.version, '4.3.69');
+assert.match(html, /Reef Keeper v4\.3\.69 Maintenance 9M/);
 assert.match(html, /id="observer-health-guidance" hidden/);
 assert.match(html, /Reviewed removes an item from this inbox and stores it in history/);
 assert.match(html, /maintenance-9f1-observer-scoping/);
@@ -32,8 +32,8 @@ assert.match(alertsApi, /Sump view changed after maintenance or equipment moveme
 assert.match(alertsApi, /no exact image match is required/);
 assert.match(filterUi, /function actionableTrackingWarning\(/);
 assert.match(filterUi, /current estimate remains based on/);
-assert.match(filterUi, /Holding the last accepted filter-roll camera reading/);
-assert.match(filterEngine, /const VERSION = '9I.2'/);
+assert.match(filterUi, /using the latest physical diameter measurement for the current roll percentage and forecast/);
+assert.match(filterEngine, /const VERSION = '9L\.1'/);
 assert.match(css, /Maintenance 9E\.1 — reviewed-alert certainty and maintenance-scene advisory/);
 assert.match(css, /observer-health-badge\.advisory/);
 assert.match(css, /observer-health-guidance/);
@@ -46,4 +46,4 @@ assert.match(observer, /observer-alert-detail/);
 assert.match(filterUi, /Log fleece roll replacement/);
 assert.match(filterUi, /logFilterRollReplacementFromObserver/);
 assert.match(fs.readFileSync('integration-core.js', 'utf8'), /function logFilterRollReplacementFromObserver/);
-console.log('Maintenance 9I.2 observer scoping and filter-roll action tests passed.');
+console.log('Maintenance 9H observer scoping and filter-roll action tests passed.');

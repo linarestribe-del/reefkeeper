@@ -36,7 +36,7 @@ FILTER_ROLL_STATUS_PATH = BASE_DIR / 'filter-roller-status.json'
 FILTER_ROLL_ANALYSIS_WIDTH = 320
 FILTER_ROLL_ANALYSIS_HEIGHT = 240
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
-PUBLISHER_VERSION = '2.8.2'
+PUBLISHER_VERSION = '2.8.3'
 MONITOR_WIDTH = 128
 MONITOR_HEIGHT = 72
 CAPTURE_TIMER = 'reefkeeper-camera-capture.timer'
@@ -401,6 +401,8 @@ def monitor_config(primary: dict[str, Any], config_path: Path | None = None, sou
             'urgent_delta_percent': 10.0,
             'alert_streak': 2,
             'minimum_confidence': 0.45,
+            'allow_offline': False,
+            'max_line_jump_percent': 12.0,
         },
     }
     source = primary.get(source_key) if isinstance(primary.get(source_key), dict) else {}
@@ -1291,8 +1293,9 @@ def evaluate_local_monitor(
         baseline_y_value = None
     water_streak = 0
     water_result: dict[str, Any] = {
-        'status': 'pending',
-        'message': 'Water-level monitoring is not calibrated.',
+        'enabled': bool(water_enabled),
+        'status': 'healthy' if not water_enabled else 'pending',
+        'message': 'Water-level tracking is disabled; return camera health uses image quality and scene stability.' if not water_enabled else 'Water-level monitoring is not calibrated.',
         'configured': bool(water_enabled and roi and baseline_y_value is not None),
         'confidence': 0.0,
         'streak': 0,
@@ -1301,6 +1304,7 @@ def evaluate_local_monitor(
         detected = detect_water_line(pixels, roi)
         minimum_confidence = clamp_number(water_settings.get('minimum_confidence'), 0.2, 0.9, 0.45)
         water_result.update({
+            'enabled': True,
             'confidence': detected.get('confidence', 0.0),
             'currentYPercent': detected.get('yPercent'),
             'edgeScore': detected.get('edgeScore'),
@@ -1309,36 +1313,70 @@ def evaluate_local_monitor(
         if baseline_y_value is None:
             water_result['message'] = 'Water-level region is configured but needs a baseline calibration.'
         elif not detected.get('available') or float(detected.get('confidence') or 0) < minimum_confidence:
-            water_result['message'] = 'The configured water line is not clear enough in this frame; no level alert was generated.'
+            water_result['status'] = 'pending'
+            water_result['state'] = 'tracking_paused'
+            water_result['message'] = 'Water-level tracking paused because the configured water line is not clear enough in this frame.'
             water_result['baselineYPercent'] = round(baseline_y_value, 2)
         else:
-            delta = baseline_y_value - float(detected['yPercent'])
+            current_y = float(detected['yPercent'])
+            delta = baseline_y_value - current_y
             warning_delta = clamp_number(water_settings.get('warning_delta_percent'), 1.0, 30.0, 5.0)
             urgent_delta = max(warning_delta + 1.0, clamp_number(water_settings.get('urgent_delta_percent'), 2.0, 45.0, 10.0))
+            max_line_jump = clamp_number(water_settings.get('max_line_jump_percent'), 4.0, 45.0, 12.0)
+            allow_offline = water_settings.get('allow_offline') is True
+            previous = state.get('lastWaterLevel') if isinstance(state.get('lastWaterLevel'), dict) else {}
+            previous_y_value = previous.get('currentYPercent')
+            try:
+                previous_y = float(previous_y_value) if previous_y_value is not None else None
+            except (TypeError, ValueError):
+                previous_y = None
+            line_jump = abs(current_y - previous_y) if previous_y is not None else 0.0
+            line_jump_candidate = previous_y is not None and line_jump >= max_line_jump
             candidate = abs(delta) >= warning_delta
             previous_water_streak = int(state.get('waterLevelStreak') or 0)
-            water_streak = previous_water_streak + 1 if is_new_capture and candidate else (0 if is_new_capture else previous_water_streak)
             water_limit = int(clamp_number(water_settings.get('alert_streak'), 1, 6, 2))
-            water_result.update({
-                'configured': True,
-                'baselineYPercent': round(baseline_y_value, 2),
-                'currentYPercent': round(float(detected['yPercent']), 2),
-                'deltaPercent': round(delta, 2),
-                'direction': 'higher' if delta > 0 else ('lower' if delta < 0 else 'stable'),
-                'streak': water_streak,
-            })
-            if water_streak >= water_limit and abs(delta) >= urgent_delta:
-                water_result['status'] = 'offline'
-                water_result['message'] = f"Water level appears {abs(delta):.1f}% of the monitored region {'higher' if delta > 0 else 'lower'} than baseline."
-            elif water_streak >= water_limit:
-                water_result['status'] = 'attention'
-                water_result['message'] = f"Water level appears {abs(delta):.1f}% of the monitored region {'higher' if delta > 0 else 'lower'} than baseline."
-            elif candidate:
+            if line_jump_candidate and is_new_capture:
+                water_streak = 0
+                water_result.update({
+                    'configured': True,
+                    'baselineYPercent': round(baseline_y_value, 2),
+                    'currentYPercent': round(current_y, 2),
+                    'deltaPercent': round(delta, 2),
+                    'direction': 'higher' if delta > 0 else ('lower' if delta < 0 else 'stable'),
+                    'streak': water_streak,
+                    'state': 'tracking_paused',
+                    'lineJumpPercent': round(line_jump, 2),
+                    'previousYPercent': round(previous_y, 2),
+                })
                 water_result['status'] = 'pending'
-                water_result['message'] = 'A possible water-level shift is being confirmed with the next capture.'
+                water_result['message'] = f'Water-level tracking paused because the detector jumped {line_jump:.1f}% between possible waterline edges.'
             else:
-                water_result['status'] = 'healthy'
-                water_result['message'] = f'Water level is within {warning_delta:.1f}% of its calibrated baseline.'
+                water_streak = previous_water_streak + 1 if is_new_capture and candidate else (0 if is_new_capture else previous_water_streak)
+                water_result.update({
+                    'configured': True,
+                    'baselineYPercent': round(baseline_y_value, 2),
+                    'currentYPercent': round(current_y, 2),
+                    'deltaPercent': round(delta, 2),
+                    'direction': 'higher' if delta > 0 else ('lower' if delta < 0 else 'stable'),
+                    'streak': water_streak,
+                    'lineJumpPercent': round(line_jump, 2) if previous_y is not None else 0.0,
+                })
+                if water_streak >= water_limit and abs(delta) >= urgent_delta:
+                    water_result['status'] = 'offline' if allow_offline else 'attention'
+                    water_result['state'] = 'urgent_confirmed'
+                    water_result['message'] = f"Water level appears {abs(delta):.1f}% of the monitored region {'higher' if delta > 0 else 'lower'} than baseline. Check the return chamber and ATO."
+                elif water_streak >= water_limit:
+                    water_result['status'] = 'attention'
+                    water_result['state'] = 'warning_confirmed'
+                    water_result['message'] = f"Water level appears {abs(delta):.1f}% of the monitored region {'higher' if delta > 0 else 'lower'} than baseline."
+                elif candidate:
+                    water_result['status'] = 'pending'
+                    water_result['state'] = 'confirming'
+                    water_result['message'] = 'A possible water-level shift is being confirmed with the next capture.'
+                else:
+                    water_result['status'] = 'healthy'
+                    water_result['state'] = 'stable'
+                    water_result['message'] = f'Water level is within {warning_delta:.1f}% of its calibrated baseline.'
 
     issues: list[dict[str, str]] = []
     if quality_status == 'attention':
@@ -1399,7 +1437,7 @@ def evaluate_local_monitor(
     message = {
         'healthy': 'Image quality and fixed camera anchors are stable; expected equipment movement is tolerated.',
         'attention': 'Local monitoring found a camera-anchor, obstruction, or configured water-level condition that should be checked.',
-        'offline': 'Local monitoring found a possible urgent water-level condition.',
+        'offline': 'Local monitoring found a critical camera or image-quality condition.',
         'pending': 'Local monitoring is learning anchors or allowing expected maintenance changes to settle.',
     }[overall]
     result.update({

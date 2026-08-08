@@ -55,7 +55,7 @@ assert.equal(stored.reused, true);
 assert.equal(stored.source.dailyImageCount, 2);
 
 const publisher = fs.readFileSync(new URL('../connector/observer-publisher.py', import.meta.url), 'utf8');
-assert.match(publisher, /PUBLISHER_VERSION = '2\.8\.2'/);
+assert.match(publisher, /PUBLISHER_VERSION = '2\.8\.3'/);
 assert.match(publisher, /def post_daily_summary_json/);
 assert.match(publisher, /Daily summary acknowledged by storage-only Observer backend/);
 assert.match(publisher, /daily_previous_for_decision/);

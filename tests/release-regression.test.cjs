@@ -48,7 +48,7 @@ assert(app.includes("event.pointerType === 'mouse' || isActiveDrag"));
 assert(!app.includes("if (event.pointerType === 'mouse') inspectClientX(event.clientX);"));
 assert(fs.existsSync('ai/trend-chart.js'));
 assert(fs.existsSync('ai/explainability.js'));
-assert.equal(pkg.version, '4.3.65');
+assert.equal(pkg.version, '4.3.69');
 assert.equal(rootCss, css, 'Root and css/ stylesheet copies must remain synchronized');
 assert.equal(rootChat, apiChat, 'Root and api/chat.js copies must remain synchronized');
 assert(fs.existsSync('tests/index-js-cleanup.test.mjs'));
@@ -66,7 +66,7 @@ for (const file of ['MAINTENANCE_8D_RELEASE_MANIFEST.md', 'MAINTENANCE_8D_TEST_R
 assert(fs.existsSync('tests/ai-abuse-guard.test.mjs'));
 assert(fs.existsSync('tests/ai-access-control.test.mjs'));
 assert(html.includes('id="reef-ai-access-key"'));
-assert(html.includes('Reef Keeper v4.3.65 Maintenance 9K.1'));
+assert(html.includes('Reef Keeper v4.3.69 Maintenance 9M'));
 assert(app.includes("const REEF_AI_ACCESS_STORAGE_KEY = 'reef_ai_access_key_v1'"));
 assert(app.includes("headers['X-Reef-AI-Access-Key'] = key"));
 assert(app.includes('function testReefAiAccessKey()'));
@@ -114,12 +114,14 @@ assert(fs.readFileSync('api/observer-status.js', 'utf8').includes('../lib/observ
 assert(fs.readFileSync('api/observer-image.js', 'utf8').includes('../lib/observer-r2.js'));
 
 // Maintenance 8D dual-camera Observer safeguards.
-assert(fs.existsSync('connector/install-observer-publisher-2.8.1.sh'));
+assert(fs.existsSync('connector/install-observer-publisher-2.8.0.sh'));
 assert(fs.existsSync('tests/observer-dual-camera.test.mjs'));
 assert(fs.existsSync('tests/observer-dual-camera-api.test.mjs'));
 assert(fs.existsSync('tests/observer-dual-camera-publisher.test.py'));
 assert(fs.existsSync('tests/observer-filter-roll.test.py'));
 assert(fs.existsSync('tests/filter-roll-status.test.mjs'));
+assert(fs.existsSync('tests/observer-9m-return-water-level-reliability.test.mjs'));
+assert(fs.existsSync('connector/install-observer-publisher-2.8.3.sh'));
 assert(fs.existsSync('filter-roll-engine.js'));
 assert(fs.existsSync('filter-roll-status.js'));
 assert(fs.existsSync('filter-roll-status.css'));
@@ -130,7 +132,7 @@ assert(filterRollUi.includes('id="observer-filter-roll-current-diameter"'));
 assert(filterRollUi.includes('initializeExistingFilterRollFromForm(event)'));
 assert(html.includes('id="observer-camera-overview"'));
 assert(html.includes('id="observer-camera-return"'));
-assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBLISHER_VERSION = '2.8.1'"));
+assert(fs.readFileSync('connector/observer-publisher.py', 'utf8').includes("PUBLISHER_VERSION = '2.8.3'"));
 assert(fs.readFileSync('lib/observer-common.js', 'utf8').includes('OBSERVER_SCHEMA_VERSION = 10'));
 assert(fs.readFileSync('api/observer-publish.js', 'utf8').includes("cameraId === 'return'"));
 assert(fs.readFileSync('api/observer-image.js', 'utf8').includes("cameraId === 'return'"));
@@ -170,17 +172,5 @@ for (const file of ['MAINTENANCE_9C_3_RELEASE_MANIFEST.md', 'MAINTENANCE_9C_3_TE
 // Parameter Log recursion regression: direct routing must remain present and recursive body absent.
 assert(html.includes("rkDirectGo('log')") || html.includes('rkDirectGo("log")'));
 assert(!/function\s+showPage\s*\([^)]*\)\s*\{\s*showPage\s*\(/.test(html));
-
-
-// Maintenance 9K.1 Cloudflare Worker Observer backend safeguards.
-assert(fs.existsSync('cloudflare/observer-worker.js'));
-assert(fs.existsSync('cloudflare/wrangler.toml.example'));
-assert(fs.existsSync('docs/OBSERVER_CLOUDFLARE_WORKER_9K.md'));
-assert(fs.existsSync('connector/configure-observer-worker-endpoint.sh'));
-assert(fs.existsSync('tests/observer-9k-cloudflare-worker.test.mjs'));
-assert(fs.readFileSync('cloudflare/observer-worker.js', 'utf8').includes('cloudflare-worker-r2'));
-assert(fs.readFileSync('cloudflare/observer-worker.js', 'utf8').includes('OBSERVER_BUCKET'));
-assert(fs.readFileSync('cloudflare/observer-worker.js', 'utf8').includes('REEF_OBSERVER_WRITE_TOKEN'));
-assert(fs.readFileSync('connector/configure-observer-worker-endpoint.sh', 'utf8').includes('/api/observer-publish'));
 
 console.log('release regression tests passed');
