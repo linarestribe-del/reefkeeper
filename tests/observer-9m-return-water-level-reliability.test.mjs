@@ -11,7 +11,7 @@ assert.match(publisher, /tracking_paused/, 'Water-level detector should have a t
 assert.match(publisher, /Water-level tracking is disabled; return camera health uses image quality and scene stability\./, 'Disabled water-level tracking should be explicit and healthy.');
 assert.match(publisher, /Water-level tracking paused because the detector jumped/, 'Large waterline jumps should pause tracking instead of producing a false urgent offline state.');
 assert.match(publisher, /'status'\] = 'offline' if allow_offline else 'attention'/, 'Urgent water-level differences should not force offline unless explicitly allowed.');
-assert.match(index, /Reef Keeper v4\.3\.72 Maintenance 9N\.2/, 'App settings version should show 9N.2.');
+assert.match(index, /Reef Keeper v4\.3\.73 Maintenance 9O/, 'App settings version should show 9N.2.');
 assert.match(index, /Water-level learning is feed-mode aware; return timelapse support is active\./, 'Return chamber tools should describe feed-aware water-level learning.');
 
 console.log('PASS observer-9m-return-water-level-reliability');

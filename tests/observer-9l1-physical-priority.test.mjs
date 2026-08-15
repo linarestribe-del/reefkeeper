@@ -29,7 +29,7 @@ const status = engine.buildStatus({
   nowMs:Date.parse('2026-08-08T06:55:00.000Z')
 });
 
-assert.equal(status.version, '9N.2');
+assert.equal(status.version, '9O');
 assert.equal(status.current.source, 'physical diameter');
 assert.equal(status.tracking.state, 'physical');
 assert.equal(status.tracking.label, 'Physical estimate');

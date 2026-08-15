@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9N.2 — filter-roll replacement cycle UI cleanup.
+/* Reef Keeper Maintenance 9O — filter-roll diagnostics cleanup after accepted camera readings.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Adds physical diameter measurements that can drive current remaining percent and replacement forecast.
  */
@@ -314,22 +314,42 @@
     return 'learning';
   }
 
+  function renderMeasurementRow(item) {
+    const radius = Number.isFinite(item.apparentOuterRadius) ? `${item.apparentOuterRadius.toFixed(1)} px apparent radius` : formatMm(item.diameterMm);
+    const isPhysical = item.sourceType === 'manual' && /physical roll diameter|physical diameter|outside diameter/i.test(item.reason || item.notes || item.sourcePath || '');
+    const source = item.sourceType === 'manual' ? (isPhysical ? 'Physical diameter' : 'Manual baseline') : (item.referenceOnly ? 'Camera reference' : (item.accepted ? 'Camera · used' : 'Camera · excluded'));
+    const confidence = item.sourceType === 'manual' ? 'Physical entry' : formatConfidenceNumber(item.confidence);
+    const valueLabel = Number.isFinite(item.remainingPercent) ? formatPercent(item.remainingPercent) : (item.referenceOnly ? 'Reference' : (item.accepted ? 'Radius only' : 'Excluded'));
+    return `<div class="rk-fr-history-row ${item.accepted ? '' : 'rejected'} ${item.referenceOnly ? 'reference' : ''}">
+      <div class="rk-fr-history-main"><strong>${escapeHtml(formatDate(item.measuredAt))}</strong><span>${escapeHtml(item.measuredAt ? ageLabel(item.measuredAt) : 'Undated')}</span></div>
+      <div class="rk-fr-history-value"><strong>${escapeHtml(valueLabel)}</strong><span>${escapeHtml(radius)}</span></div>
+      <div class="rk-fr-history-confidence"><strong>${escapeHtml(confidence)}</strong><span>${escapeHtml(source)}</span></div>
+      ${item.accepted ? '' : `<div class="rk-fr-reject-reason">${escapeHtml(item.reason || 'Rejected or inconsistent measurement')}</div>`}
+    </div>`;
+  }
+
   function measurementRows(measurements) {
     const quantitative = measurements.filter(item => Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm) || Number.isFinite(item.apparentOuterRadius));
     if (!quantitative.length) return '<div class="rk-fr-empty">No quantitative filter-roll measurements are available yet.</div>';
-    return `<div class="rk-fr-history-list">${quantitative.slice(0, 8).map(item => {
-      const radius = Number.isFinite(item.apparentOuterRadius) ? `${item.apparentOuterRadius.toFixed(1)} px apparent radius` : formatMm(item.diameterMm);
-      const isPhysical = item.sourceType === 'manual' && /physical roll diameter|physical diameter|outside diameter/i.test(item.reason || item.notes || item.sourcePath || '');
-      const source = item.sourceType === 'manual' ? (isPhysical ? 'Physical diameter' : 'Manual baseline') : (item.referenceOnly ? 'Camera reference' : (item.accepted ? 'Camera · used' : 'Camera · excluded'));
-      const confidence = item.sourceType === 'manual' ? 'Physical entry' : formatConfidenceNumber(item.confidence);
-      const valueLabel = Number.isFinite(item.remainingPercent) ? formatPercent(item.remainingPercent) : (item.referenceOnly ? 'Reference' : (item.accepted ? 'Radius only' : 'Excluded'));
-      return `<div class="rk-fr-history-row ${item.accepted ? '' : 'rejected'} ${item.referenceOnly ? 'reference' : ''}">
-        <div class="rk-fr-history-main"><strong>${escapeHtml(formatDate(item.measuredAt))}</strong><span>${escapeHtml(item.measuredAt ? ageLabel(item.measuredAt) : 'Undated')}</span></div>
-        <div class="rk-fr-history-value"><strong>${escapeHtml(valueLabel)}</strong><span>${escapeHtml(radius)}</span></div>
-        <div class="rk-fr-history-confidence"><strong>${escapeHtml(confidence)}</strong><span>${escapeHtml(source)}</span></div>
-        ${item.accepted ? '' : `<div class="rk-fr-reject-reason">${escapeHtml(item.reason || 'Rejected or inconsistent measurement')}</div>`}
-      </div>`;
-    }).join('')}</div>`;
+
+    const latestAcceptedCameraMs = quantitative
+      .filter(item => item.sourceType === 'camera' && item.accepted === true && !item.referenceOnly && Number.isFinite(item.measuredAtMs))
+      .reduce((max, item) => Math.max(max, item.measuredAtMs), -Infinity);
+
+    const archivedDiagnostics = [];
+    const primaryRows = [];
+    quantitative.forEach(item => {
+      const supersededRejectedCamera = item.sourceType === 'camera' && item.accepted === false && Number.isFinite(item.measuredAtMs) && Number.isFinite(latestAcceptedCameraMs) && item.measuredAtMs < latestAcceptedCameraMs;
+      if (supersededRejectedCamera) archivedDiagnostics.push(item);
+      else primaryRows.push(item);
+    });
+
+    const visiblePrimary = primaryRows.slice(0, Math.max(1, 8 - Math.min(archivedDiagnostics.length, 1)));
+    const primaryHtml = visiblePrimary.map(renderMeasurementRow).join('');
+    const diagnosticHtml = archivedDiagnostics.length
+      ? `<details class="rk-fr-setup-disclosure rk-fr-diagnostic-disclosure"><summary>Camera diagnostics (${archivedDiagnostics.length} older rejected reading${archivedDiagnostics.length === 1 ? '' : 's'} hidden)</summary><div class="rk-fr-history-list">${archivedDiagnostics.slice(0, 8).map(renderMeasurementRow).join('')}</div></details>`
+      : '';
+    return `<div class="rk-fr-history-list">${primaryHtml}</div>${diagnosticHtml}`;
   }
 
   function warningHtml(warnings, failure, usingCache) {
@@ -486,8 +506,8 @@
       ? (status.recentMeasurements || []).filter(item => item.measuredAtMs && item.measuredAtMs >= latestPhysical.measuredAtMs)
       : (status.recentMeasurements || []);
     const visibleMeasurementNote = isFreshPhysicalBaseline
-      ? 'Current roll measurements only; prior-cycle camera diagnostics are archived.'
-      : 'Only quantitative readings; excluded readings remain visible for diagnostics.';
+      ? 'Current roll measurements only; older rejected camera diagnostics are collapsed once a newer camera reading is accepted.'
+      : 'Only quantitative readings; older rejected camera attempts collapse after a newer camera reading is accepted.';
     const lastCameraValue = cameraReadingIsFromPriorCycle ? 'Pending' : (latest ? formatPercent(latest.remainingPercent) : 'Pending');
     const nowLocalValue = formatDateTimeLocalValue();
 

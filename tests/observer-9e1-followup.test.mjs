@@ -9,8 +9,8 @@ const filterEngine = fs.readFileSync('filter-roll-engine.js', 'utf8');
 const css = fs.readFileSync('css/app.css', 'utf8');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
-assert.equal(pkg.version, '4.3.72');
-assert.match(html, /Reef Keeper v4\.3\.72 Maintenance 9N\.2/);
+assert.equal(pkg.version, '4.3.73');
+assert.match(html, /Reef Keeper v4\.3\.73 Maintenance 9O/);
 assert.match(html, /id="observer-health-guidance" hidden/);
 assert.match(html, /Reviewed removes an item from this inbox and stores it in history/);
 assert.match(html, /maintenance-9f1-observer-scoping/);

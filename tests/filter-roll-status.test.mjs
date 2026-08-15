@@ -43,7 +43,7 @@ const status = engine.buildStatus({
   nowMs:Date.parse('2026-08-08T06:35:00.000Z')
 });
 
-assert.equal(status.version, '9N.2');
+assert.equal(status.version, '9O');
 assert.equal(status.current.source, 'physical diameter');
 assert.ok(Math.abs(status.current.percentRemaining - latestPhysical.remainingPercent) < 0.0001, 'Latest physical measurement must control the current percent.');
 assert.equal(Number(status.current.diameterMm.toFixed(1)), 59.0, 'Latest physical diameter must control the current diameter.');
@@ -57,8 +57,8 @@ assert.ok(status.forecast.dateRange.includes('Aug'), 'Replacement forecast shoul
 
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
-assert.ok(html.includes('/filter-roll-engine.js?v=4.3.72'));
-assert.ok(html.includes('/filter-roll-status.js?v=4.3.72'));
+assert.ok(html.includes('/filter-roll-engine.js?v=4.3.73'));
+assert.ok(html.includes('/filter-roll-status.js?v=4.3.73'));
 assert.match(ui, /Log physical roll diameter/);
 assert.match(ui, /logPhysicalFilterRollDiameterFromForm/);
 assert.match(ui, /SEEDED_PHYSICAL_MEASUREMENTS/);

@@ -25,7 +25,7 @@ const status = engine.buildStatus({
   nowMs:Date.parse('2026-08-14T13:52:00.000Z')
 });
 
-assert.equal(status.version, '9N.2');
+assert.equal(status.version, '9O');
 assert.equal(status.current.source, 'physical diameter');
 assert.equal(status.current.partialCycle, false);
 assert.equal(status.current.percentRemaining, 100);
@@ -37,9 +37,9 @@ assert.ok(!status.warnings.join(' ').match(/stale|blocked|camera estimate/i), 'O
 
 const html = fs.readFileSync('index.html', 'utf8');
 const ui = fs.readFileSync('filter-roll-status.js', 'utf8');
-assert.match(html, /Reef Keeper v4\.3\.72 Maintenance 9N\.2/);
+assert.match(html, /Reef Keeper v4\.3\.73 Maintenance 9O/);
 assert.match(ui, /New cycle started — physical baseline/);
 assert.match(ui, /prior-cycle camera readings are kept in diagnostics/);
-assert.match(ui, /Current roll measurements only; prior-cycle camera diagnostics are archived/);
+assert.match(ui, /Current roll measurements only; older rejected camera diagnostics are collapsed once a newer camera reading is accepted/);
 
 console.log('PASS observer-9n2-filter-roll-replacement-cycle');

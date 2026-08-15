@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9N.2 — filter-roll replacement cycle UI cleanup.
+/* Reef Keeper Maintenance 9O — filter-roll diagnostics cleanup after accepted camera readings.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9N.2';
+  const VERSION = '9O';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
