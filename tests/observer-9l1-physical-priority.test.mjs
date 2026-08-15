@@ -29,7 +29,7 @@ const status = engine.buildStatus({
   nowMs:Date.parse('2026-08-08T06:55:00.000Z')
 });
 
-assert.equal(status.version, '9L.1');
+assert.equal(status.version, '9N.2');
 assert.equal(status.current.source, 'physical diameter');
 assert.equal(status.tracking.state, 'physical');
 assert.equal(status.tracking.label, 'Physical estimate');
@@ -37,4 +37,4 @@ assert.ok(!/blocked/i.test(status.tracking.label), 'Physical estimate should not
 assert.equal(status.forecast.source, 'physical');
 assert.ok(Math.abs(status.current.percentRemaining - physical59.remainingPercent) < 0.001);
 
-console.log('Maintenance 9L.1 physical priority cleanup test passed.');
+console.log('Maintenance 9N.2 physical priority cleanup test passed.');

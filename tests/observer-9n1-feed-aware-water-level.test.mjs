@@ -7,8 +7,8 @@ const trainer = readFileSync('connector/return-water-level-trainer.py', 'utf8');
 const installer = readFileSync('connector/install-return-water-level-learning-1.1.sh', 'utf8');
 const index = readFileSync('index.html', 'utf8');
 
-assert.equal(pkg.version, '4.3.71');
-assert.match(index, /Reef Keeper v4\.3\.71 Maintenance 9N\.1/);
+assert.equal(pkg.version, '4.3.72');
+assert.match(index, /Reef Keeper v4\.3\.72 Maintenance 9N\.2/);
 assert.match(index, /Water-level learning is feed-mode aware; return timelapse support is active\./);
 assert.match(publisher, /PUBLISHER_VERSION = '2\.8\.5'/);
 assert.match(publisher, /baseline_nearest_edge/);

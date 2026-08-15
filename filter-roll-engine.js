@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9L.1 — physical filter-roll estimate priority cleanup.
+/* Reef Keeper Maintenance 9N.2 — filter-roll replacement cycle UI cleanup.
  * Browser global: window.ReefKeeperFilterRollEngine
  * Node/CommonJS export is included for verification tests.
  */
@@ -9,7 +9,7 @@
 })(typeof window !== 'undefined' ? window : globalThis, function() {
   'use strict';
 
-  const VERSION = '9L.1';
+  const VERSION = '9N.2';
   const DEFAULT_CONFIG = Object.freeze({
     partialCycle: true,
     partialCycleLabel: 'Partial cycle — roll already in use',
@@ -565,6 +565,19 @@
     };
   }
 
+  function buildPhysicalBaselineForecast(currentPercent, physicalTrend) {
+    if (!Number.isFinite(currentPercent)) return null;
+    return {
+      available: false,
+      label: currentPercent >= 98 ? 'Learning this roll' : 'Physical estimate',
+      source: 'physical',
+      ratePerDay: null,
+      detail: physicalTrend?.pointCount >= 2
+        ? 'A physical baseline is active, but the usage rate is not yet moving enough for a replacement window.'
+        : 'A new physical baseline is active. Forecasting will begin after another physical measurement or clean camera trend is accepted for this roll.'
+    };
+  }
+
   function latestAccepted(measurements) {
     return measurements
       .filter(item => item.accepted && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.diameterMm)))
@@ -663,15 +676,19 @@
     const physicalTrend = buildPhysicalTrend(valid);
     const baseConfidence = buildConfidence(valid, latestCamera, nowMs, config);
     const latestRejectedCamera = latestRejectedCameraMeasurement(measurements);
-    const rejectedIsNewer = rejectedAfterAccepted(latestRejectedCamera, latestCamera);
-    const cameraTrend = pauseTrendForRejectedAttempt(baseTrend, latestRejectedCamera, latestCamera);
+    const usingPhysicalEstimate = latest && isPhysicalMeasurement(latest);
+    const latestForRejectionComparison = usingPhysicalEstimate ? latest : latestCamera;
+    const rejectedIsNewer = rejectedAfterAccepted(latestRejectedCamera, latestForRejectionComparison);
+    const cameraTrend = usingPhysicalEstimate ? baseTrend : pauseTrendForRejectedAttempt(baseTrend, latestRejectedCamera, latestCamera);
     const trend = physicalTrend.available ? physicalTrend : cameraTrend;
-    const confidence = limitConfidenceForRejectedAttempt(baseConfidence, latestRejectedCamera, latestCamera);
-    const forecast = buildPhysicalForecast(currentPercent, physicalTrend, nowMs) || buildForecast(currentPercent, baseTrend, baseConfidence, nowMs, latestRejectedCamera, latestCamera);
-    const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence, latestRejectedCamera);
+    const confidence = usingPhysicalEstimate ? baseConfidence : limitConfidenceForRejectedAttempt(baseConfidence, latestRejectedCamera, latestCamera);
+    const forecast = usingPhysicalEstimate
+      ? (buildPhysicalForecast(currentPercent, physicalTrend, nowMs) || buildPhysicalBaselineForecast(currentPercent, physicalTrend))
+      : (buildPhysicalForecast(currentPercent, physicalTrend, nowMs) || buildForecast(currentPercent, baseTrend, baseConfidence, nowMs, latestRejectedCamera, latestCamera));
+    const warnings = buildWarnings(config, measurements, latestCamera, currentPercent, confidence, latestRejectedCamera)
+      .filter(message => !(usingPhysicalEstimate && /camera estimate|camera tracking|latest measurement is stale|accepted filter-roll camera/i.test(message || '')));
     const quantitativeCamera = measurements.filter(item => item.sourceType !== 'manual' && (Number.isFinite(item.remainingPercent) || Number.isFinite(item.apparentOuterRadius)));
     const independentAccepted = quantitativeCamera.filter(item => item.accepted && item.referenceOnly !== true);
-    const usingPhysicalEstimate = latest && isPhysicalMeasurement(latest);
     const tracking = usingPhysicalEstimate
       ? { state:'physical', label:'Physical estimate' }
       : rejectedIsNewer && rejectionSuggestsBlockedView(latestRejectedCamera) && independentAccepted.length >= 2
@@ -729,6 +746,7 @@
     buildConfidence,
     buildForecast,
     buildPhysicalForecast,
+    buildPhysicalBaselineForecast,
     latestRejectedCameraMeasurement,
     rejectedAfterAccepted,
     rejectionSuggestsBlockedView,

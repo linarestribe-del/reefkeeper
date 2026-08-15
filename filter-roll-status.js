@@ -1,4 +1,4 @@
-/* Reef Keeper Maintenance 9L.1 — physical filter-roll estimate priority cleanup.
+/* Reef Keeper Maintenance 9N.2 — filter-roll replacement cycle UI cleanup.
  * Reads the Maintenance 9A filter-roll cycle and the existing Observer status.
  * Adds physical diameter measurements that can drive current remaining percent and replacement forecast.
  */
@@ -177,8 +177,9 @@
   }
 
 
-  function seededPhysicalMeasurements(config) {
+  function seededPhysicalMeasurements(config, state = null) {
     if (!config || config.partialCycle === false) return [];
+    if (Array.isArray(state?.completedCycles) && state.completedCycles.length) return [];
     const cycleStartedMs = Date.parse(config.cycleStartedAt || config.initializedAt || '') || 0;
     const nowMs = Date.now() + 3600000;
     return SEEDED_PHYSICAL_MEASUREMENTS.map(item => {
@@ -346,25 +347,29 @@
     return 'learning';
   }
 
-  function actionableTrackingWarning(status, latest) {
+  function actionableTrackingWarning(status, latestCamera, latestPhysical = null) {
     const tracking = status?.tracking || {};
     const current = status?.current || {};
     const rejected = status?.latestRejectedCameraMeasurement || (status?.recentMeasurements || []).find(item => item.sourceType === 'camera' && !item.accepted && item.reason);
-    const rejectedIsNewer = Boolean(rejected?.measuredAtMs && latest?.measuredAtMs && rejected.measuredAtMs > latest.measuredAtMs);
+    const latestAccepted = latestPhysical || latestCamera || status?.latestMeasurement || null;
+    const rejectedIsNewer = Boolean(rejected?.measuredAtMs && latestAccepted?.measuredAtMs && rejected.measuredAtMs > latestAccepted.measuredAtMs);
     const detail = rejectedIsNewer && rejected?.reason ? ` Latest rejected attempt: ${rejected.reason}` : '';
-    if (current.source === 'physical diameter' && rejectedIsNewer) {
-      return `Camera tracking is paused because recent visual readings did not agree closely enough to update the camera estimate. Reef Keeper is using the latest physical diameter measurement for the current roll percentage and forecast.${detail}`;
+    if (current.source === 'physical diameter') {
+      if (rejectedIsNewer) {
+        return `Camera tracking is relearning this roll and did not accept the latest visual reading. Reef Keeper is still using the latest physical diameter measurement for the current roll percentage.${detail}`;
+      }
+      return '';
     }
-    if (tracking.state === 'view-blocked' && latest?.measuredAt) {
-      return `Filter-roll view appears blocked or unreliable, so Reef Keeper is holding the last accepted camera reading from ${formatDate(latest.measuredAt)}. The current estimate remains based on that reading until the roll edge is visible again.${detail}`;
+    if (tracking.state === 'view-blocked' && latestCamera?.measuredAt) {
+      return `Filter-roll view appears blocked or unreliable, so Reef Keeper is holding the last accepted camera reading from ${formatDate(latestCamera.measuredAt)}. The current estimate remains based on that reading until the roll edge is visible again.${detail}`;
     }
     if (tracking.state === 'needs-calibration') {
-      const since = latest?.measuredAt ? formatDate(latest.measuredAt) : 'the initial camera reference';
-      const estimateBasis = latest?.measuredAt ? 'that last accepted reading' : 'the saved manual starting measurement';
+      const since = latestCamera?.measuredAt ? formatDate(latestCamera.measuredAt) : 'the initial camera reference';
+      const estimateBasis = latestCamera?.measuredAt ? 'that last accepted reading' : 'the saved manual starting measurement';
       return `No accepted filter-roll camera reading has arrived since ${since}. The current estimate remains based on ${estimateBasis}.${detail}`;
     }
-    if ((tracking.state === 'stale' || tracking.state === 'holding') && latest?.measuredAt) {
-      return `Holding the last accepted filter-roll camera reading from ${formatDate(latest.measuredAt)}. The current estimate remains based on that reading until another scheduled attempt is accepted.${detail}`;
+    if ((tracking.state === 'stale' || tracking.state === 'holding') && latestCamera?.measuredAt) {
+      return `Holding the last accepted filter-roll camera reading from ${formatDate(latestCamera.measuredAt)}. The current estimate remains based on that reading until another scheduled attempt is accepted.${detail}`;
     }
     return '';
   }
@@ -435,35 +440,68 @@
     const forecast = status.forecast || {};
     const tracking = status.tracking || { state:'learning', label:'Learning' };
     const percent = Number.isFinite(current.percentRemaining) ? current.percentRemaining : 0;
-    const latestDetail = latest ? `${formatDate(latest.measuredAt)} · ${latest.measuredAt ? ageLabel(latest.measuredAt) : 'Undated'}` : 'No accepted camera reading yet.';
+    const physicalMeasurements = (status.measurements || []).filter(item => item.sourceType === 'manual' && /physical roll diameter|physical diameter|outside diameter/i.test(item.reason || item.notes || item.sourcePath || ''));
+    const latestPhysical = physicalMeasurements.slice().sort((a, b) => (b.measuredAtMs || 0) - (a.measuredAtMs || 0))[0] || null;
+    const isFreshPhysicalBaseline = Boolean(
+      latestPhysical &&
+      current.source === 'physical diameter' &&
+      Number.isFinite(latestPhysical.remainingPercent) &&
+      latestPhysical.remainingPercent >= 98 &&
+      Number.isFinite(latestPhysical.diameterMm) &&
+      Number.isFinite(status.config?.newRollDiameterMm) &&
+      Math.abs(latestPhysical.diameterMm - status.config.newRollDiameterMm) <= 1.5
+    );
+    const cameraReadingIsFromPriorCycle = Boolean(latest && latestPhysical?.measuredAtMs && latest.measuredAtMs && latest.measuredAtMs < latestPhysical.measuredAtMs);
+    const latestDetail = cameraReadingIsFromPriorCycle
+      ? 'Pending for this new roll; prior-cycle camera readings are kept in diagnostics.'
+      : latest
+        ? `${formatDate(latest.measuredAt)} · ${latest.measuredAt ? ageLabel(latest.measuredAt) : 'Undated'}`
+        : 'No accepted camera reading yet.';
     const sourceLabel = current.source === 'manual with camera reference'
       ? 'Manual baseline with camera reference established'
       : current.source === 'camera'
         ? 'Last accepted camera measurement'
         : current.source === 'physical diameter'
-          ? 'Latest physical diameter measurement'
+          ? (isFreshPhysicalBaseline ? 'New physical roll baseline' : 'Latest physical diameter measurement')
           : 'Manual starting measurement';
-    const primaryWarning = actionableTrackingWarning(status, latest) || [...(status.warnings || []), ...(meta.usingCache ? ['Showing cached Observer data.'] : []), ...(meta.failure && !meta.usingCache ? [`Observer refresh failed: ${meta.failure}`] : [])][0] || '';
-    const forecastText = forecast.available ? forecast.dateRange : (forecast.label || 'Still learning');
-    const confidenceReason = confidence.reasons?.join('; ') || 'More independent camera history is required.';
-    const trendDetail = trend.paused ? (trend.pauseReason || 'Usage trend is paused until another clean camera reading is accepted.') : (Number.isFinite(trend.ratePerDay) ? `${trend.ratePerDay.toFixed(2)} percentage points/day` : 'Still learning the usage rate');
-    const physicalMeasurements = (status.measurements || []).filter(item => item.sourceType === 'manual' && /physical roll diameter|physical diameter|outside diameter/i.test(item.reason || item.notes || item.sourcePath || ''));
-    const latestPhysical = physicalMeasurements.slice().sort((a, b) => (b.measuredAtMs || 0) - (a.measuredAtMs || 0))[0] || null;
+    const activeWarnings = (status.warnings || []).filter(message => !(isFreshPhysicalBaseline && /camera|stale|blocked|obstruction|view|measurement/i.test(message || '')));
+    const primaryWarning = (isFreshPhysicalBaseline ? '' : actionableTrackingWarning(status, latest, latestPhysical)) || [...activeWarnings, ...(meta.usingCache ? ['Showing cached Observer data.'] : []), ...(meta.failure && !meta.usingCache ? [`Observer refresh failed: ${meta.failure}`] : [])][0] || '';
+    const forecastText = isFreshPhysicalBaseline ? 'Learning this roll' : (forecast.available ? forecast.dateRange : (forecast.label || 'Still learning'));
+    const forecastDetail = isFreshPhysicalBaseline
+      ? 'New roll baseline is saved. Forecasting will resume after this cycle has another physical measurement or enough clean camera history.'
+      : (forecast.detail || 'More history is required.');
+    const confidenceReason = isFreshPhysicalBaseline
+      ? 'Camera tracking is relearning the new roll; physical measurement is the source of truth.'
+      : (confidence.reasons?.join('; ') || 'More independent camera history is required.');
+    const trendDetail = isFreshPhysicalBaseline
+      ? 'New roll started; usage trend will build from this cycle.'
+      : (trend.paused ? (trend.pauseReason || 'Usage trend is paused until another clean camera reading is accepted.') : (Number.isFinite(trend.ratePerDay) ? `${trend.ratePerDay.toFixed(2)} percentage points/day` : 'Still learning the usage rate'));
+    const displayTracking = isFreshPhysicalBaseline ? { state:'physical', label:'New cycle' } : tracking;
+    const displayTrend = isFreshPhysicalBaseline ? { state:'learning', label:'Learning this roll' } : trend;
+    const displayConfidence = isFreshPhysicalBaseline ? { label:'Physical baseline' } : confidence;
+    const displayCycleLabel = isFreshPhysicalBaseline ? 'New cycle started — physical baseline' : (current.partialCycleLabel || 'Current roll cycle');
     const physicalLabel = latestPhysical ? `${formatMm(latestPhysical.diameterMm)} · ${formatPercent(latestPhysical.remainingPercent)}` : 'No physical diameter logged';
     const physicalDetail = latestPhysical ? `${formatDate(latestPhysical.measuredAt)} · ${ageLabel(latestPhysical.measuredAt)}` : 'Add a physical measurement to override camera percent.';
+    const visibleMeasurements = isFreshPhysicalBaseline && latestPhysical
+      ? (status.recentMeasurements || []).filter(item => item.measuredAtMs && item.measuredAtMs >= latestPhysical.measuredAtMs)
+      : (status.recentMeasurements || []);
+    const visibleMeasurementNote = isFreshPhysicalBaseline
+      ? 'Current roll measurements only; prior-cycle camera diagnostics are archived.'
+      : 'Only quantitative readings; excluded readings remain visible for diagnostics.';
+    const lastCameraValue = cameraReadingIsFromPriorCycle ? 'Pending' : (latest ? formatPercent(latest.remainingPercent) : 'Pending');
     const nowLocalValue = formatDateTimeLocalValue();
 
     card.innerHTML = `<div class="rk-fr-compact-head">
       <div><div class="rk-fr-kicker">FILTER ROLL</div><h3>Filter-roll status</h3></div>
-      <span class="rk-fr-badge ${trackingClass(tracking.state)}">${escapeHtml(tracking.label)}</span>
+      <span class="rk-fr-badge ${trackingClass(displayTracking.state)}">${escapeHtml(displayTracking.label)}</span>
     </div>
     <div class="rk-fr-compact-body">
       <div class="rk-fr-compact-percent"><strong>${escapeHtml(formatPercent(current.percentRemaining))}</strong><span>estimated remaining</span></div>
       <div class="rk-fr-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${escapeHtml(percent.toFixed(1))}"><span style="width:${escapeHtml(String(Math.max(0, Math.min(100, percent))))}%"></span></div>
-      <div class="rk-fr-cycle-label">${escapeHtml(current.partialCycleLabel || 'Current roll cycle')}</div>
+      <div class="rk-fr-cycle-label">${escapeHtml(displayCycleLabel)}</div>
       <div class="rk-fr-compact-facts">
         <div><span>Latest physical measurement</span><strong>${escapeHtml(physicalLabel)}</strong><small>${escapeHtml(physicalDetail)}</small></div>
-        <div><span>Replacement forecast</span><strong>${escapeHtml(forecastText)}</strong><small>${escapeHtml(forecast.detail || 'More history is required.')}</small></div>
+        <div><span>Replacement forecast</span><strong>${escapeHtml(forecastText)}</strong><small>${escapeHtml(forecastDetail)}</small></div>
       </div>
       ${primaryWarning ? `<div class="rk-fr-inline-warning"><span>!</span><div>${escapeHtml(primaryWarning)}</div></div>` : ''}
     </div>
@@ -473,14 +511,14 @@
         <div class="rk-fr-current-details">
           <div><span>Current diameter</span><strong>${escapeHtml(formatMm(current.diameterMm))}</strong></div>
           <div><span>Estimate source</span><strong>${escapeHtml(sourceLabel)}</strong></div>
-          <div><span>Last valid camera reading</span><strong>${escapeHtml(latest ? formatPercent(latest.remainingPercent) : 'Pending')}</strong><small>${escapeHtml(latestDetail)}</small></div>
+          <div><span>Last valid camera reading</span><strong>${escapeHtml(lastCameraValue)}</strong><small>${escapeHtml(latestDetail)}</small></div>
           <div><span>Roll geometry</span><strong>${escapeHtml(`${status.config.newRollDiameterMm} mm new · ${status.config.coreDiameterMm} mm core`)}</strong></div>
         </div>
         <div class="rk-fr-metric-grid">
-          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Usage trend</div><strong><span class="rk-fr-badge ${trendClass(trend.state)}">${escapeHtml(trend.label || 'Insufficient data')}</span></strong><span>${escapeHtml(trendDetail)}</span></div>
-          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Confidence</div><strong><span class="rk-fr-badge ${confidenceClass(confidence.label)}">${escapeHtml(confidence.label || 'Learning')}</span></strong><span>${escapeHtml(confidenceReason)}</span></div>
+          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Usage trend</div><strong><span class="rk-fr-badge ${trendClass(displayTrend.state)}">${escapeHtml(displayTrend.label || 'Insufficient data')}</span></strong><span>${escapeHtml(trendDetail)}</span></div>
+          <div class="rk-fr-metric"><div class="rk-fr-metric-label">Confidence</div><strong><span class="rk-fr-badge ${confidenceClass(displayConfidence.label)}">${escapeHtml(displayConfidence.label || 'Learning')}</span></strong><span>${escapeHtml(confidenceReason)}</span></div>
         </div>
-        <div class="rk-fr-section"><div class="rk-fr-section-title"><strong>Recent measurements</strong><span>Only quantitative readings; excluded readings remain visible for diagnostics.</span></div>${measurementRows(status.recentMeasurements || [])}</div>
+        <div class="rk-fr-section"><div class="rk-fr-section-title"><strong>Recent measurements</strong><span>${escapeHtml(visibleMeasurementNote)}</span></div>${measurementRows(visibleMeasurements)}</div>
         <details class="rk-fr-setup-disclosure" open><summary>Log physical roll diameter</summary>
           <form class="observer-filter-roll-init rk-fr-setup-form" onsubmit="logPhysicalFilterRollDiameterFromForm(event)">
             <div class="observer-filter-roll-init-head"><strong>Physical calibration</strong><span>Enter the outside diameter when measured by hand. This overrides the current percent and narrows the forecast.</span></div>
@@ -545,7 +583,7 @@
         const cycleMeasurements = currentCycleMeasurements(loaded.state, config);
         const observerMeasurement = canonicalObserverMeasurement(loaded.observerPayload, config);
         const observerMeasurements = window.ReefKeeperFilterRollEngine.extractMeasurements(liveFilterRoll, config);
-        const physicalSeedMeasurements = seededPhysicalMeasurements(config);
+        const physicalSeedMeasurements = seededPhysicalMeasurements(config, loaded.state);
         const merged = mergeLocalHistory(config.cycleId, [
           ...cycleMeasurements,
           ...physicalSeedMeasurements,
